@@ -5,6 +5,7 @@
 #include <memory>
 #include <cstring>
 #include <chrono>
+#include <assert.h>
 
 #ifndef MY_MATH_H
 #define MY_MATH_H
@@ -17,103 +18,158 @@ typedef double scalar;
 #else
 typedef float scalar;
 #endif
-
+typedef unsigned short counter;
 
 using namespace std;
-
-class matrix
+namespace RoboMath
 {
-public:
-    matrix()
+    class Vector
     {
-        rows = 0;
-        cols = 0;
-        data = nullptr;
-    }
-    matrix(const int &rows, const int &cols)
-    {
-        this->rows = rows;
-        this->cols = cols;
-        dataNewMemory(cols, rows);
-    }
-    matrix(const initializer_list<initializer_list<scalar>> &il)
-    {
-//        int il_sec;
-        rows = il.size();
-        cols = il.begin()->size();
-        dataNewMemory(cols, rows);
-
-        int i = 0;
-        for (auto l : il)
+    public:
+        Vector()
         {
-            for (auto elem : l )
-            {
-//                il_sec =  l.size();
-                *(data + i) = elem;
-#ifdef DEBUG_COUT
-                cout << *(data + i);
-#endif
-                i++;
-            }
-//            cout << endl;
+            length = 0;
+            data == nullptr;
+        };
+        Vector(int size)
+        {
+            length = size;
+            dataNewMemory(length);
         }
-    }
-    matrix(const initializer_list<scalar> &il)
-    //Only for square matrix
-    {
-        int i = 0;
-        rows = sqrt(il.size());
-        cols = sqrt(il.size());
-        dataNewMemory(cols, rows);
-        copy(il.begin(), il.end(), data);
-    }
-    ~matrix()
-    {
-//        if(data != nullptr)
-//            delete[] data;
-    }
-    scalar &elem(const int &row, const int &col) const
-    {
-        return *(data + index(row, col));
-    }
-
-    static matrix multuply(const matrix &matrix1, const matrix &matrix2);
-    matrix operator *(const matrix &matrix2);
-
-    matrix operator =(const matrix &matrix1);
-
-    int getColsCount() const { return cols; }
-    int getRowsCount() const { return rows; }
-    void matrixCout()
-    {
-        for (int i = 0; i < rows; i++)
+        Vector(initializer_list<scalar> il)
         {
-            for (int j = 0; j < cols; j++)
+            length = il.size();
+            dataNewMemory(length);
+            initializer_list<scalar>::iterator it = il.begin();
+            for (int i = 0; i < length; i++)
             {
-                cout << *(data + i * cols + j) << "\t";
+                *(data + i) = *it++;
             }
+        }
+        ~Vector()
+        {
+            delete [] data;
+        }
+
+        int GetLength() const {return length;};
+        scalar* GetDataPtr () const {return data;};
+        scalar& operator()(counter number);
+        Vector& operator= (const Vector &V);
+//        friend ostream &operator<< (ostream& os, const Vector &V);
+    private:
+        int length;
+        scalar *data;
+        void dataNewMemory(const int &length)
+        {
+            data = new scalar [length];
+        }
+    };
+
+
+    class Matrix
+    {
+    public:
+        Matrix()
+        {
+            rows = 0;
+            cols = 0;
+            data = nullptr;
+        }
+        Matrix(const int &rows, const int &cols)
+        {
+            this->rows = rows;
+            this->cols = cols;
+            DataNewMemory(cols, rows);
+        }
+        Matrix(const Matrix& source)
+        {
+            rows = source.rows;
+            cols = source.cols;
+            DataNewMemory();
+            memcpy(data, source.data, sizeof(scalar) * rows * cols);
+        }
+        Matrix(const initializer_list<initializer_list<scalar>> &il)
+        {
+    //        int il_sec;
+            rows = il.size();
+            cols = il.begin()->size();
+            DataNewMemory(cols, rows);
+
+            int i = 0;
+            for (auto l : il)
+            {
+                for (auto elem : l )
+                {
+    //                il_sec =  l.size();
+                    *(data + i) = elem;
+#ifdef DEBUG_COUT
+                    cout << *(data + i);
+#endif
+                    i++;
+                }
+    //            cout << endl;
+            }
+        }
+        Matrix(const initializer_list<scalar> &il)
+        //Only for square matrix
+        {
+            int i = 0;
+            rows = sqrt(il.size());
+            cols = sqrt(il.size());
+            DataNewMemory(cols, rows);
+            copy(il.begin(), il.end(), data);
+        }
+        ~Matrix()
+        {
+    //        if(data != nullptr)
+    //            delete[] data;
+        }
+        scalar &elem(const int &row, const int &col) const;
+
+        Matrix Multuply(const Matrix &matrix1, const Matrix &matrix2);
+        void AddDiagonal(const scalar &d);
+        void SetSubmatrix(const Matrix &source);
+        void SetColumn(Vector &v, int ColNumber);
+        void SolveGauss();      //Решение СЛАУ методом Гаусса (приведение к ступенчатому виду)
+        void GetTheRoots(Vector &V);     //Получение корней уравнения
+        Matrix operator *(const Matrix &matrix2);
+        Vector operator *(const Vector &vector2);
+
+        Matrix operator =(const Matrix &matrix1);
+
+        scalar& operator()(const int &row, const int &col)
+        {
+            assert(col >= 0 && col <= this->cols);
+            assert(row >= 0 && row <= this->rows);
+            return *(data + index(row, col));
+        }
+        void transpose();
+        int GetColsCount() const { return cols; }
+        int GetRowsCount() const { return rows; }
+        scalar* GetDataPtr() const {return data;};
+        void MatrixCout();
+
+
+    private:
+        int rows;
+        int cols;
+        scalar *data;
+        void DataNewMemory()
+        {
+            data = new scalar[rows*cols];
+        }
+        void DataNewMemory(const int &cols, const int &rows)
+        {
+            data = new scalar[rows*cols];
+    #ifdef DEBUG_COUT
+            cout << "Data matrix was initialized with rows = "
+                 << rows << " end cols = " << cols << endl;
             cout << endl;
+    #endif
         }
-    }
-private:
-    int rows;
-    int cols;
-    scalar *data;
-    void dataNewMemory()
-    {
-        data = new scalar[rows*cols];
-    }
-    void dataNewMemory(const int &cols, const int &rows)
-    {
-        data = new scalar[rows*cols];
-#ifdef DEBUG_COUT
-        cout << "Data matrix was initialized with rows = "
-             << rows << " end cols = " << cols << endl;
-        cout << endl;
-#endif
-    }
-    int index(const int &row, const int &col) const { return row * cols + col; }
-};
+        int index(const int &row, const int &col) const { return col * rows + row; }
+    };
+}
 
 class checkTime
 {
@@ -134,5 +190,10 @@ private:
     std::chrono::_V2::system_clock::time_point stop;
 };
 
+class AllMath
+{
+    template<typename T> static inline T min(T t1, T t2) {return (t1 < t2 ? t1 : t2);};
+    template<typename T> static inline T max(T t1, T t2) {return (t1 > t2 ? t1 : t2);};
+};
 
 #endif // MY_MATH_H

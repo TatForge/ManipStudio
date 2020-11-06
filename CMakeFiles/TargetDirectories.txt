@@ -1,0 +1,4 @@
+/home/devel/Projects/MainKinematic/CMakeFiles/rebuild_cache.dir
+/home/devel/Projects/MainKinematic/CMakeFiles/edit_cache.dir
+/home/devel/Projects/MainKinematic/CMakeFiles/MainKinematic.dir
+/home/devel/Projects/MainKinematic/CMakeFiles/MainKinematic_autogen.dir

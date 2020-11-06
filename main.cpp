@@ -1,10 +1,13 @@
-#include <my_math.h>
+#include <main.h>
 #include <qdebug.h>
 #include <array>
 #include <chrono>
+#include <string.h>
 
-#define TO_RAD M_PI/180
-#define TO_DEG 180/M_PI
+#define RAD M_PI/180
+#define DEG 180/M_PI
+
+using namespace RoboMath;
 
 int main(int argc, char *argv[])
 {
@@ -17,50 +20,154 @@ int main(int argc, char *argv[])
 //    a.getRowsCount();
 //    a.elem(1, 1);
 //    a.matrixOut();
-    array<scalar, 6> tet {-90 * M_PI/180,
+
+    array<scalar, 6> tet {0 * M_PI/180,
                          0 * M_PI/180,
                          0 * M_PI/180,
-                         -90 * M_PI/180,
+                         0 * M_PI/180,
                          0 * M_PI/180,
                          0 * M_PI/180};
-    matrix A {{0,   -M_PI/2, 232.5,  tet[0]},
+    Matrix A {{0,   -M_PI/2, 232.5,  tet[0]},
               {375, 0,       0,      tet[1]},
               {295, 0,       0,      tet[2]},
               {0,   -M_PI/2, 120.5,  tet[3]},
               {0,   M_PI/2,  171,    tet[4]},
-              {0,   0,       122.6,  tet[5]}};
-    A.matrixCout();
-    cout << "A matrix ____________________" << endl;
+              {0,   0,       122.6,  tet[5]},
+              {0,   0,       100,    tet[6]}};
+    int *unitx = new int [3] {1, 0, 0};
+    int *unity = new int [3] {0, 1, 0};
+    int *unitz = new int [3] {0, 0, 1};
+    int *munitz = new int [3] {0, 0, -1};
 
-    array <matrix, 4> AA;
-    AA[0] = {1,2,3,4,5,6,7,8,9};
-    AA[0] = {1,2,3,4,5,6,7,8,9};
-    AA[0] = {1,2,3,4,5,6,7,8,9};
+    double *target = new double [3] {0.1, 0.1, 0.4};
 
-    array<matrix, 6> T1;
-    T1[0] = {{cos(A.elem(0, 3)), - sin(A.elem(0, 3)) * cos(A.elem(0, 1)),   sin(A.elem(0, 3)) * sin(A.elem(0, 1)), A.elem(0, 0) * cos(A.elem(0, 3))},
-             {sin(A.elem(0, 3)),   cos(A.elem(0, 3)) * cos(A.elem(0, 1)), - cos(A.elem(0, 3)) * sin(A.elem(0, 1)), A.elem(0, 0) * sin(A.elem(0, 3))},
-             {0,                   sin(A.elem(0, 1)),                       cos(A.elem(0, 1)),                     A.elem(0, 2)},
-             {0,                   0,                                       0,                                     0}};
-    T1[0].matrixCout();
-    cout << " T0 _______________" << endl;
-    T1[1] = {{cos(A.elem(1, 3)), - sin(A.elem(1, 3)) * cos(A.elem(1, 1)),   sin(A.elem(1, 3)) * sin(A.elem(1, 1)), A.elem(1, 0) * cos(A.elem(1, 3))},
-             {sin(A.elem(1, 3)),   cos(A.elem(1, 3)) * cos(A.elem(1, 1)), - cos(A.elem(1, 3)) * sin(A.elem(1, 1)), A.elem(1, 0) * sin(A.elem(1, 3))},
-             {0,                   sin(A.elem(1, 1)),                       cos(A.elem(1, 1)),                     A.elem(1, 2)},
-             {0,                   0,                                       0,                                     0}};
-    T1[0].matrixCout();
-    T1[1].matrixCout();
-    cout << " T1 _______________" << T1.size() << endl;
-    T1[2] = {{cos(A.elem(2, 3)), - sin(A.elem(2, 3)) * cos(A.elem(2, 1)),   sin(A.elem(2, 3)) * sin(A.elem(2, 1)), A.elem(2, 0) * cos(A.elem(2, 3))},
-             {sin(A.elem(2, 3)),   cos(A.elem(2, 3)) * cos(A.elem(2, 1)), - cos(A.elem(2, 3)) * sin(A.elem(2, 1)), A.elem(2, 0) * sin(A.elem(2, 3))},
-             {0,                   sin(A.elem(2, 1)),                       cos(A.elem(2, 1)),                     A.elem(2, 2)},
-             {0,                   0,                                       0,                                     0}};
-    T1[0].matrixCout();
-    T1[1].matrixCout();
-    T1[2].matrixCout();
-    cout << " T2 _______________" << T1.size() << endl;
+//    int *Jacobian = new int [18];
+    Matrix Jacobian(3, 5);
+    scalar dampingLambda = 0.01;
+    scalar DLS = dampingLambda * dampingLambda;
 
-    array<matrix, 6> T;
+    array<Elem, 6> manip ;
+    manip[0] = Elem(0,     0,      0,       unitz);
+    manip[1] = Elem(0,     0,      0.2325,  unity);
+    manip[2] = Elem(0.375, 0,      0.2325,  unity);
+    manip[3] = Elem(0.670, 0.1205, 0.2325,  unity);
+    manip[4] = Elem(0.670, 0.1205, 0.0615,   munitz);
+    manip[5] = Elem(0.670, 0.2431, 0.0615,   unity);
+
+//    Eigen::Matrix3d Jac;
+//    Jac << 1, 2, 6,
+//           3, 4, 5,
+//           5, 3, 2;
+//    cout << " Jac" << endl << Jac << endl;
+//    manip[0].RAInit();
+//    manip[1].RAInit();
+//    manip[2].RAInit();
+//    manip[3].RAInit();
+//    manip[4].RAInit();
+//    manip[5].RAInit();
+
+//    Eigen::Vector3d buff(
+//                double(*(target + 0) - manip[5].getX()),
+//                double(*(target + 1) - manip[5].getY()),
+//                double(*(target + 2) - manip[5].getZ()));
+//    cout << "BUFF " << endl << buff << endl << endl;
+//    Eigen::Vector3i k = manip[0].RA();
+//    buff *= 2;
+//    Jac *= k;
+    double x, y, z, nx, ny, nz;
+    for (int i = manip.size() - 1; i > 0; i--)
+    {
+        //creating JEndMatrix
+        x = (manip[i-1].getX() - manip[5].getX());
+        y = (manip[i-1].getY() - manip[5].getY());
+        z = (manip[i-1].getZ() - manip[5].getZ());
+        nx = y*manip[i - 1].getOrZ() - z*manip[i - 1].getOrY();//(*(target + 0) - manip[i].getX());
+        ny = z*manip[i - 1].getOrX() - x*manip[i - 1].getOrZ();//(*(target + 1) - manip[i].getY());
+        nz = x*manip[i - 1].getOrY() - y*manip[i - 1].getOrX();//(*(target + 2) - manip[i].getZ());
+        Jacobian(0, i - 1) = nx;//y*manip[i - 1].getOrZ() - z*manip[i - 1].getOrY();//(*(target + 0) - manip[i].getX());
+        Jacobian(1, i - 1) = ny;//z*manip[i - 1].getOrX() - x*manip[i - 1].getOrZ();//(*(target + 1) - manip[i].getY());
+        Jacobian(2, i - 1) = nz;//x*manip[i - 1].getOrY() - y*manip[i - 1].getOrX();//(*(target + 2) - manip[i].getZ());
+        cout << "Jacobian " << i << " col "
+             << Jacobian(0, i - 1) << "\t"
+             << Jacobian(1, i - 1) << "\t"
+             << Jacobian(2, i - 1) << endl;
+    }
+    //matrixMultiplyTranspose
+    //doing transpose J matrix
+
+    Matrix JacobianTransposed = Jacobian;
+    JacobianTransposed = Jacobian;
+    cout << " Matrix " << endl;
+    for (int i = 0; i < JacobianTransposed.GetColsCount() * JacobianTransposed.GetRowsCount(); i++)
+    {
+        cout << "Jacobian " << *(JacobianTransposed.GetDataPtr() + i) << endl;
+    }
+//    JacobianTransposed.matrixCout();
+    JacobianTransposed.transpose();
+    cout << " Jacobian transposed" << endl;
+    JacobianTransposed.MatrixCout();
+    Matrix U = Jacobian * JacobianTransposed;
+    cout << " U matrix" << endl;
+    U.MatrixCout();
+    cout << " U matrix" << endl;
+    U.AddDiagonal(DLS);
+    U.MatrixCout();
+    //Solving U matrix
+    Matrix AM(3, 4);
+    Vector dS{*(target + 0) - manip[5].getX(), *(target + 1) - manip[5].getY(), *(target + 2) - manip[5].getZ()};
+    AM.SetSubmatrix(U);
+    cout << " AM matrix after settibg submatrix" << endl;
+    AM.MatrixCout();
+    AM.SetColumn(dS, 4);
+    cout << "AM Matrix " << endl;
+    AM.MatrixCout();
+    AM.SolveGauss();
+    cout << "AM Matrix solved" << endl;
+    AM.MatrixCout();
+    Vector dT(3);
+    AM.GetTheRoots(dT);
+    for (int i = 0; i < dT.GetLength(); i++)
+    {
+        cout << "dT " << *(dT.GetDataPtr() + i) << endl;
+    }
+    Vector dTet(5);
+    cout << " Jacobian" << endl;
+    Jacobian.MatrixCout();
+    cout << " Jacobian Transposed " << endl;
+    JacobianTransposed.MatrixCout();
+    dTet = JacobianTransposed * dT;
+
+    for (int i = 0 ; i < dTet.GetLength(); i++)
+    {
+        cout << "dTet " <<  *(dTet.GetDataPtr() + i) << endl;
+    }
+
+
+{
+//    array<matrix, 6> T1;
+//    T1[0] = {{cos(A.elem(0, 3)), - sin(A.elem(0, 3)) * cos(A.elem(0, 1)),   sin(A.elem(0, 3)) * sin(A.elem(0, 1)), A.elem(0, 0) * cos(A.elem(0, 3))},
+//             {sin(A.elem(0, 3)),   cos(A.elem(0, 3)) * cos(A.elem(0, 1)), - cos(A.elem(0, 3)) * sin(A.elem(0, 1)), A.elem(0, 0) * sin(A.elem(0, 3))},
+//             {0,                   sin(A.elem(0, 1)),                       cos(A.elem(0, 1)),                     A.elem(0, 2)},
+//             {0,                   0,                                       0,                                     0}};
+//    T1[0].matrixCout();
+//    cout << " T0 _______________" << endl;
+//    T1[1] = {{cos(A.elem(1, 3)), - sin(A.elem(1, 3)) * cos(A.elem(1, 1)),   sin(A.elem(1, 3)) * sin(A.elem(1, 1)), A.elem(1, 0) * cos(A.elem(1, 3))},
+//             {sin(A.elem(1, 3)),   cos(A.elem(1, 3)) * cos(A.elem(1, 1)), - cos(A.elem(1, 3)) * sin(A.elem(1, 1)), A.elem(1, 0) * sin(A.elem(1, 3))},
+//             {0,                   sin(A.elem(1, 1)),                       cos(A.elem(1, 1)),                     A.elem(1, 2)},
+//             {0,                   0,                                       0,                                     0}};
+//    T1[0].matrixCout();
+//    T1[1].matrixCout();
+//    cout << " T1 _______________" << T1.size() << endl;
+//    T1[2] = {{cos(A.elem(2, 3)), - sin(A.elem(2, 3)) * cos(A.elem(2, 1)),   sin(A.elem(2, 3)) * sin(A.elem(2, 1)), A.elem(2, 0) * cos(A.elem(2, 3))},
+//             {sin(A.elem(2, 3)),   cos(A.elem(2, 3)) * cos(A.elem(2, 1)), - cos(A.elem(2, 3)) * sin(A.elem(2, 1)), A.elem(2, 0) * sin(A.elem(2, 3))},
+//             {0,                   sin(A.elem(2, 1)),                       cos(A.elem(2, 1)),                     A.elem(2, 2)},
+//             {0,                   0,                                       0,                                     0}};
+//    T1[0].matrixCout();
+//    T1[1].matrixCout();
+//    T1[2].matrixCout();
+//    cout << " T2 _______________" << T1.size() << endl;
+}
+    array<Matrix, 6> T;
 
     auto start = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < T.size(); i++)
@@ -70,34 +177,71 @@ int main(int argc, char *argv[])
                 {0,                  sin(A.elem(i, 1)),                       cos(A.elem(i, 1)),                     A.elem(i, 2)},
                 {0,                  0,                                       0,                                     1}};
 
-    }/*
+    }
+    /*
     for (size_t i = 0; i < T.size(); i++)
     {
         T[i].matrixCout();
         cout << "T[" << i <<"]_________________" << endl;
     }*/
-
-    matrix L = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
-    auto stop = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::ratio<1, 1000000>> durationMcr = stop - start;
-    std::chrono::duration<double, std::ratio<1, 1>> durationSec = stop - start;
-    cout << "durationMicros = " << durationMcr.count() << endl;
-    cout << "durationSec = " << durationSec.count() << endl;
-    L.matrixCout();
-//    cout << "L1_______________________" << endl;
-//    matrix L1 = L * T[2];
-//    L1.matrixCout();
-//    cout << "L2_______________________" << endl;
-//    matrix L2 = L1 * T[3];
-//    L2.matrixCout();
-//    cout << "L3_______________________" << endl;
+    array<Matrix, 6> T6;
+    T6[0] = T[0];
+    for (size_t i = 1; i < T6.size(); i++)
+    {
+        T6[i] = T6[i-1] * T[i];
+    }
+//    matrix T6[0] = T[0];
+//    matrix T2 = T1 * T[1];
+//    matrix T3 = T2 * T[2];
+//    matrix T4 = T3 * T[3];
+//    matrix T5 = T4 * T[4];
+//    matrix T6 = T5 * T[5];
+    Matrix L = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
+//    L.matrixCout();
     cout << " X = " << L.elem(0, 3) << " Y = " << L.elem(1, 3) << " Z = "<< L.elem(2, 3) << endl;
-    cout << " Tet =  " << TO_DEG * acos(L.elem(2,2)) <<
-            " Fi  =  " << TO_DEG * acos(- L.elem(1,2) / sin(L.elem(2, 2))) <<
-            " Psi =  " << TO_DEG * acos(L.elem(2,1) / sin(L.elem(2, 2))) << endl;
+    cout << " Tet =  " << DEG * acos(L.elem(2,2)) <<
+            " Fi  =  " << DEG * acos(- L.elem(1,2) / sin(L.elem(2, 2))) <<
+            " Psi =  " << DEG * acos(L.elem(2,1) / sin(L.elem(2, 2))) << endl;
 
 
 
+
+
+//    **************************************************************
+//    *                                                            *
+//    *                                                            *
+//    **************************************************************
+
+//    target = {700, 400, 100};
+
+//    vector<double> JacEnd(18);
+//    vector<double> JacTarget(18);
+//    cout << endl;
+//    for (int i = 5; i >= 0 ; i--)
+//    {
+//        cout << "Iter count № " << i
+//             << " T6.x = " << T6[i].elem(0, 3)
+//             << " T6.y = " << T6[i].elem(1, 3)
+//             << " T6.z = " << T6[i].elem(2, 3)
+//             << endl;
+//        JacTarget[i * 3] = T6[i].elem(0, 3) - target[0];
+//        JacTarget[i * 3 + 1] = T6[i].elem(1, 3) - target[1];
+//        JacTarget[i * 3 + 2] = T6[i].elem(2, 3) - target[2];
+//        cout << " JacT.x = " << JacTarget[i * 3]
+//             << " JacT.y = " << JacTarget[i * 3 + 1]
+//             << " JacT.z = " << JacTarget[i * 3 + 2]
+//             << endl;
+//    }
+
+//    double kkk = 0;
 
     return 0;
+}
+
+Elem::Elem(const double &xpos, const double &ypos, const double &zpos, int *rotationAxis)
+{
+    this->x_pos = xpos;
+    this->y_pos = ypos;
+    this->z_pos = zpos;
+    std::memcpy(&rotation_axis, rotationAxis, sizeof(rotationAxis) * 3);
 }
