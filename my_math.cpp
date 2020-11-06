@@ -228,14 +228,17 @@ Matrix Matrix::operator =(const Matrix &matrix1)
 
 void Matrix::transpose()
 {
+    assert(this->data != nullptr);
+    assert(this->cols > 1 && this->rows > 1);
     scalar *tdata = new scalar [rows*cols];
-    for (counter i = 0; i < cols; i++)
-        for (counter j = 0; j < rows; j++)
+
+    for (counter i = 0; i < rows; i++)
+        for (counter j = 0; j < cols; j++)
         {
 #ifdef DEBUG_COUT
             cout << " data " << *(data + i*rows + j) << endl;
 #endif
-            *(tdata + j*cols + i) = *(data + i*rows + j);
+            *(tdata + j*rows + i) = *(data + i*cols + j);
         }
 #ifdef DEBUG_COUT
     for(counter i = 0; i < cols * rows; i++)
@@ -243,7 +246,6 @@ void Matrix::transpose()
         cout << *(tdata + i) << endl;
     }
 #endif
-
     int trows = cols;
     cols = rows;
     rows = trows;

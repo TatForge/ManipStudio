@@ -54,26 +54,6 @@ int main(int argc, char *argv[])
     manip[4] = Elem(0.670, 0.1205, 0.0615,   munitz);
     manip[5] = Elem(0.670, 0.2431, 0.0615,   unity);
 
-//    Eigen::Matrix3d Jac;
-//    Jac << 1, 2, 6,
-//           3, 4, 5,
-//           5, 3, 2;
-//    cout << " Jac" << endl << Jac << endl;
-//    manip[0].RAInit();
-//    manip[1].RAInit();
-//    manip[2].RAInit();
-//    manip[3].RAInit();
-//    manip[4].RAInit();
-//    manip[5].RAInit();
-
-//    Eigen::Vector3d buff(
-//                double(*(target + 0) - manip[5].getX()),
-//                double(*(target + 1) - manip[5].getY()),
-//                double(*(target + 2) - manip[5].getZ()));
-//    cout << "BUFF " << endl << buff << endl << endl;
-//    Eigen::Vector3i k = manip[0].RA();
-//    buff *= 2;
-//    Jac *= k;
     double x, y, z, nx, ny, nz;
     for (int i = manip.size() - 1; i > 0; i--)
     {
@@ -97,12 +77,7 @@ int main(int argc, char *argv[])
 
     Matrix JacobianTransposed = Jacobian;
     JacobianTransposed = Jacobian;
-    cout << " Matrix " << endl;
-    for (int i = 0; i < JacobianTransposed.GetColsCount() * JacobianTransposed.GetRowsCount(); i++)
-    {
-        cout << "Jacobian " << *(JacobianTransposed.GetDataPtr() + i) << endl;
-    }
-//    JacobianTransposed.matrixCout();
+    JacobianTransposed.MatrixCout();
     JacobianTransposed.transpose();
     cout << " Jacobian transposed" << endl;
     JacobianTransposed.MatrixCout();

@@ -158,7 +158,7 @@ namespace RoboMath
         {
             data = new scalar[rows*cols];
         }
-        void DataNewMemory(const int &cols, const int &rows)
+        void DataNewMemory(const int &rows, const int &cols)
         {
             data = new scalar[rows*cols];
     #ifdef DEBUG_COUT
@@ -167,7 +167,7 @@ namespace RoboMath
             cout << endl;
     #endif
         }
-        int index(const int &row, const int &col) const { return col * rows + row; }
+        int index(const int &row, const int &col) const { return row * cols + col;}
     };
 }
 
