@@ -12,9 +12,10 @@ find_package(Qt5Core)
 add_executable(MainKinematic
     main.h
     my_math.h
-
+    robo.h
 
     main.cpp
     my_math.cpp
+    robo.cpp
 )
 target_link_libraries(MainKinematic Qt${QT_VERSION_MAJOR}::Core)

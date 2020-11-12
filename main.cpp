@@ -4,6 +4,8 @@
 #include <chrono>
 #include <string.h>
 
+#include "robo.h"
+
 #define RAD M_PI/180
 #define DEG 180/M_PI
 
@@ -21,25 +23,34 @@ int main(int argc, char *argv[])
 //    a.elem(1, 1);
 //    a.matrixOut();
 
+    Quaternion q(Vector3(1, 0, 0), -60 * RAD);
+    Vector3 v(0, 120, 0);
+    v = q.RotateVector(v);
+
+
+
     array<scalar, 6> tet {0 * M_PI/180,
                          0 * M_PI/180,
                          0 * M_PI/180,
                          0 * M_PI/180,
                          0 * M_PI/180,
                          0 * M_PI/180};
+//    Matrix A {{0,   -M_PI/2, 232.5,  tet[0]},
+//              {375, 0,       0,      tet[1]},
+//              {295, 0,       0,      tet[2]},
+//              {0,   -M_PI/2, 120.5,  tet[3]},
+//              {0,   M_PI/2,  171,    tet[4]},
+//              {0,   0,       122.6,  tet[5]},
+//              {0,   0,       100,    tet[6]}};
     Matrix A {{0,   -M_PI/2, 232.5,  tet[0]},
               {375, 0,       0,      tet[1]},
               {295, 0,       0,      tet[2]},
               {0,   -M_PI/2, 120.5,  tet[3]},
               {0,   M_PI/2,  171,    tet[4]},
-              {0,   0,       122.6,  tet[5]},
-              {0,   0,       100,    tet[6]}};
-    int *unitx = new int [3] {1, 0, 0};
-    int *unity = new int [3] {0, 1, 0};
-    int *unitz = new int [3] {0, 0, 1};
-    int *munitz = new int [3] {0, 0, -1};
+              {0,   0,       122.6,  tet[5]}};
 
-    double *target = new double [3] {0.1, 0.1, 0.4};
+
+    scalar *target = new scalar [3] {0.1, 0.1, 0.4};
 
 //    int *Jacobian = new int [18];
     Matrix Jacobian(3, 5);
@@ -47,23 +58,42 @@ int main(int argc, char *argv[])
     scalar DLS = dampingLambda * dampingLambda;
 
     array<Elem, 6> manip ;
-    manip[0] = Elem(0,     0,      0,       unitz);
-    manip[1] = Elem(0,     0,      0.2325,  unity);
-    manip[2] = Elem(0.375, 0,      0.2325,  unity);
-    manip[3] = Elem(0.670, 0.1205, 0.2325,  unity);
-    manip[4] = Elem(0.670, 0.1205, 0.0615,   munitz);
-    manip[5] = Elem(0.670, 0.2431, 0.0615,   unity);
+    manip[0] = Elem(Vector3(0, 0, 0),               unit_z,  0);
+    manip[1] = Elem(Vector3(0,     0,      0.2325), unit_y,  0);
+    manip[2] = Elem(Vector3(0.375, 0,      0.2325), unit_y,  0);
+    manip[3] = Elem(Vector3(0.670, 0.1205, 0.2325), unit_y,  0);
+    manip[4] = Elem(Vector3(0.670, 0.1205, 0.0615), unit_mz, 0);
+    manip[5] = Elem(Vector3(0.670, 0.2431, 0.0615), unit_y,  0);
+    initializer_list<Elem> il_elem{{Elem(Vector3(0,     0,      0),      unit_z,  0)},
+                                   {Elem(Vector3(0,     0,      0.2325), unit_y,  -90 * RAD)},
+                                   {Elem(Vector3(0.375, 0,      0.2325), unit_y,  0 * RAD)},
+                                   {Elem(Vector3(0.670, 0.1205, 0.2325), unit_y,  0 * RAD)},
+                                   {Elem(Vector3(0.670, 0.1205, 0.0615), unit_mz, 0 * RAD)},
+                                   {Elem(Vector3(0.670, 0.2431, 0.0615), unit_y,  0)}};
+    Robo manipulator(il_elem);
+    manipulator.SetConfigurationMatrix(A);
+    manipulator.RoboCout();
+    manipulator.CalculateJacobian();
+    manipulator.CalculateDeltaS(RoboMath::Vector3({0.1, 0.1, 0.4}));
+    manipulator.CalculateDeltaThetas();
+    manipulator.DeltaThetasCout();
+    manipulator.ComputeJointsPosition();
+    manipulator.UpdateJointsLocalPosition();
+
+    manipulator.RoboCout();
+
+
 
     double x, y, z, nx, ny, nz;
     for (int i = manip.size() - 1; i > 0; i--)
     {
         //creating JEndMatrix
-        x = (manip[i-1].getX() - manip[5].getX());
-        y = (manip[i-1].getY() - manip[5].getY());
-        z = (manip[i-1].getZ() - manip[5].getZ());
-        nx = y*manip[i - 1].getOrZ() - z*manip[i - 1].getOrY();//(*(target + 0) - manip[i].getX());
-        ny = z*manip[i - 1].getOrX() - x*manip[i - 1].getOrZ();//(*(target + 1) - manip[i].getY());
-        nz = x*manip[i - 1].getOrY() - y*manip[i - 1].getOrX();//(*(target + 2) - manip[i].getZ());
+        x = (manip[i-1].GetPosition().x - manip[5].GetPosition().x);
+        y = (manip[i-1].GetPosition().y - manip[5].GetPosition().y);
+        z = (manip[i-1].GetPosition().z - manip[5].GetPosition().z);
+        nx = y*manip[i - 1].GetPosition().x - z*manip[i - 1].GetPosition().x;//(*(target + 0) - manip[i].getX());
+        ny = z*manip[i - 1].GetPosition().y - x*manip[i - 1].GetPosition().y;//(*(target + 1) - manip[i].getY());
+        nz = x*manip[i - 1].GetPosition().z - y*manip[i - 1].GetPosition().z;//(*(target + 2) - manip[i].getZ());
         Jacobian(0, i - 1) = nx;//y*manip[i - 1].getOrZ() - z*manip[i - 1].getOrY();//(*(target + 0) - manip[i].getX());
         Jacobian(1, i - 1) = ny;//z*manip[i - 1].getOrX() - x*manip[i - 1].getOrZ();//(*(target + 1) - manip[i].getY());
         Jacobian(2, i - 1) = nz;//x*manip[i - 1].getOrY() - y*manip[i - 1].getOrX();//(*(target + 2) - manip[i].getZ());
@@ -72,33 +102,20 @@ int main(int argc, char *argv[])
              << Jacobian(1, i - 1) << "\t"
              << Jacobian(2, i - 1) << endl;
     }
+
     //matrixMultiplyTranspose
     //doing transpose J matrix
-
     Matrix JacobianTransposed = Jacobian;
     JacobianTransposed = Jacobian;
-    JacobianTransposed.MatrixCout();
-    JacobianTransposed.transpose();
-    cout << " Jacobian transposed" << endl;
-    JacobianTransposed.MatrixCout();
+    JacobianTransposed.Transpose();
     Matrix U = Jacobian * JacobianTransposed;
-    cout << " U matrix" << endl;
-    U.MatrixCout();
-    cout << " U matrix" << endl;
     U.AddDiagonal(DLS);
-    U.MatrixCout();
     //Solving U matrix
     Matrix AM(3, 4);
-    Vector dS{*(target + 0) - manip[5].getX(), *(target + 1) - manip[5].getY(), *(target + 2) - manip[5].getZ()};
+    Vector dS{*(target + 0) - manip[5].GetPosition().x, *(target + 1) - manip[5].GetPosition().y, *(target + 2) - manip[5].GetPosition().z};
     AM.SetSubmatrix(U);
-    cout << " AM matrix after settibg submatrix" << endl;
-    AM.MatrixCout();
     AM.SetColumn(dS, 4);
-    cout << "AM Matrix " << endl;
-    AM.MatrixCout();
     AM.SolveGauss();
-    cout << "AM Matrix solved" << endl;
-    AM.MatrixCout();
     Vector dT(3);
     AM.GetTheRoots(dT);
     for (int i = 0; i < dT.GetLength(); i++)
@@ -106,16 +123,7 @@ int main(int argc, char *argv[])
         cout << "dT " << *(dT.GetDataPtr() + i) << endl;
     }
     Vector dTet(5);
-    cout << " Jacobian" << endl;
-    Jacobian.MatrixCout();
-    cout << " Jacobian Transposed " << endl;
-    JacobianTransposed.MatrixCout();
     dTet = JacobianTransposed * dT;
-
-    for (int i = 0 ; i < dTet.GetLength(); i++)
-    {
-        cout << "dTet " <<  *(dTet.GetDataPtr() + i) << endl;
-    }
 
 
 {
@@ -145,7 +153,7 @@ int main(int argc, char *argv[])
     array<Matrix, 6> T;
 
     auto start = std::chrono::high_resolution_clock::now();
-    for (size_t i = 0; i < T.size(); i++)
+    for (counter i = 0; i < T.size(); i++)
     {
         T[i] = {{cos(A.elem(i, 3)), -sin(A.elem(i, 3)) * cos(A.elem(i, 1)),   sin(A.elem(i, 3)) * sin(A.elem(i, 1)), A.elem(i, 0) * cos(A.elem(i, 3))},
                 {sin(A.elem(i, 3)),  cos(A.elem(i, 3)) * cos(A.elem(i, 1)), - cos(A.elem(i, 3)) * sin(A.elem(i, 1)), A.elem(i, 0) * sin(A.elem(i, 3))},
@@ -213,10 +221,3 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-Elem::Elem(const double &xpos, const double &ypos, const double &zpos, int *rotationAxis)
-{
-    this->x_pos = xpos;
-    this->y_pos = ypos;
-    this->z_pos = zpos;
-    std::memcpy(&rotation_axis, rotationAxis, sizeof(rotationAxis) * 3);
-}
