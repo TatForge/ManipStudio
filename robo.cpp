@@ -83,6 +83,11 @@ void Robo::CalculateDeltaThetas()
     Vector delta_t(EFFECTOR_DEGREE_OF_FREEDOM);
     aug_matrix.GetTheRoots(delta_t);
     *this->delta_thetas = jacobian_transposed * delta_t;
+    scalar max = delta_thetas->MaxAbs();
+    if (max > MaxAngleDls)
+    {
+        *this->delta_thetas *= MaxAngleDls/max;
+    }
 }
 
 void Robo::CalculateCurrentPosition()
@@ -113,41 +118,55 @@ void Robo::AddDeltaThetas()
 }
 
 void Robo::ComputeJointsPosition()
-{    Elem *joint_iter;
-     Elem *joint_iter_parent;
-     Vector3  pos, local_pos, rot, local_rot;
+{
+    Elem *joint_iter;
+    Elem *joint_iter_parent;
+
+    Elem *joint_iter_buff;
+    Vector3  pos, local_pos, rot, local_rot;
     for (counter elem_n = number_of_elements - 1; elem_n >= 1; elem_n--)
     {
         joint_iter = (this->robot + elem_n);
         joint_iter_parent = (this->robot + elem_n - 1);
-        pos.Zero();
-        for (counter i = elem_n; i > 0; i--)
-        {
-            Quaternion q(joint_iter->GetRotationAxis(), joint_iter->GetTheta());
-            local_pos = joint_iter->GetPosLocal();
-            pos = q.RotateVector(pos);
-            pos += local_pos;
-            --joint_iter;
-            --joint_iter_parent;
-        }
-        joint_iter->SetPos(pos);
-        cout << " Elem number " << elem_n << " " << pos.x << " " << pos.y << " " << pos.z << endl;
-    }
-    for (counter elem_n = number_of_elements - 1; elem_n >= 1; elem_n--)
-    {
-        joint_iter = (this->robot + elem_n);
-        joint_iter_parent = (this->robot + elem_n - 1);
+        joint_iter_buff = joint_iter;
+        pos = joint_iter->GetPosLocal();
         for (counter i = elem_n; i > 0; i--)
         {
             Quaternion q(joint_iter_parent->GetRotationAxis(), joint_iter_parent->GetTheta());
-            rot = joint_iter->GetRotationAxis();
-            rot = q.RotateVector(rot);
-            joint_iter->SetRotation(rot);
+//            local_pos = joint_iter->GetPosLocal();
+            pos = q.RotateVector(pos);
+            pos += joint_iter_parent->GetPosLocal();
             --joint_iter;
             --joint_iter_parent;
         }
-    cout << " Elem number rot" << elem_n << " " << pos.x << " " << pos.y << " " << pos.z << endl;
+
+        cout << " Elem number " << elem_n << " " << pos.x << " " << pos.y << " " << pos.z << endl;
+        joint_iter_buff->SetPos(pos);
+        for (counter i = elem_n; i > 0; i --)
+        {
+            Quaternion q(joint_iter_parent->GetRotationAxis(), joint_iter_parent->GetTheta());
+            rot = q.RotateVector(joint_iter->GetRotationAxis());
+        }
+
+        cout << " Elem number rot" << elem_n << " " << rot.x << " " << rot.y << " " << rot.z << endl;
     }
+
+
+//    for (counter elem_n = number_of_elements - 1; elem_n >= 1; elem_n--)
+//    {
+//        joint_iter = (this->robot + elem_n);
+//        joint_iter_parent = (this->robot + elem_n - 1);
+//        for (counter i = elem_n; i > 0; i--)
+//        {
+//            Quaternion q(joint_iter_parent->GetRotationAxis(), joint_iter_parent->GetTheta());
+//            rot = joint_iter->GetRotationAxis();
+//            rot = q.RotateVector(rot);
+//            joint_iter->SetRotation(rot);
+//            --joint_iter;
+//            --joint_iter_parent;
+//        }
+//    cout << " Elem number rot" << elem_n << " " << rot.x << " " << rot.y << " " << rot.z << endl;
+//    }
 
 
 
@@ -201,14 +220,14 @@ void Robo::ComputeJointsPosition()
 void Robo::UpdateJointsLocalPosition()
 {
 
-    Vector3 local_pos_buff;
-    for (counter i = 1; i < this->number_of_elements; i++)
-    {
-        local_pos_buff.x = (robot + i)->GetPosition().x - (robot + i - 1)->GetPosition().x;
-        local_pos_buff.y = (robot + i)->GetPosition().y - (robot + i - 1)->GetPosition().y;
-        local_pos_buff.z = (robot + i)->GetPosition().z - (robot + i - 1)->GetPosition().z;
-        (robot + i)->SetLocalPos(local_pos_buff);
-    }
+//    Vector3 local_pos_buff;
+//    for (counter i = 1; i < this->number_of_elements; i++)
+//    {
+//        local_pos_buff.x = (robot + i)->GetPosition().x - (robot + i - 1)->GetPosition().x;
+//        local_pos_buff.y = (robot + i)->GetPosition().y - (robot + i - 1)->GetPosition().y;
+//        local_pos_buff.z = (robot + i)->GetPosition().z - (robot + i - 1)->GetPosition().z;
+//        (robot + i)->SetLocalPos(local_pos_buff);
+//    }
 }
 
 void Robo::DeltaThetasCout()
@@ -255,6 +274,11 @@ void Robo::UpdateTranslationMatrix()
     translation_matrix->MatrixCout();
 }
 
+Vector3 Robo::GetEffectorPosition()
+{
+    return (this->robot + number_of_elements - 1)->GetPosition();
+}
+
 void Robo::AllocateForNewRobot()
 {
 
@@ -288,6 +312,7 @@ Elem::Elem()
     this->pos_local       = Vector3();
     this->rotation_axis_v = Vector3();
     this->theta = 0;
+    this->theta_added = 0;
 }
 Elem::Elem(const Vector3 pos, const Vector3 rot, const scalar theta)
 {
@@ -295,6 +320,7 @@ Elem::Elem(const Vector3 pos, const Vector3 rot, const scalar theta)
     this->pos_local = Vector3();
     this->rotation_axis_v = rot;
     this->theta = theta;
+    this->theta_added = 0;
 }
 
 const Vector3 Elem::GetRotationAxis() const
@@ -309,6 +335,10 @@ const Vector3 Elem::GetPosLocal() const
 const Vector3 Elem::GetPosition() const
 {
     return this->pos;
+}
+
+void Elem::AddDeltaTheta(const scalar &theta_add){
+    this->theta_added += theta_add;
 }
 
 

@@ -124,7 +124,7 @@ void Matrix::SetSubmatrix(const Matrix &source)
     }
     for (counter i =0; i < rows*cols; i++)
     {
-        cout << " data " << *(this->data + i) << endl;
+//        cout << " data " << *(this->data + i) << endl;
     }
 }
 
@@ -206,7 +206,7 @@ void Matrix::SolveGauss()
             }
         }
         main_elem_ptr += diagonal_step;
-        this->MatrixCout();
+//        this->MatrixCout();
         --row_length;
         --num_iter;
     }
@@ -359,7 +359,7 @@ Vector::Vector(initializer_list<scalar> il)
     length = il.size();
     dataNewMemory(length);
     initializer_list<scalar>::iterator it = il.begin();
-    for (int i = 0; i < length; i++)
+    for (counter i = 0; i < length; i++)
     {
         *(data + i) = *it++;
     }
@@ -368,6 +368,19 @@ Vector::Vector(initializer_list<scalar> il)
 Vector::~Vector()
 {
     delete [] data;
+}
+
+scalar Vector::MaxAbs()
+{
+    scalar result (0.0);
+    for (counter i = 0; i < this->length; i++)
+    {
+        if (abs(*(this->data + i)) > result)
+        {
+            result = abs(*(this->data + i));
+        }
+    }
+    return result;
 }
 
 scalar &Vector::operator()(counter number)
@@ -399,6 +412,15 @@ Vector &Vector::operator=(const double &value)
         *(this->data + i) = value;
     }
 }
+
+void Vector::operator*=(const scalar &value)
+{
+    for (counter i = 0; i < length; i++)
+    {
+        *(data + i) *= value;
+    }
+}
+
 
 Vector Vector::operator-(const Vector &V)
 {

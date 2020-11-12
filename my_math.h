@@ -10,6 +10,10 @@
 #ifndef MY_MATH_H
 #define MY_MATH_H
 
+
+#define RAD M_PI/180
+#define DEG 180/M_PI
+
 #define DOUBLE_SCALAR
 //#define DEBUG_COUT
 
@@ -40,10 +44,12 @@ namespace RoboMath
         ~Vector();
 
         int GetLength() const {return length;};
+        scalar MaxAbs();
         scalar* GetDataPtr () const {return data;};
         scalar& operator()(counter number);
         Vector& operator=(const Vector &V);
         Vector& operator=(const double &value);
+        void  operator*=(const scalar &value);
         Vector  operator-(const Vector &V);
 //        friend ostream &operator<< (ostream& os, const Vector &V);
     private:

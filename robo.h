@@ -13,8 +13,14 @@
 #define EFFECTOR_DEGREE_OF_FREEDOM 3
 #endif
 
+#define RAD M_PI/180
+#define DEG 180/M_PI
+
+inline static scalar ToRad(scalar degrees) {return degrees * RAD;};
+inline static scalar ToDeg(scalar radians) {return radians * DEG;};
 const scalar damping_constant = 0.01;
 const scalar damping_constant_sq = damping_constant * damping_constant;
+const scalar MaxAngleDls = ToRad(45.0);
 
 using namespace std;
 
@@ -26,12 +32,12 @@ public :
 
     RoboMath::Vector ConvertToVector();
 
-    scalar GetTheta() const {return theta;};
+    scalar GetTheta() const {return theta + theta_added;};
     const RoboMath::Vector3 GetRotationAxis() const;
     const RoboMath::Vector3 GetPosLocal() const;
     const RoboMath::Vector3 GetPosition() const;
 
-    void AddDeltaTheta(const scalar &theta){this->theta = theta;};
+    void AddDeltaTheta(const scalar &theta_add);;
     inline void SetPos(RoboMath::Vector3 &V);
 
     inline void SetRotation(const RoboMath::Vector3 &rot);
@@ -52,6 +58,7 @@ private:
     RoboMath::Vector3 pos_local;   //Local position
     RoboMath::Vector3 rotation_axis_v;
     scalar theta;
+    scalar theta_added;
 };
 
 class Robo
@@ -79,6 +86,7 @@ public:
     void DeltaThetasCout();
     void SetConfigurationMatrix(const RoboMath::Matrix &A);
     void UpdateTranslationMatrix();
+    RoboMath::Vector3 GetEffectorPosition();
 
 private:
     Elem *robot;
