@@ -1,3 +1,6 @@
+#ifndef MY_MATH_H
+#define MY_MATH_H
+
 #include <initializer_list>
 #include <vector>
 #include <cmath>
@@ -6,9 +9,6 @@
 #include <cstring>
 #include <chrono>
 #include <assert.h>
-
-#ifndef MY_MATH_H
-#define MY_MATH_H
 
 
 #define RAD M_PI/180
@@ -22,6 +22,7 @@ typedef double scalar;
 #else
 typedef float scalar;
 #endif
+
 typedef unsigned short counter;
 
 using namespace std;
@@ -70,7 +71,7 @@ namespace RoboMath
         Vector3(const scalar &xn, const scalar &yn, const scalar &zn)
             : x(xn), y(yn), z(zn) {};
         void Rotate(const scalar &theta, const RoboMath::Vector3 &V);
-        void Zero();
+        void Clear();
         scalar Length() const {return sqrt(x * x + y * y + z * z);};
         Vector3 Normalize() const;
         Vector3 operator= (const Vector &V);
@@ -83,10 +84,10 @@ namespace RoboMath
     };
 
 
-    static const Vector3 unit_x(1.0, 0.0, 0.0);
-    static const Vector3 unit_y(0.0, 1.0, 0.0);
-    static const Vector3 unit_z(0.0, 0.0, 1.0);
-    static const Vector3 unit_mz(0.0, 0.0, -1.0);
+    const Vector3 unit_x(1.0, 0.0, 0.0);
+    const Vector3 unit_y(0.0, 1.0, 0.0);
+    const Vector3 unit_z(0.0, 0.0, 1.0);
+    const Vector3 unit_mz(0.0, 0.0, -1.0);
 
     class Matrix
     {
@@ -98,8 +99,8 @@ namespace RoboMath
         Matrix(const initializer_list<scalar> &il);
         ~Matrix()
         {
-    //        if(data != nullptr)
-    //            delete[] data;
+            if(data != nullptr)
+                delete[] data;
         }
         scalar &elem(const int &row, const int &col) const;
 
@@ -183,10 +184,10 @@ namespace RoboMath
         }
         void Scale(const scalar &s)
         {
-            x *= x;
-            y *= y;
-            z *= z;
-            w *= w;
+            x *= s;
+            y *= s;
+            z *= s;
+            w *= s;
         }
         void Normalize()
         {
@@ -236,8 +237,15 @@ public:
     {
         stop = std::chrono::high_resolution_clock::now();
         d = stop - start;
-        cout << "duration = " << d.count() << endl;
+//        cout << "duration = " << d.count() << endl << " microsec";
     }
+    std::chrono::duration<double> duration()
+    {
+        stop = std::chrono::high_resolution_clock::now();
+        d = stop - start;
+        return d;
+    }
+
 private:
     std::chrono::duration<double> d;
     std::chrono::_V2::system_clock::time_point start;

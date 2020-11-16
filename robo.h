@@ -18,7 +18,7 @@
 
 inline static scalar ToRad(scalar degrees) {return degrees * RAD;};
 inline static scalar ToDeg(scalar radians) {return radians * DEG;};
-const scalar damping_constant = 0.01;
+const scalar damping_constant = 0.1;
 const scalar damping_constant_sq = damping_constant * damping_constant;
 const scalar MaxAngleDls = ToRad(45.0);
 
@@ -28,21 +28,24 @@ class Elem
 {
 public :
     Elem();
-    Elem(const RoboMath::Vector3 pos, const RoboMath::Vector3 rot, const scalar theta);
+    Elem(const RoboMath::Vector3 &pos, const RoboMath::Vector3 &rot, const scalar &theta);
+
 
     RoboMath::Vector ConvertToVector();
 
     scalar GetTheta() const {return theta + theta_added;};
     const RoboMath::Vector3 GetRotationAxis() const;
-    const RoboMath::Vector3 GetPosLocal() const;
+    const RoboMath::Vector3 GetRotationAxisLocal() const;
+    const RoboMath::Vector3 GetPositionLocal() const;
     const RoboMath::Vector3 GetPosition() const;
 
     void AddDeltaTheta(const scalar &theta_add);;
     inline void SetPos(RoboMath::Vector3 &V);
 
     inline void SetRotation(const RoboMath::Vector3 &rot);
-    inline void SetLocalPos(const RoboMath::Vector3 &pos);
-    inline void SetLocalPos(const scalar &x, const scalar &y, const scalar &z)
+    inline void SetPositionLocal(const RoboMath::Vector3 &pos);
+    inline void setRotationLocal(const RoboMath::Vector3 &rot);
+    inline void SetPositionLocal(const scalar &x, const scalar &y, const scalar &z)
     {
         pos_local = RoboMath::Vector({x, y, z});
     }
@@ -56,7 +59,8 @@ public :
 private:
     RoboMath::Vector3 pos;       //Global position
     RoboMath::Vector3 pos_local;   //Local position
-    RoboMath::Vector3 rotation_axis_v;
+    RoboMath::Vector3 rotation_axis;
+    RoboMath::Vector3 rotation_axis_loc;
     scalar theta;
     scalar theta_added;
 };
@@ -77,6 +81,7 @@ public:
 
     void RoboCout();
     void CalculateJacobian();
+//    void CalculateJacobian(const RoboMath::Vector3 target);
     void CalculateDeltaThetas();
     void CalculateCurrentPosition();
     void CalculateDeltaS(RoboMath::Vector3 target);

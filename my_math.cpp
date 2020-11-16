@@ -1,11 +1,8 @@
 #include "my_math.h"
 
-using namespace RoboMath;
+//#include <QDebug>
 
-//const Vector3 Vector3::unit_x(1.0, 0.0, 0.0);
-//const Vector3 Vector3::unit_y(0.0, 1.0, 0.0);
-//const Vector3 Vector3::unit_z(0.0, 0.0, 1.0);
-//const Vector3 Vector3::unit_mz(0.0, 0.0, -1.0);
+using namespace RoboMath;
 
 Matrix::Matrix()
 {
@@ -122,10 +119,13 @@ void Matrix::SetSubmatrix(const Matrix &source)
         }
         to += step;
     }
+#ifdef DEBUG_COUT
     for (counter i =0; i < rows*cols; i++)
     {
-//        cout << " data " << *(this->data + i) << endl;
+        cout << " data " << *(this->data + i) << endl;
     }
+#endif
+
 }
 
 void Matrix::SetColumn(Vector &v, int ColNumber)
@@ -403,6 +403,7 @@ Vector &Vector::operator=(const Vector &V)
 //        *(data + i) = *(V.GetDataPtr() + i);
 //    }
     memcpy(data, V.data, sizeof(scalar) * length);
+    return *this;
 }
 
 Vector &Vector::operator=(const double &value)
@@ -452,7 +453,7 @@ void Vector3::Rotate(const scalar &theta, const Vector3 &V)
     z = v0z	+ c*v1z + s*v2z;
 }
 
-void Vector3::Zero()
+void Vector3::Clear()
 {
     this->x = 0;
     this->y = 0;
@@ -473,13 +474,15 @@ Vector3 Vector3::operator=(const Vector &V)
     x = *(V.GetDataPtr() + 0);
     y = *(V.GetDataPtr() + 1);
     z = *(V.GetDataPtr() + 2);
+    return *this;
 }
 
-Vector3 Vector3::operator=(const Vector3 &V)
+Vector3 Vector3::operator =(const Vector3 &V)
 {
     this->x = V.x;
     this->y = V.y;
     this->z = V.z;
+    return *this;
 }
 
 Vector3 Vector3::operator -(const Vector3 &V) const
