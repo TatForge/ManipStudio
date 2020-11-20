@@ -1,4 +1,4 @@
-#ifndef ROBO_H
+﻿#ifndef ROBO_H
 #define ROBO_H
 
 #include <iostream>
@@ -34,10 +34,10 @@ public :
     RoboMath::Vector ConvertToVector();
 
     scalar GetTheta() const {return theta + theta_added;};
-    const RoboMath::Vector3 GetRotationAxis() const;
+    const RoboMath::Vector3 &GetRotationAxis() const;
     const RoboMath::Vector3 GetRotationAxisLocal() const;
     const RoboMath::Vector3 GetPositionLocal() const;
-    const RoboMath::Vector3 GetPosition() const;
+    const RoboMath::Vector3 &GetPosition() const;
 
     void AddDeltaTheta(const scalar &theta_add);;
     inline void SetPos(RoboMath::Vector3 &V);
@@ -85,6 +85,7 @@ public:
     void CalculateDeltaThetas();
     void CalculateCurrentPosition();
     void CalculateDeltaS(RoboMath::Vector3 target);
+    void CalculateDeltaR(RoboMath::Vector3 target_r);
     void AddDeltaThetas();
     void ComputeJointsPosition();
     void UpdateJointsLocalPosition();
@@ -92,6 +93,7 @@ public:
     void SetConfigurationMatrix(const RoboMath::Matrix &A);
     void UpdateTranslationMatrix();
     RoboMath::Vector3 GetEffectorPosition();
+    Elem *Effector() const;
 
 private:
     Elem *robot;
@@ -100,6 +102,7 @@ private:
     RoboMath::Matrix *translation_matrix;
     RoboMath::Vector *delta_thetas;
     RoboMath::Vector *delta_s;
+    RoboMath::Vector3 delta_r;
     int number_of_elements;
     void AllocateForNewRobot();
 };

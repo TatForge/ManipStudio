@@ -76,7 +76,7 @@ void Robo::CalculateJacobian()
     Elem *effector = robot + number_of_elements - 1;
     Elem *current_element = robot + number_of_elements - 2;
 
-    for(int i = number_of_elements - 1; i > 0; i--)
+    for(counter i = number_of_elements - 1; i > 0; i--)
     {
         x = current_element->GetPosition().x - effector->GetPosition().x;
         y = current_element->GetPosition().y - effector->GetPosition().y;
@@ -87,9 +87,17 @@ void Robo::CalculateJacobian()
         this->jacobian->operator()(0, i - 1) = y * orz - z * ory;
         this->jacobian->operator()(1, i - 1) = z * orx - x * orz;
         this->jacobian->operator()(2, i - 1) = x * ory - y * orx;
+
         --current_element;
     }
-//    cout << " Jacobian = " << endl;
+    //Для параметров Денавита-Хартенберга
+//    for (counter i = number_of_elements - 1; i > 0; i--)
+//    {
+//        this->jacobian->SetColumn(effector->GetPosition() - current_element->GetPosition(), i);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition());
+
+////        this->jacobian->operator()(1, i) = ;
+////        this->jacobian->operator()(2, i) = ;
+//    }
 //    this->jacobian->MatrixCout();
 }
 
@@ -125,12 +133,31 @@ void Robo::CalculateCurrentPosition()
 
 void Robo::CalculateDeltaS(Vector3 target)
 {
-    *(delta_s->GetDataPtr() + 0) = target.x - (robot + number_of_elements - 1)->GetPosition().x;
-    *(delta_s->GetDataPtr() + 1) = target.y - (robot + number_of_elements - 1)->GetPosition().y;
-    *(delta_s->GetDataPtr() + 2) = target.z - (robot + number_of_elements - 1)->GetPosition().z;
+    *(delta_s->GetDataPtr() + 0) = target.x - this->Effector()->GetPosition().x;
+    *(delta_s->GetDataPtr() + 1) = target.y - this->Effector()->GetPosition().y;
+    *(delta_s->GetDataPtr() + 2) = target.z - this->Effector()->GetPosition().z;
 //    cout << " delta_s " << endl << *(delta_s->GetDataPtr() + 0)
 //         << " " << *(delta_s->GetDataPtr() + 1) << " "
-//         << *(delta_s->GetDataPtr() + 2) << endl;
+    //         << *(delta_s->GetDataPtr() + 2) << endl;
+}
+
+void Robo::CalculateDeltaR(Vector3 target_r)
+{
+    Quaternion end_eff_target_ori;
+    Quaternion end_eff_world_ori;
+    auto tt = this->Effector()->GetRotationAxis();
+    end_eff_world_ori.EulerToQuat(this->Effector()->GetRotationAxis());
+    end_eff_target_ori.EulerToQuat(target_r);
+    end_eff_world_ori.Invert();
+    Quaternion deltaQ = end_eff_target_ori * end_eff_world_ori;
+    scalar angle = deltaQ.GetAngle();
+    Vector3 axis = deltaQ.GetAxis();
+    if (angle > M_PI)
+        angle -= 2.0 * M_PI;
+    else if (angle < - M_PI)
+        angle += 2.0 * M_PI;
+    Vector3 ang_vel = axis.Normalize() * angle;
+    delta_r = ang_vel * 1;
 }
 
 
@@ -170,7 +197,6 @@ void Robo::ComputeJointsPosition()
             --joint_iter_parent;
         }
         joint_iter_buff->SetPos(pos);
-
 
         joint_iter = (this->robot + elem_n);
         joint_iter_parent = (this->robot + elem_n - 1);
@@ -312,8 +338,13 @@ void Robo::UpdateTranslationMatrix()
 
 Vector3 Robo::GetEffectorPosition()
 {
-    Vector3 as = (this->robot + number_of_elements - 1)->GetPosition();
-    return as;
+    return this->Effector()->GetPosition();
+}
+
+Elem *Robo::Effector() const
+{
+    assert(number_of_elements > 0 && robot && robot != nullptr && "Failed assertion in Robo.Effector()");
+    return (robot + number_of_elements - 1);
 }
 
 void Robo::AllocateForNewRobot()
@@ -323,7 +354,8 @@ void Robo::AllocateForNewRobot()
     translation_matrix = new Matrix(4, 4);
     jacobian     = new Matrix(EFFECTOR_DEGREE_OF_FREEDOM, number_of_elements - 1);
     delta_thetas = new Vector(number_of_elements - 1);
-    delta_s      = new Vector(EFFECTOR_DEGREE_OF_FREEDOM);
+    delta_s      = new Vector(3);
+
     if (number_of_elements > 0)
         robot = new Elem [number_of_elements];
 }
@@ -365,7 +397,7 @@ Elem::Elem(const Vector3 &pos, const Vector3 &rot, const scalar &theta)
     this->theta_added = 0;
 }
 
-const Vector3 Elem::GetRotationAxis() const
+const Vector3 &Elem::GetRotationAxis() const
 {
     return this->rotation_axis;
 }
@@ -382,7 +414,7 @@ const Vector3 Elem::GetPositionLocal() const
 
 
 
-const Vector3 Elem::GetPosition() const
+const Vector3 &Elem::GetPosition() const
 {
     return this->pos;
 }

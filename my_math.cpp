@@ -56,6 +56,7 @@ Matrix::Matrix(const initializer_list<scalar> &il)
     int i = 0;
     rows = sqrt(il.size());
     cols = sqrt(il.size());
+    assert(il.size() == rows*cols);
     DataNewMemory(cols, rows);
     copy(il.begin(), il.end(), data);
 }
@@ -67,7 +68,7 @@ scalar &Matrix::elem(const int &row, const int &col) const
     return *(data + index(row, col));
 }
 
-Matrix Matrix::Multuply(const Matrix &matrix1, const Matrix &matrix2)
+Matrix Matrix::Multuply(const Matrix &matrix1, const Matrix &matrix2) const
 {
     Matrix result(matrix1.rows, matrix2.cols);
     scalar buff = 0;
@@ -128,9 +129,9 @@ void Matrix::SetSubmatrix(const Matrix &source)
 
 }
 
-void Matrix::SetColumn(Vector &v, int ColNumber)
+void Matrix::SetColumn(const Vector &v, int ColNumber)
 {
-    assert(ColNumber <= cols);
+    assert(ColNumber <= cols && ColNumber >= 0);
     assert(v.GetLength() == rows);
     scalar *to = data + ColNumber - 1;
     scalar *from = v.GetDataPtr();
@@ -140,6 +141,17 @@ void Matrix::SetColumn(Vector &v, int ColNumber)
         to += this->cols;
         ++from;
     }
+}
+void Matrix::SetColumn(const Vector3 &v, int ColNumber)
+{
+    assert(ColNumber <= cols && ColNumber >= 0);
+    assert(rows == 3);
+    scalar *to = data + ColNumber - 1;
+//    scalar *from = v.GetDataPtr();*/
+    *(to + 0) = v.x;
+    *(to + 1) = v.y;
+    *(to + 2) = v.z;
+
 }
 
 void Matrix::SolveGauss()
@@ -212,7 +224,7 @@ void Matrix::SolveGauss()
     }
 }
 
-void Matrix::GetTheRoots(Vector &V)
+void Matrix::GetTheRoots(Vector &V) const
 {
     //Получение корней СЛАУ методом Гаусса
     assert(V.GetLength() == rows);
@@ -239,7 +251,7 @@ void Matrix::GetTheRoots(Vector &V)
     }
 }
 
-Matrix Matrix::operator*(const Matrix &matrix2)
+Matrix Matrix::operator*(const Matrix &matrix2) const
 {
     Matrix result(rows, matrix2.cols);
     scalar buff = 0;
@@ -258,7 +270,7 @@ Matrix Matrix::operator*(const Matrix &matrix2)
     return result;
 }
 
-Vector Matrix::operator*(const Vector &vector2)
+Vector Matrix::operator*(const Vector &vector2) const
 {
     const scalar *vector_data_ptr;
     Vector result(this->rows);
@@ -326,6 +338,7 @@ void Matrix::Transpose()
     cols = rows;
     rows = trows;
     memcpy(data, tdata, sizeof(scalar) * rows * cols);
+    delete[] tdata;
 }
 
 void Matrix::MatrixCout()
@@ -367,7 +380,10 @@ Vector::Vector(initializer_list<scalar> il)
 
 Vector::~Vector()
 {
-    delete [] data;
+    if (data != nullptr)
+    {
+        delete[] data;
+    }
 }
 
 scalar Vector::MaxAbs()
@@ -412,6 +428,7 @@ Vector &Vector::operator=(const double &value)
     {
         *(this->data + i) = value;
     }
+    return *this;
 }
 
 void Vector::operator*=(const scalar &value)
@@ -511,6 +528,15 @@ Vector3 &Vector3::operator*(const scalar &value)
     return *this;
 }
 
+Vector3 Vector3::operator*(const Vector3 &V) const
+{
+    Vector3 result;
+    result.x = y * V.z - z * V.y;
+    result.y = z * V.x - x * V.z;
+    result.z = x * V.y - y * V.x;
+    return result;
+}
+
 Quaternion::Quaternion(const scalar &x_in, const scalar &y_in, const scalar &z_in, const scalar &w_in)
 {
     w = w_in;
@@ -519,9 +545,9 @@ Quaternion::Quaternion(const scalar &x_in, const scalar &y_in, const scalar &z_i
     z = z_in;
 }
 
-Quaternion::Quaternion(const Vector3 &v, const scalar &angle)
+Quaternion::Quaternion(const Vector3 &coordXYZ, const scalar &angle)
 {
-    Vector3 v_t = v.Normalize();
+    Vector3 v_t = coordXYZ.Normalize();
     this->w = cos(angle / 2);
     this->x = v_t.x * sin(angle / 2);
     this->y = v_t.y * sin(angle / 2);
@@ -536,4 +562,98 @@ void Quaternion::Create(const Vector3 &rotate_vector, const scalar &rotate_angle
     x = r_v.x * sin(rotate_angle / 2);
     y = r_v.y * sin(rotate_angle / 2);
     z = r_v.z * sin(rotate_angle / 2);
+}
+
+void Quaternion::EulerToQuat(const Vector3 &angles)
+{
+    scalar h1 = angles.x * 0.5;
+    scalar h2 = angles.y * 0.5;
+    scalar h3 = angles.z * 0.5;
+    scalar cos1 = cos(h1);
+    scalar sin1 = sin(h1);
+    scalar cos2 = cos(h2);
+    scalar sin2 = sin(h2);
+    scalar cos3 = cos(h3);
+    scalar sin3 = sin(h3);
+    x = sin3 * cos2 * cos1 - cos3 * sin2 * sin1;
+    y = cos3 * sin2 * cos1 + sin3 * cos2 * sin1;
+    z = cos3 * cos2 * sin1 - sin3 * sin2 * cos1;
+    w = cos3 * cos2 * cos1 + sin3 * sin2 * sin1;
+}
+
+void Quaternion::Invert()
+{
+    x *= - 1;
+    y *= - 1;
+    z *= - 1;
+}
+
+scalar Quaternion::GetLength() const
+{
+    return (x * x + y * y + z * z + w * w);
+}
+
+Vector3 Quaternion::GetAxis() const
+{
+    scalar s = 1.0 - w * w;
+    if (s == 0)
+        return Vector3(0, 0, 0);
+    s = 1.0 / sqrt(s);
+    return Vector3(x * s, y * s, z * s);
+}
+
+scalar Quaternion::GetAngle() const
+{
+    return (2.0 * acos(w));
+}
+
+Quaternion Quaternion::operator*(const Quaternion &q) const
+{
+    scalar ww = w * q.w - x * q.x - y * q.y - z * q.z;
+    scalar xx = w * q.x + x * q.w + y * q.z - z * q.y;
+    scalar yy = w * q.y - x * q.z + y * q.w + z * q.x;
+    scalar zz = w * q.z + x * q.y - y * q.x + z * q.w;
+    return Quaternion(xx, yy, zz, ww);
+}
+
+Quaternion Quaternion::operator*(const Vector3 &v) const
+{
+    scalar ww = - x * v.x - y * v.y - z * v.z;
+    scalar xx =   w * v.x + y * v.z - z * v.y;
+    scalar yy =   w * v.y - x * v.z + z * v.x;
+    scalar zz =   w * v.z + x * v.y - y * v.x;
+    return Quaternion(xx, yy, zz, ww);
+}
+
+void Quaternion::Scale(const scalar &s)
+{
+    x *= s;
+    y *= s;
+    z *= s;
+    w *= s;
+}
+
+void Quaternion::Normalize()
+{
+    scalar l = sqrt(x * x + y * y + z * z + w * w);
+    x /= l;
+    y /= l;
+    z /= l;
+}
+
+Vector3 Quaternion::RotateVector(const Vector3 &v)
+{
+    if (x == 0 && y == 0 && z == 0)
+        return v;
+    Vector3 v_t = v.Normalize();
+    scalar l = v.Length();
+    this->Normalize();
+    auto t = *this * v_t;
+    this->Invert();
+    t = t * (*this);
+    v_t.x = t.x;
+    v_t.y = t.y;
+    v_t.z = t.z;
+    v_t = v_t * l;
+    return v_t;
 }

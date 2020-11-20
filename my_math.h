@@ -72,15 +72,19 @@ namespace RoboMath
             : x(xn), y(yn), z(zn) {};
         void Rotate(const scalar &theta, const RoboMath::Vector3 &V);
         void Clear();
-        scalar Length() const {return sqrt(x * x + y * y + z * z);};
+        scalar  Length()    const {return sqrt(x * x + y * y + z * z);};
         Vector3 Normalize() const;
         Vector3 operator= (const Vector &V);
         Vector3 operator= (const Vector3 &V);
         Vector3 operator- (const Vector3 &V) const;
         Vector3 operator+ (const Vector3 &V) const;
+        Vector3 operator* (const Vector3 &V) const;
         Vector3 &operator+= (const Vector3 &V);
         Vector3 &operator* (const scalar &value);
-        scalar x, y, z;
+    public:
+        scalar x;
+        scalar y;
+        scalar z;
     };
 
 
@@ -104,17 +108,17 @@ namespace RoboMath
         }
         scalar &elem(const int &row, const int &col) const;
 
-        Matrix Multuply(const Matrix &matrix1, const Matrix &matrix2);
+        Matrix Multuply(const Matrix &matrix1, const Matrix &matrix2) const;
         size_t Size() const;
         void Transpose();
         void AddDiagonal(const scalar &d);
         void SetSubmatrix(const Matrix &source);
-        void SetColumn(Vector &v, int ColNumber);
+        void SetColumn(const Vector &v, int ColNumber);
+        void SetColumn(const Vector3 &v, int ColNumber);
         void SolveGauss();               //Решение СЛАУ методом Гаусса (приведение к ступенчатому виду)
-        void GetTheRoots(Vector &V);     //Получение корней уравнения
-        Matrix operator*(const Matrix &matrix2);
-        Vector operator*(const Vector &vector2);
-
+        void GetTheRoots(Vector &V) const;     //Получение корней уравнения
+        Matrix operator*(const Matrix &matrix2) const;
+        Vector operator*(const Vector &vector2) const;
         Matrix operator=(const Matrix &matrix1);
 
         scalar& operator()(const int &row, const int &col);
@@ -146,83 +150,25 @@ namespace RoboMath
     class Quaternion
     {
     public:
-//        Quaternion() : x(0), y(0), z(0), w(0){};
+        Quaternion() : x(0), y(0), z(0), w(0){};
         Quaternion(const scalar &x_in, const scalar &y_in, const scalar &z_in, const scalar &w_in);
-        Quaternion(const RoboMath::Vector3 &v, const scalar &angle);
+        Quaternion(const RoboMath::Vector3 &coordXYZ, const scalar &angle);
         void Create(const RoboMath::Vector3 &rotate_vector, const scalar &rotate_angle);
-        void Invert()
-        {
-            x *= -1;
-            y *= -1;
-            z *= -1;
-        }
-        scalar GetLength() const
-        {
-            return (x * x + y * y + z * z + w * w);
-        }
-        Quaternion operator* (const Quaternion &q) const
-        {
-            scalar ww = w * q.w - x * q.x - y * q.y - z * q.z;
-            scalar xx = w * q.x + x * q.w + y * q.z - z * q.y;
-            scalar yy = w * q.y - x * q.z + y * q.w + z * q.x;
-            scalar zz = w * q.z + x * q.y - y * q.x + z * q.w;
-            return Quaternion(xx, yy, zz, ww);/*w * q.x + x * q.w + y * q.z - z * q.y,
-                              w * q.y - x * q.z + y * q.w + z * q.x,
-                              w * q.z + x * q.y - y * q.x + z * q.w,
-                              w * q.w - x * q.x - y * q.y - z * q.z);*/
-        }
-        Quaternion operator* (const Vector3 &v) const
-        {
-            scalar ww = - x * v.x - y * v.y - z * v.z;
-            scalar xx = w * v.x + y * v.z - z * v.y;
-            scalar yy = w * v.y - x * v.z + z * v.x;
-            scalar zz = w * v.z + x * v.y - y * v.x;
-            return Quaternion(xx, yy, zz, ww);//(w * v.x + x * 0 + y * v.z - z * v.y,
-                              //w * v.y - x * v.z + y * 0 + z * v.x,
-                              //w * v.z + x * v.y - y * v.x + z * 0,
-                              //w * 0 - x * v.x - y * v.y - z * v.z);
-        }
-        void Scale(const scalar &s)
-        {
-            x *= s;
-            y *= s;
-            z *= s;
-            w *= s;
-        }
-        void Normalize()
-        {
-            scalar l = sqrt(x * x + y * y + z * z + w * w);
-            x /= l;
-            y /= l;
-            z /= l;
-        }
-
-        Vector3 RotateVector(const Vector3 &v)
-        {
-            if (x == 0 && y == 0 && z == 0)
-                return v;
-
-            Vector3 v_t = v.Normalize();
-            scalar l = v.Length();
-            this->Normalize();
-            auto t = *this * v_t;
-            this->Invert();
-            t = t * (*this);
-            v_t.x = t.x;
-            v_t.y = t.y;
-            v_t.z = t.z;
-            v_t = v_t * l;
-            return v_t;
-        }
-
-
-    public:
+        void EulerToQuat(const Vector3 &angles);
+        void Invert();
+        scalar GetLength() const;
+        Vector3 GetAxis() const;
+        scalar GetAngle() const;
+        Quaternion operator* (const Quaternion &q) const;
+        Quaternion operator* (const Vector3 &v) const;
+        void Scale(const scalar &s);
+        void Normalize();
+        Vector3 RotateVector(const Vector3 &v);
+    private:
         scalar x;
         scalar y;
         scalar z;
         scalar w;
-//        RoboMath::Vector3 r_a; // rotation axis
-
     };
 }
 
@@ -232,17 +178,22 @@ public:
     checkTime()
     {
         start = std::chrono::high_resolution_clock::now();
+        checked = false;
     }
     ~checkTime()
     {
-        stop = std::chrono::high_resolution_clock::now();
-        d = stop - start;
-//        cout << "duration = " << d.count() << endl << " microsec";
+        if (!checked)
+        {
+            stop = std::chrono::high_resolution_clock::now();
+            d = stop - start;
+            cout << "duration = " << d.count() << endl << " microsec";
+        }
     }
     std::chrono::duration<double> duration()
     {
         stop = std::chrono::high_resolution_clock::now();
         d = stop - start;
+        checked = true;
         return d;
     }
 
@@ -250,6 +201,7 @@ private:
     std::chrono::duration<double> d;
     std::chrono::_V2::system_clock::time_point start;
     std::chrono::_V2::system_clock::time_point stop;
+    bool checked;
 };
 
 class AllMath
