@@ -52,7 +52,7 @@ namespace RoboMath
         Vector& operator=(const double &value);
         void  operator*=(const scalar &value);
         Vector  operator-(const Vector &V);
-//        friend ostream &operator<< (ostream& os, const Vector &V);
+        void VectorCout(const char *ch);
     private:
         int length;
         scalar *data;
@@ -112,9 +112,10 @@ namespace RoboMath
         size_t Size() const;
         void Transpose();
         void AddDiagonal(const scalar &d);
-        void SetSubmatrix(const Matrix &source);
-        void SetColumn(const Vector &v, int ColNumber);
-        void SetColumn(const Vector3 &v, int ColNumber);
+        void SetSubmatrix(const Matrix &source, const int col, const int row);
+        void SetColumn(const Vector &v, const int ColNumber);
+        void SetColumn(const Vector3 &v, const int col);
+        void SetSubColumn(const Vector3 &v, const int ColNumber, const int RowNumber);
         void SolveGauss();               //Решение СЛАУ методом Гаусса (приведение к ступенчатому виду)
         void GetTheRoots(Vector &V) const;     //Получение корней уравнения
         Matrix operator*(const Matrix &matrix2) const;

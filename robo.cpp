@@ -72,55 +72,74 @@ void Robo::RoboCout()
 
 void Robo::CalculateJacobian()
 {
-    double x, y, z, orx, ory, orz;
-    Elem *effector = robot + number_of_elements - 1;
-    Elem *current_element = robot + number_of_elements - 2;
-
-    for(counter i = number_of_elements - 1; i > 0; i--)
-    {
-        x = current_element->GetPosition().x - effector->GetPosition().x;
-        y = current_element->GetPosition().y - effector->GetPosition().y;
-        z = current_element->GetPosition().z - effector->GetPosition().z;
-        orx = current_element->GetRotationAxis().x;
-        ory = current_element->GetRotationAxis().y;
-        orz = current_element->GetRotationAxis().z;
-        this->jacobian->operator()(0, i - 1) = y * orz - z * ory;
-        this->jacobian->operator()(1, i - 1) = z * orx - x * orz;
-        this->jacobian->operator()(2, i - 1) = x * ory - y * orx;
-
-        --current_element;
-    }
-    //Для параметров Денавита-Хартенберга
-//    for (counter i = number_of_elements - 1; i > 0; i--)
+//    double x, y, z, orx, ory, orz;
+//    Elem *current_element = robot + number_of_elements - 2;
+    Vector3 v_eff = (robot + number_of_elements - 1)->GetPosition();//effector position
+//    for(counter i = number_of_elements - 1; i > 0; i--)
 //    {
-//        this->jacobian->SetColumn(effector->GetPosition() - current_element->GetPosition(), i);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition());
+//        x = current_element->GetPosition().x - v_eff.x;
+//        y = current_element->GetPosition().y - v_eff.y;
+//        z = current_element->GetPosition().z - v_eff.z;
+//        orx = current_element->GetRotationAxis().x;
+//        ory = current_element->GetRotationAxis().y;
+//        orz = current_element->GetRotationAxis().z;
+//        this->jacobian->operator()(0, i - 1) = y * orz - z * ory;
+//        this->jacobian->operator()(1, i - 1) = z * orx - x * orz;
+//        this->jacobian->operator()(2, i - 1) = x * ory - y * orx;
 
-////        this->jacobian->operator()(1, i) = ;
-////        this->jacobian->operator()(2, i) = ;
+//        --current_element;
 //    }
+
+    //Для параметров Денавита-Хартенберга
+//    Matrix jac(6, 5);
+    Elem *current_el = robot + number_of_elements - 2;
+    for (counter i = number_of_elements - 1; i > 0; i--)
+//    for (counter i = 0; i < number_of_elements; i++)
+    {
+//        jac.SetColumn(current_el->GetRotationAxis() * (v_eff - current_el->GetPosition()), i);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition()), i - 1);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition());
+        this->jacobian->SetSubColumn(current_el->GetRotationAxis() * (v_eff - current_el->GetPosition()), i - 1, 0);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition()), i - 1);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition());
+
+//        this->jacobian->MatrixCout();
+        this->jacobian->SetSubColumn(current_el->GetRotationAxis(), i - 1, 3);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition()), i - 1);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition());
+//        jac.SetColumn(Vector3(1,2,3), i);
+        --current_el;
+//        jac.MatrixCout();
+    }
+//    jac.MatrixCout();
 //    this->jacobian->MatrixCout();
 }
 
 void Robo::CalculateDeltaThetas()
 {
     Matrix jacobian_transposed = *jacobian;
+    jacobian->MatrixCout();
     jacobian_transposed.Transpose();
     Matrix U(EFFECTOR_DEGREE_OF_FREEDOM, EFFECTOR_DEGREE_OF_FREEDOM);
-    U = *jacobian * jacobian_transposed;
+    U =  jacobian_transposed * (*jacobian);
+    U.MatrixCout();
     U.AddDiagonal(damping_constant_sq);
-    Matrix aug_matrix(EFFECTOR_DEGREE_OF_FREEDOM, 4);
-    aug_matrix.SetSubmatrix(U);
-    aug_matrix.SetColumn(*this->delta_s, 4);
+    Matrix aug_matrix(EFFECTOR_DEGREE_OF_FREEDOM, number_of_elements + 1);
+    aug_matrix.SetSubmatrix(U, 0, 0);
+//    aug_matrix.MatrixCout();
+    aug_matrix.SetSubColumn(this->delta_s, number_of_elements, 0);
+    aug_matrix.SetSubColumn(this->delta_r, number_of_elements, 3);
+    aug_matrix.MatrixCout();
     aug_matrix.SolveGauss();
+    aug_matrix.MatrixCout();
     Vector delta_t(EFFECTOR_DEGREE_OF_FREEDOM);
     aug_matrix.GetTheRoots(delta_t);
+    delta_t.VectorCout("deltaT vector");
     *this->delta_thetas = jacobian_transposed * delta_t;
 
     scalar max = delta_thetas->MaxAbs();
+    delta_thetas->VectorCout("Delta thetas ");
     if (max > MaxAngleDls)
     {
         *this->delta_thetas *= MaxAngleDls/max;
     }
+
+    delta_thetas->VectorCout("Delta thetas normalized");
+
 }
 
 void Robo::CalculateCurrentPosition()
@@ -133,9 +152,9 @@ void Robo::CalculateCurrentPosition()
 
 void Robo::CalculateDeltaS(Vector3 target)
 {
-    *(delta_s->GetDataPtr() + 0) = target.x - this->Effector()->GetPosition().x;
-    *(delta_s->GetDataPtr() + 1) = target.y - this->Effector()->GetPosition().y;
-    *(delta_s->GetDataPtr() + 2) = target.z - this->Effector()->GetPosition().z;
+    delta_s.x = target.x - this->Effector()->GetPosition().x;
+    delta_s.y = target.y - this->Effector()->GetPosition().y;
+    delta_s.z = target.z - this->Effector()->GetPosition().z;
 //    cout << " delta_s " << endl << *(delta_s->GetDataPtr() + 0)
 //         << " " << *(delta_s->GetDataPtr() + 1) << " "
     //         << *(delta_s->GetDataPtr() + 2) << endl;
@@ -352,9 +371,8 @@ void Robo::AllocateForNewRobot()
 
     configuration_matrix = new Matrix(number_of_elements, 4);
     translation_matrix = new Matrix(4, 4);
-    jacobian     = new Matrix(EFFECTOR_DEGREE_OF_FREEDOM, number_of_elements - 1);
-    delta_thetas = new Vector(number_of_elements - 1);
-    delta_s      = new Vector(3);
+    jacobian     = new Matrix(EFFECTOR_DEGREE_OF_FREEDOM, number_of_elements);
+    delta_thetas = new Vector(number_of_elements);
 
     if (number_of_elements > 0)
         robot = new Elem [number_of_elements];
@@ -411,8 +429,6 @@ const Vector3 Elem::GetPositionLocal() const
 {
     return this->pos_local;
 }
-
-
 
 const Vector3 &Elem::GetPosition() const
 {

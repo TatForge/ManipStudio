@@ -5,7 +5,7 @@
 
 #include "my_math.h"
 
-//#define POSITION_AND_ROTATION
+#define POSITION_AND_ROTATION
 
 #ifdef POSITION_AND_ROTATION
 #define EFFECTOR_DEGREE_OF_FREEDOM 6
@@ -101,7 +101,7 @@ private:
     RoboMath::Matrix *configuration_matrix;
     RoboMath::Matrix *translation_matrix;
     RoboMath::Vector *delta_thetas;
-    RoboMath::Vector *delta_s;
+    RoboMath::Vector3 delta_s;
     RoboMath::Vector3 delta_r;
     int number_of_elements;
     void AllocateForNewRobot();

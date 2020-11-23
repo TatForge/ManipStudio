@@ -104,12 +104,13 @@ void Matrix::AddDiagonal(const scalar &d)
     }
 }
 
-void Matrix::SetSubmatrix(const Matrix &source)
+void Matrix::SetSubmatrix(const Matrix &source, const int col, const int row)
 {
-    assert(source.rows <= rows && source.cols <= cols);
-    int step = cols - source.cols;
+    assert(source.rows <= this->rows && source.cols <= this->cols);
+    assert((col + source.cols) <= this->cols && (row + source.rows) <= this->rows);
+    int step = this->cols - source.cols;
     scalar *from = source.GetDataPtr();
-    scalar *to = data;
+    scalar *to = this->data + col + row * this->cols;
     for (counter i = 0; i < source.rows; i++)
     {
         for (counter j = 0; j < source.cols; j++)
@@ -129,7 +130,7 @@ void Matrix::SetSubmatrix(const Matrix &source)
 
 }
 
-void Matrix::SetColumn(const Vector &v, int ColNumber)
+void Matrix::SetColumn(const Vector &v, const int ColNumber)
 {
     assert(ColNumber <= cols && ColNumber >= 0);
     assert(v.GetLength() == rows);
@@ -142,16 +143,24 @@ void Matrix::SetColumn(const Vector &v, int ColNumber)
         ++from;
     }
 }
-void Matrix::SetColumn(const Vector3 &v, int ColNumber)
+void Matrix::SetColumn(const Vector3 &v, const int ColNumber)
 {
-    assert(ColNumber <= cols && ColNumber >= 0);
+    assert(ColNumber <= (cols - 1) && ColNumber >= 0);
     assert(rows == 3);
-    scalar *to = data + ColNumber - 1;
-//    scalar *from = v.GetDataPtr();*/
-    *(to + 0) = v.x;
-    *(to + 1) = v.y;
-    *(to + 2) = v.z;
+    scalar *to = data + ColNumber;
+    *(to           ) = v.x;
+    *(to +     cols) = v.y;
+    *(to + 2 * cols) = v.z;
+}
 
+void Matrix::SetSubColumn(const Vector3 &v, const int ColNumber, const int RowNumber)
+{
+    assert(ColNumber <= (cols - 1) && ColNumber >= 0);
+    assert(RowNumber <= rows - 3);
+    scalar *to = data + ColNumber + cols * RowNumber;
+    *(to           ) = v.x;
+    *(to +     cols) = v.y;
+    *(to + 2 * cols) = v.z;
 }
 
 void Matrix::SolveGauss()
@@ -167,7 +176,8 @@ void Matrix::SolveGauss()
     int row_length = cols;
 
     int diagonal_step = cols + 1;
-    for (counter i = 0; i < (num_iter); i++)
+//    for (counter i = 0; i < (num_iter); i++)
+    for (; num_iter > 1; num_iter--)
     {
 
         scalar *row_for_swap = main_elem_ptr;
@@ -191,7 +201,7 @@ void Matrix::SolveGauss()
         if (max_row_ptr != main_elem_ptr)
         {
             scalar *temp_ptr = main_elem_ptr;
-            for (counter i = 0; i < cols; i++)
+            for (counter i = 0; i < row_length; i++)
             {
                 scalar temp = *temp_ptr;
                 *temp_ptr = *max_row_ptr;
@@ -200,7 +210,7 @@ void Matrix::SolveGauss()
                 max_row_ptr  ++;
             }
         }
-
+        this->MatrixCout();
         //subtrack
         row_for_swap = main_elem_ptr;
         for (counter i = 0; i < (num_iter - 1); i++)
@@ -217,10 +227,11 @@ void Matrix::SolveGauss()
                 *to -= (*from) * alpha;
             }
         }
+        this->MatrixCout();
         main_elem_ptr += diagonal_step;
 //        this->MatrixCout();
         --row_length;
-        --num_iter;
+//        --num_iter;
     }
 }
 
@@ -351,6 +362,7 @@ void Matrix::MatrixCout()
         }
         cout << endl;
     }
+    cout << endl;
 }
 
 
@@ -448,6 +460,17 @@ Vector Vector::operator-(const Vector &V)
     *(result.data + 1) = (*(V.data + 1) - *(this->data + 1));
     *(result.data + 2) = (*(V.data + 2) - *(this->data + 2));
     return result;
+
+}
+
+void Vector::VectorCout(const char *ch)
+{
+    cout << ch << endl;
+    for (counter i = 0; i < length; i++)
+    {
+        cout << *(data + i) << "\t";
+    }
+    cout << endl;
 
 }
 
