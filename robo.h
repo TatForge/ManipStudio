@@ -92,14 +92,16 @@ public:
     void DeltaThetasCout();
     void SetConfigurationMatrix(const RoboMath::Matrix &A);
     void UpdateTranslationMatrix();
-    RoboMath::Vector3 GetEffectorPosition();
+    RoboMath::Vector3 GetEffectorPosition() const;
+    RoboMath::Vector3 GetEffectorRotation() const;
+    void UpdateThetaValues();
     Elem *Effector() const;
 
 private:
     Elem *robot;
     RoboMath::Matrix *jacobian;
-    RoboMath::Matrix *configuration_matrix;
-    RoboMath::Matrix *translation_matrix;
+    RoboMath::Matrix *configuration_matrix; //Матрица конфигурации манипа
+    RoboMath::Matrix *translation_matrix;   //Матрица перехода из 0 в 6
     RoboMath::Vector *delta_thetas;
     RoboMath::Vector3 delta_s;
     RoboMath::Vector3 delta_r;

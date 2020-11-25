@@ -93,7 +93,7 @@ void Robo::CalculateJacobian()
     //Для параметров Денавита-Хартенберга
 //    Matrix jac(6, 5);
     Elem *current_el = robot + number_of_elements - 2;
-    for (counter i = number_of_elements - 1; i > 0; i--)
+    for (counter i = number_of_elements; i > 0; i--)
 //    for (counter i = 0; i < number_of_elements; i++)
     {
 //        jac.SetColumn(current_el->GetRotationAxis() * (v_eff - current_el->GetPosition()), i);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition()), i - 1);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition());
@@ -106,26 +106,26 @@ void Robo::CalculateJacobian()
 //        jac.MatrixCout();
     }
 //    jac.MatrixCout();
-//    this->jacobian->MatrixCout();
+    this->jacobian->MatrixCout();
 }
 
 void Robo::CalculateDeltaThetas()
 {
     Matrix jacobian_transposed = *jacobian;
-    jacobian->MatrixCout();
+//    jacobian->MatrixCout();
     jacobian_transposed.Transpose();
     Matrix U(EFFECTOR_DEGREE_OF_FREEDOM, EFFECTOR_DEGREE_OF_FREEDOM);
     U =  jacobian_transposed * (*jacobian);
-    U.MatrixCout();
+//    U.MatrixCout();
     U.AddDiagonal(damping_constant_sq);
     Matrix aug_matrix(EFFECTOR_DEGREE_OF_FREEDOM, number_of_elements + 1);
     aug_matrix.SetSubmatrix(U, 0, 0);
 //    aug_matrix.MatrixCout();
     aug_matrix.SetSubColumn(this->delta_s, number_of_elements, 0);
     aug_matrix.SetSubColumn(this->delta_r, number_of_elements, 3);
-    aug_matrix.MatrixCout();
+//    aug_matrix.MatrixCout();
     aug_matrix.SolveGauss();
-    aug_matrix.MatrixCout();
+//    aug_matrix.MatrixCout();
     Vector delta_t(EFFECTOR_DEGREE_OF_FREEDOM);
     aug_matrix.GetTheRoots(delta_t);
     delta_t.VectorCout("deltaT vector");
@@ -165,7 +165,7 @@ void Robo::CalculateDeltaR(Vector3 target_r)
     Quaternion end_eff_target_ori;
     Quaternion end_eff_world_ori;
     auto tt = this->Effector()->GetRotationAxis();
-    end_eff_world_ori.EulerToQuat(this->Effector()->GetRotationAxis());
+    end_eff_world_ori.EulerToQuat(this->GetEffectorRotation());
     end_eff_target_ori.EulerToQuat(target_r);
     end_eff_world_ori.Invert();
     Quaternion deltaQ = end_eff_target_ori * end_eff_world_ori;
@@ -327,7 +327,9 @@ void Robo::SetConfigurationMatrix(const Matrix &A)
     assert(A.GetColsCount() == this->configuration_matrix->GetColsCount() &&
            A.GetRowsCount() == this->configuration_matrix->GetRowsCount() &&
            "Assertion failed in 'SetConfigurationMatrix");
+    A.MatrixCout();
     memcpy(configuration_matrix->GetDataPtr(), A.GetDataPtr(), A.Size());
+    configuration_matrix->MatrixCout();
 }
 
 void Robo::UpdateTranslationMatrix()
@@ -340,24 +342,47 @@ void Robo::UpdateTranslationMatrix()
 
     for (counter i = 0; i < T.size(); i++)
     {
-        T[i] = {{cos(A->elem(i, 3)), -sin(A->elem(i, 3)) * cos(A->elem(i, 1)),  sin(A->elem(i, 3)) * sin(A->elem(i, 1)), A->elem(i, 0) * cos(A->elem(i, 3))},
-                {sin(A->elem(i, 3)),  cos(A->elem(i, 3)) * cos(A->elem(i, 1)), -cos(A->elem(i, 3)) * sin(A->elem(i, 1)), A->elem(i, 0) * sin(A->elem(i, 3))},
-                {0,                   sin(A->elem(i, 1)),                       cos(A->elem(i, 1)),                      A->elem(i, 2)},
+        T[i] = {{cos(A->at(i, 3)), -sin(A->at(i, 3)) * cos(A->at(i, 1)),  sin(A->at(i, 3)) * sin(A->at(i, 1)), A->at(i, 0) * cos(A->at(i, 3))},
+                {sin(A->at(i, 3)),  cos(A->at(i, 3)) * cos(A->at(i, 1)), -cos(A->at(i, 3)) * sin(A->at(i, 1)), A->at(i, 0) * sin(A->at(i, 3))},
+                {0,                   sin(A->at(i, 1)),                       cos(A->at(i, 1)),                      A->at(i, 2)},
                 {0,                   0,                                          0,                                     1}};
 
     }
-    array<Matrix, 6> T6;
-    T6[0] = T[0];
-    for (size_t i = 1; i < T6.size(); i++)
-    {
-        T6[i] = T6[i-1] * T[i];
-    }
-    memcpy(translation_matrix->GetDataPtr(), T6[5].GetDataPtr(), T6[5].Size());
+    Matrix L = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
+//    array<Matrix, 6> T6;
+//    T6[0] = T[0];
+//    for (size_t i = 1; i < T6.size(); i++)
+//    {
+//        T6[i] = T6[i-1] * T[i];
+//    }
+    L.MatrixCout();
+    cout << " Roll =  "     << ToDeg(this->GetEffectorRotation().x) <<
+            " Pitch  =  "   << ToDeg(this->GetEffectorRotation().y) <<
+            " Yaw =  "      << ToDeg(this->GetEffectorRotation().z) << endl;
+    memcpy(translation_matrix->GetDataPtr(), L.GetDataPtr(), L.Size());
 }
 
-Vector3 Robo::GetEffectorPosition()
+Vector3 Robo::GetEffectorPosition() const
 {
     return this->Effector()->GetPosition();
+}
+
+Vector3 Robo::GetEffectorRotation() const
+{
+    Matrix *m = translation_matrix;
+    scalar pitch = atan(m->at(2,0)/m->at(2,1));
+    scalar roll = atan(sin(pitch)*m->at(2,0) - cos(pitch)*m->at(2,1)/m->at(2,2));
+    scalar yaw = atan(m->at(0,2)/m->at(1,2));
+    return Vector3(roll, pitch, yaw);
+}
+
+void Robo::UpdateThetaValues()
+{
+    for (int i = 0; i < number_of_elements - 1; i++)
+    {
+        configuration_matrix->at(i, 3) = (robot + i)->GetTheta();
+    }
+    configuration_matrix->MatrixCout();
 }
 
 Elem *Robo::Effector() const

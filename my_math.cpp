@@ -61,7 +61,7 @@ Matrix::Matrix(const initializer_list<scalar> &il)
     copy(il.begin(), il.end(), data);
 }
 
-scalar &Matrix::elem(const int &row, const int &col) const
+scalar &Matrix::at(const int &row, const int &col) const
 {
     assert(col >= 0 && col <= cols);
     assert(row >= 0 && row <= rows);
@@ -79,9 +79,9 @@ Matrix Matrix::Multuply(const Matrix &matrix1, const Matrix &matrix2) const
         {
             for (counter k = 0; k < matrix1.cols; k++)
             {
-                buff += matrix1.elem(i, k) * matrix2.elem(k, j);
+                buff += matrix1.at(i, k) * matrix2.at(k, j);
             }
-            result.elem(i, j) = buff;
+            result.at(i, j) = buff;
             buff = 0;
         }
     }
@@ -272,9 +272,9 @@ Matrix Matrix::operator*(const Matrix &matrix2) const
         {
             for (counter k = 0; k < this->cols; k++)
             {
-                buff += this->elem(i, k) * matrix2.elem(k, j);
+                buff += this->at(i, k) * matrix2.at(k, j);
             }
-            result.elem(i, j) = buff;
+            result.at(i, j) = buff;
             buff = 0;
         }
     }
@@ -352,13 +352,13 @@ void Matrix::Transpose()
     delete[] tdata;
 }
 
-void Matrix::MatrixCout()
+void Matrix::MatrixCout() const
 {
     for (counter i = 0; i < rows; i++)
     {
         for (counter j = 0; j < cols; j++)
         {
-            cout << *(data + i * cols + j) << "\t";
+            cout << setw(9) << *(data + i * cols + j) << "\t";
         }
         cout << endl;
     }

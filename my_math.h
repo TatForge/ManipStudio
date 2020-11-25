@@ -5,6 +5,7 @@
 #include <vector>
 #include <cmath>
 #include <iostream>
+#include <iomanip>
 #include <memory>
 #include <cstring>
 #include <chrono>
@@ -106,7 +107,7 @@ namespace RoboMath
             if(data != nullptr)
                 delete[] data;
         }
-        scalar &elem(const int &row, const int &col) const;
+        scalar &at(const int &row, const int &col) const;
 
         Matrix Multuply(const Matrix &matrix1, const Matrix &matrix2) const;
         size_t Size() const;
@@ -126,7 +127,7 @@ namespace RoboMath
         int GetColsCount() const { return cols; }
         int GetRowsCount() const { return rows; }
         scalar* GetDataPtr() const {return data;};
-        void MatrixCout();
+        void MatrixCout() const;
 
 
     private:

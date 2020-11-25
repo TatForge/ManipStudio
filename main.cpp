@@ -14,41 +14,62 @@ int main(int argc, char *argv[])
 {
 
     //_---------------------------------------------
-//    array<scalar, 6> tet {0 * M_PI/180,
-//                         0 * M_PI/180,
-//                         0 * M_PI/180,
-//                         0 * M_PI/180,
-//                         0 * M_PI/180,
-//                         0 * M_PI/180};
-//    Matrix A {{0,   -M_PI/2, 232.5,  tet[0]},
-//              {375, 0,       0,      tet[1]},
-//              {295, 0,       0,      tet[2]},
-//              {0,   -M_PI/2, 120.5,  tet[3]},
-//              {0,   M_PI/2,  171,    tet[4]},
-//              {0,   0,       122.6,  tet[5]}};
+    array<scalar, 6> tet {45 * M_PI/180,
+                         -60 * M_PI/180,
+                         -30 * M_PI/180,
+                         0 * M_PI/180,
+                         0 * M_PI/180,
+                         0 * M_PI/180};
+    Matrix A {{0,   -M_PI/2, 232.5,  tet[0]},
+              {375, 0,       0,      tet[1]},
+              {295, 0,       0,      tet[2]},
+              {0,   -M_PI/2, 120.5,  tet[3]},
+              {0,   M_PI/2,  171,    tet[4]},
+              {0,   0,       122.6,  tet[5]}};
 
-//    array<Matrix, 6> T;
-//    for (counter i = 0; i < T.size(); i++)
-//    {
-//        T[i] = {{cos(A.elem(i, 3)), -sin(A.elem(i, 3)) * cos(A.elem(i, 1)),   sin(A.elem(i, 3)) * sin(A.elem(i, 1)), A.elem(i, 0) * cos(A.elem(i, 3))},
-//                {sin(A.elem(i, 3)),  cos(A.elem(i, 3)) * cos(A.elem(i, 1)), - cos(A.elem(i, 3)) * sin(A.elem(i, 1)), A.elem(i, 0) * sin(A.elem(i, 3))},
-//                {0,                  sin(A.elem(i, 1)),                       cos(A.elem(i, 1)),                     A.elem(i, 2)},
-//                {0,                  0,                                       0,                                     1}};
+    array<Matrix, 6> T;
+    for (counter i = 0; i < T.size(); i++)
+    {
+        T[i] = {{cos(A.at(i, 3)), -sin(A.at(i, 3)) * cos(A.at(i, 1)),   sin(A.at(i, 3)) * sin(A.at(i, 1)), A.at(i, 0) * cos(A.at(i, 3))},
+                {sin(A.at(i, 3)),  cos(A.at(i, 3)) * cos(A.at(i, 1)), - cos(A.at(i, 3)) * sin(A.at(i, 1)), A.at(i, 0) * sin(A.at(i, 3))},
+                {0,                  sin(A.at(i, 1)),                       cos(A.at(i, 1)),                     A.at(i, 2)},
+                {0,                  0,                                       0,                                     1}};
 
-//    }
+    }
+    Matrix L = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
+    L.MatrixCout();
+//    cout << " Tet =  " << DEG * acos(L.elem(2,2)) <<
+//            " Fi  =  " << DEG * acos(- L.elem(1,2) / sin(L.elem(2, 2))) <<
+//            " Psi =  " << DEG * acos(L.elem(2,1) / sin(L.elem(2, 2))) << endl;
+    auto k = L(2,0);
+    auto ke = L(2,1);
+    double fi = atan(L(2,0)/L(2,1));
+    double tet1 = atan(sin(fi)*L(2,0) - cos(fi)*L(2,1)/L(2,2));
+    double psi = atan(L(0,2)/L(1,2));
+    //psi = yaw || fi = pitch || tet = roll
+    cout << " x =  " << L(0,3) <<
+            " y =  " << L(1,3) <<
+            " z =  " << L(2,3) << endl;
+    cout << " Roll =  " << ToDeg(tet1) <<
+            " Pitch  =  " << ToDeg(fi) <<
+            " Yaw =  " << ToDeg(psi) << endl;
 
     //_---------------------------------------------
 
 
     Vector3 target(0.7, 0.1, 0.1);
-    Vector3 target_r(ToRad(20), ToRad(30), ToRad(40));//Elem(Vector3(0,     0,      0),      Vector3(0,0,0), ToRad(0)),
-    initializer_list<Elem> il_elem {Elem(Vector3(0,     0,      0),      unit_z,  ToRad(0)),
-                                    Elem(Vector3(0,     0,      0.2325), unit_y,  ToRad(0)),
+    Vector3 target_r(ToRad(90), ToRad(-60), ToRad(-20));//Elem(Vector3(0,     0,      0),      Vector3(0,0,0), ToRad(0)),
+    initializer_list<Elem> il_elem {Elem(Vector3(0,     0,      0),      unit_z,  ToRad(-60)),
+                                    Elem(Vector3(0,     0,      0.2325), unit_y,  ToRad(-60)),
                                     Elem(Vector3(0.375, 0,      0.2325), unit_y,  ToRad(0)),
                                     Elem(Vector3(0.670, 0.1205, 0.2325), unit_y,  ToRad(0)),
                                     Elem(Vector3(0.670, 0.1205, 0.0615), unit_mz, ToRad(0)),
                                     Elem(Vector3(0.670, 0.2431, 0.0615), unit_y,  ToRad(0))};
     Robo manipulator(il_elem);
+//    manipulator.
+    manipulator.SetConfigurationMatrix(A);
+
+
     checkTime ct;
     for (int i = 0; i < 10000; i ++)
     {
@@ -60,13 +81,20 @@ int main(int argc, char *argv[])
 //        checkTime ct;
         while(delta.Length() > 10e-5)
         {
+            //denavita____________________________
+            manipulator.UpdateThetaValues();
+            manipulator.UpdateTranslationMatrix();
+            //____________________________________
             manipulator.CalculateJacobian();
             manipulator.CalculateDeltaS(target);
             manipulator.CalculateDeltaR(target_r);
             manipulator.CalculateDeltaThetas();
             manipulator.AddDeltaThetas();
+            //denavita____________________________
+            manipulator.UpdateThetaValues();
+            manipulator.UpdateTranslationMatrix();
+            //____________________________________
             manipulator.ComputeJointsPosition();
-            manipulator.UpdateJointsLocalPosition();
             delta = target - manipulator.GetEffectorPosition();
             ctr++;
             if (ctr > 10000)
