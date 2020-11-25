@@ -92,40 +92,39 @@ void Robo::CalculateJacobian()
 
     //Для параметров Денавита-Хартенберга
 //    Matrix jac(6, 5);
-    Elem *current_el = robot + number_of_elements - 2;
+    Elem *current_el = robot + number_of_elements - 1;
     for (counter i = number_of_elements; i > 0; i--)
 //    for (counter i = 0; i < number_of_elements; i++)
     {
 //        jac.SetColumn(current_el->GetRotationAxis() * (v_eff - current_el->GetPosition()), i);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition()), i - 1);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition());
         this->jacobian->SetSubColumn(current_el->GetRotationAxis() * (v_eff - current_el->GetPosition()), i - 1, 0);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition()), i - 1);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition());
-
-//        this->jacobian->MatrixCout();
+#ifdef POSITION_AND_ROTATION
         this->jacobian->SetSubColumn(current_el->GetRotationAxis(), i - 1, 3);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition()), i - 1);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition());
-//        jac.SetColumn(Vector3(1,2,3), i);
+#endif
         --current_el;
-//        jac.MatrixCout();
     }
-//    jac.MatrixCout();
     this->jacobian->MatrixCout();
 }
 
-void Robo::CalculateDeltaThetas()
+void Robo:: CalculateDeltaThetas()
 {
     Matrix jacobian_transposed = *jacobian;
 //    jacobian->MatrixCout();
     jacobian_transposed.Transpose();
     Matrix U(EFFECTOR_DEGREE_OF_FREEDOM, EFFECTOR_DEGREE_OF_FREEDOM);
-    U =  jacobian_transposed * (*jacobian);
+    U =  (*jacobian) * jacobian_transposed;
 //    U.MatrixCout();
     U.AddDiagonal(damping_constant_sq);
-    Matrix aug_matrix(EFFECTOR_DEGREE_OF_FREEDOM, number_of_elements + 1);
+    Matrix aug_matrix(U.GetRowsCount(), U.GetColsCount() + 1);
     aug_matrix.SetSubmatrix(U, 0, 0);
 //    aug_matrix.MatrixCout();
-    aug_matrix.SetSubColumn(this->delta_s, number_of_elements, 0);
+    aug_matrix.SetSubColumn(this->delta_s, aug_matrix.GetColsCount() - 1, 0);
+#ifdef POSITION_AND_ROTATION
     aug_matrix.SetSubColumn(this->delta_r, number_of_elements, 3);
-//    aug_matrix.MatrixCout();
+#endif
+    aug_matrix.MatrixCout();
     aug_matrix.SolveGauss();
-//    aug_matrix.MatrixCout();
+    aug_matrix.MatrixCout();
     Vector delta_t(EFFECTOR_DEGREE_OF_FREEDOM);
     aug_matrix.GetTheRoots(delta_t);
     delta_t.VectorCout("deltaT vector");

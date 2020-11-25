@@ -5,7 +5,7 @@
 
 #include "my_math.h"
 
-#define POSITION_AND_ROTATION
+//#define POSITION_AND_ROTATION
 
 #ifdef POSITION_AND_ROTATION
 #define EFFECTOR_DEGREE_OF_FREEDOM 6

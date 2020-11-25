@@ -470,7 +470,7 @@ void Vector::VectorCout(const char *ch)
     {
         cout << *(data + i) << "\t";
     }
-    cout << endl;
+    cout << endl << endl;
 
 }
 

@@ -14,9 +14,9 @@ int main(int argc, char *argv[])
 {
 
     //_---------------------------------------------
-    array<scalar, 6> tet {45 * M_PI/180,
-                         -60 * M_PI/180,
-                         -30 * M_PI/180,
+    array<scalar, 6> tet {0 * M_PI/180,
+                         0 * M_PI/180,
+                         0 * M_PI/180,
                          0 * M_PI/180,
                          0 * M_PI/180,
                          0 * M_PI/180};
@@ -58,9 +58,9 @@ int main(int argc, char *argv[])
 
 
     Vector3 target(0.7, 0.1, 0.1);
-    Vector3 target_r(ToRad(90), ToRad(-60), ToRad(-20));//Elem(Vector3(0,     0,      0),      Vector3(0,0,0), ToRad(0)),
-    initializer_list<Elem> il_elem {Elem(Vector3(0,     0,      0),      unit_z,  ToRad(-60)),
-                                    Elem(Vector3(0,     0,      0.2325), unit_y,  ToRad(-60)),
+    Vector3 target_r(ToRad(90), ToRad(0), ToRad(0));//Elem(Vector3(0,     0,      0),      Vector3(0,0,0), ToRad(0)),
+    initializer_list<Elem> il_elem {Elem(Vector3(0,     0,      0),      unit_z,  ToRad(0)),
+                                    Elem(Vector3(0,     0,      0.2325), unit_y,  ToRad(0)),
                                     Elem(Vector3(0.375, 0,      0.2325), unit_y,  ToRad(0)),
                                     Elem(Vector3(0.670, 0.1205, 0.2325), unit_y,  ToRad(0)),
                                     Elem(Vector3(0.670, 0.1205, 0.0615), unit_mz, ToRad(0)),
