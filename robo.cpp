@@ -32,6 +32,7 @@ Robo::Robo(initializer_list<Elem> &robo_list)
         ++robo_it;
         ++robo_list_it;
     }
+    effector_rot_base = Quaternion(Vector3(1, 0, 0), ToRad(90));//0.707, 0, 0, 0.707);
 
 }
 
@@ -95,11 +96,11 @@ void Robo::CalculateJacobian()
     Elem *current_el = robot + number_of_elements - 1;
     for (counter i = number_of_elements; i > 0; i--)
 //    for (counter i = 0; i < number_of_elements; i++)
-    {
-//        jac.SetColumn(current_el->GetRotationAxis() * (v_eff - current_el->GetPosition()), i);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition()), i - 1);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition());
-        this->jacobian->SetSubColumn(current_el->GetRotationAxis() * (v_eff - current_el->GetPosition()), i - 1, 0);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition()), i - 1);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition());
+    { 
+        this->jacobian->SetSubColumn(current_el->GetRotationAxis(), i - 1, 0);
+//        this->jacobian->SetSubColumn(current_el->GetRotationAxis() * (v_eff - current_el->GetPosition()), i - 1, 0);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition()), i - 1);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition());
 #ifdef POSITION_AND_ROTATION
-        this->jacobian->SetSubColumn(current_el->GetRotationAxis(), i - 1, 3);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition()), i - 1);//current_element->GetRotationAxis() * (effector->GetPosition() - current_element->GetPosition());
+        this->jacobian->SetSubColumn(current_el->GetRotationAxis(), i - 1, 3);
 #endif
         --current_el;
     }
@@ -113,12 +114,13 @@ void Robo:: CalculateDeltaThetas()
     jacobian_transposed.Transpose();
     Matrix U(EFFECTOR_DEGREE_OF_FREEDOM, EFFECTOR_DEGREE_OF_FREEDOM);
     U =  (*jacobian) * jacobian_transposed;
-//    U.MatrixCout();
+    U.MatrixCout();
     U.AddDiagonal(damping_constant_sq);
     Matrix aug_matrix(U.GetRowsCount(), U.GetColsCount() + 1);
     aug_matrix.SetSubmatrix(U, 0, 0);
-//    aug_matrix.MatrixCout();
-    aug_matrix.SetSubColumn(this->delta_s, aug_matrix.GetColsCount() - 1, 0);
+    aug_matrix.MatrixCout();
+//    aug_matrix.SetSubColumn(this->delta_s, aug_matrix.GetColsCount() - 1, 0);
+    aug_matrix.SetSubColumn(this->delta_r, aug_matrix.GetColsCount() - 1, 0);
 #ifdef POSITION_AND_ROTATION
     aug_matrix.SetSubColumn(this->delta_r, number_of_elements, 3);
 #endif
@@ -128,6 +130,7 @@ void Robo:: CalculateDeltaThetas()
     Vector delta_t(EFFECTOR_DEGREE_OF_FREEDOM);
     aug_matrix.GetTheRoots(delta_t);
     delta_t.VectorCout("deltaT vector");
+    jacobian_transposed.MatrixCout();
     *this->delta_thetas = jacobian_transposed * delta_t;
 
     scalar max = delta_thetas->MaxAbs();
@@ -164,11 +167,14 @@ void Robo::CalculateDeltaR(Vector3 target_r)
     Quaternion end_eff_target_ori;
     Quaternion end_eff_world_ori;
     auto tt = this->Effector()->GetRotationAxis();
-    end_eff_world_ori.EulerToQuat(this->GetEffectorRotation());
+//    end_eff_world_ori.EulerToQuat(this->GetEffectorRotation());
+    end_eff_world_ori = this->GetEffectorRotationQuat();
     end_eff_target_ori.EulerToQuat(target_r);
     end_eff_world_ori.Invert();
     Quaternion deltaQ = end_eff_target_ori * end_eff_world_ori;
     scalar angle = deltaQ.GetAngle();
+    long double angle_ld = deltaQ.GetAngle();
+    scalar ang_deg = ToDeg(angle);
     Vector3 axis = deltaQ.GetAxis();
     if (angle > M_PI)
         angle -= 2.0 * M_PI;
@@ -176,12 +182,13 @@ void Robo::CalculateDeltaR(Vector3 target_r)
         angle += 2.0 * M_PI;
     Vector3 ang_vel = axis.Normalize() * angle;
     delta_r = ang_vel * 1;
+//    delta_r = target_r - this->GetEffectorRotation();
 }
 
 
 void Robo::AddDeltaThetas()
 {
-    for (int i = 0; i < number_of_elements - 1; i++)
+    for (int i = 0; i < number_of_elements; i++)
     {
         (robot + i)->AddDeltaTheta(delta_thetas->operator()(i));
     }
@@ -191,10 +198,10 @@ void Robo::ComputeJointsPosition()
 {
     Elem *joint_iter;
     Elem *joint_iter_parent;
-
+    effector_rot = effector_rot_base;
     Elem *joint_iter_buff;
     Vector3  pos, pos_local, rot, local_rot;
-    for (counter elem_n = number_of_elements - 1; elem_n >= 1; elem_n--)
+    for (counter elem_n = number_of_elements; elem_n >= 1; elem_n--)
     {
         joint_iter = (this->robot + elem_n);
         joint_iter_parent = (this->robot + elem_n - 1);
@@ -220,84 +227,29 @@ void Robo::ComputeJointsPosition()
         joint_iter_parent = (this->robot + elem_n - 1);
         joint_iter_buff = joint_iter;
         rot = joint_iter->GetRotationAxisLocal();
+
+        //вращение кватерниона еффектора
         for (counter i = elem_n; i > 0; i --)
         {
             Quaternion q(joint_iter_parent->GetRotationAxisLocal(), joint_iter_parent->GetTheta());
+            if (elem_n == number_of_elements)
+            {
+                effector_rot = q * effector_rot;
+                cout << " roll  = " << ToDeg(this->effector_rot.GetEulerAngles().x)
+                     << " pitch = " << ToDeg(this->effector_rot.GetEulerAngles().y)
+                     << " yaw   = " << ToDeg(this->effector_rot.GetEulerAngles().z)
+                     <<endl;
+            }
             rot = q.RotateVector(rot);
             --joint_iter;
             --joint_iter_parent;
         }
         joint_iter_buff->SetRotation(rot);
-//        cout << " Elem number " << elem_n << " " << pos.x << " " << pos.y << " " << pos.z << endl;
-
-//        joint_iter_buff->SetPos(pos);
-//        rot = joint_iter->GetRotationAxis();
-//        for (counter i = elem_n; i > 0; i --)
-//        {
-//            Quaternion q(joint_iter_parent->GetRotationAxis(), joint_iter_parent->GetTheta());
-//            rot = q.RotateVector(rot);
-//        }
-//        joint_iter_buff->SetRotation(rot);
-
-//        cout << " Elem number rot" << elem_n << " " << rot.x << " " << rot.y << " " << rot.z << endl;
     }
-
-
-//    for (counter elem_n = number_of_elements - 1; elem_n >= 1; elem_n--)
-//    {
-//        joint_iter = (this->robot + elem_n);
-//        joint_iter_parent = (this->robot + elem_n - 1);
-//        for (counter i = elem_n; i > 0; i--)
-//        {
-//            Quaternion q(joint_iter_parent->GetRotationAxis(), joint_iter_parent->GetTheta());
-//            rot = joint_iter->GetRotationAxis();
-//            rot = q.RotateVector(rot);
-//            joint_iter->SetRotation(rot);
-//            --joint_iter;
-//            --joint_iter_parent;
-//        }
-//    cout << " Elem number rot" << elem_n << " " << rot.x << " " << rot.y << " " << rot.z << endl;
-//    }
-
-//    for (int i = 1; i < number_of_elements - 1; i++)
-//    {
-//        local_pos = joint_iter->GetPosLocal();
-//        for (int j = i; j > 0; j++)
-//        {
-//            local_pos.Rotate(joint_iter_parent->GetTheta(), joint_iter_parent->GetRotation());
-//            --joint_iter;
-//            --joint_iter_parent;
-////            this->robot->SetPos()
-//        }
-
-//    }
-
-//    for (int i = 1; i < number_of_elements; i++)
-//    {
-//        //Расчет глобальной позиции каждого следующего элемента манипулятора
-//        local_pos = joint_iter->GetPosLocal();
-//        local_pos.Rotate((joint_iter - 1)->GetTheta(), (joint_iter - 1)->GetRotation());
-//        pos = (joint_iter - 1)->GetPosition() + local_pos;
-//        joint_iter->SetPos(pos);
-//        for (int j = i; j > 0; j++)
-//        {
-
-//        }
-
-//        //Расчет глобальных осей вращения каждого следующего элемента манипулятора
-//        rot = joint_iter->GetRotation();
-//        rot.Rotate((joint_iter - 1)->GetTheta(), (joint_iter - 1)->GetRotation());
-
-
-
-//        ++joint_iter;
-//    }
-//    //update Rotation
-//    joint_iter = (this->robot + 1);
-//    for (int i = 1; i < number_of_elements; i++)
-//    {
-
-//    }
+    cout << " roll  = " << ToDeg(this->effector_rot.GetEulerAngles().x)
+         << " pitch = " << ToDeg(this->effector_rot.GetEulerAngles().y)
+         << " yaw   = " << ToDeg(this->effector_rot.GetEulerAngles().z)
+         <<endl;
 }
 
 void Robo::UpdateJointsLocalPosition()
@@ -336,8 +288,8 @@ void Robo::UpdateTranslationMatrix()
     assert(configuration_matrix->GetDataPtr() != nullptr);
     assert(configuration_matrix->GetRowsCount() == number_of_elements);
     auto &A = this->configuration_matrix;
-
     array<Matrix, 6> T;
+    A->MatrixCout();
 
     for (counter i = 0; i < T.size(); i++)
     {
@@ -345,20 +297,33 @@ void Robo::UpdateTranslationMatrix()
                 {sin(A->at(i, 3)),  cos(A->at(i, 3)) * cos(A->at(i, 1)), -cos(A->at(i, 3)) * sin(A->at(i, 1)), A->at(i, 0) * sin(A->at(i, 3))},
                 {0,                   sin(A->at(i, 1)),                       cos(A->at(i, 1)),                      A->at(i, 2)},
                 {0,                   0,                                          0,                                     1}};
-
     }
-    Matrix L = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
+    Matrix L = T[0];// * T[1] * T[2] * T[3] * T[4] * T[5];
 //    array<Matrix, 6> T6;
 //    T6[0] = T[0];
 //    for (size_t i = 1; i < T6.size(); i++)
 //    {
 //        T6[i] = T6[i-1] * T[i];
 //    }
+    T[0].MatrixCout();
     L.MatrixCout();
-    cout << " Roll =  "     << ToDeg(this->GetEffectorRotation().x) <<
-            " Pitch  =  "   << ToDeg(this->GetEffectorRotation().y) <<
-            " Yaw =  "      << ToDeg(this->GetEffectorRotation().z) << endl;
     memcpy(translation_matrix->GetDataPtr(), L.GetDataPtr(), L.Size());
+    cout << " x =  "    << L(0,3) <<
+            " y =  "    << L(1,3) <<
+            " z =  "    << L(2,3) << endl;
+    double k1 = L(0,2);
+    double k2 = L(1,2);
+    scalar pitch = atan2(L(0,2), -0.86);//L(0, 2), -L(1, 2));
+    scalar pitch1 = atan2(L(0,2), -L(1,2));//L(0, 2), -L(1, 2));
+    scalar roll = atan2((sin(pitch)*L(0, 2) - cos(pitch)*L(1,2)), L(2,2));
+    scalar yaw = atan2(L(2, 0), L(2, 1));
+
+    double fi = atan2(0, 0.866);//L(2,0),-L(2,1));
+    double tet1 = atan2((sin(fi)*L(2,0) - cos(fi)*L(2,1)),L(2,2));
+    double psi = atan2(L(0,2),L(1,2));
+    cout << " Roll =  "     << ToDeg(roll) <<
+            " Pitch  =  "   << ToDeg(pitch)  <<
+            " Yaw =  "      << ToDeg(yaw)   << endl;
 }
 
 Vector3 Robo::GetEffectorPosition() const
@@ -369,15 +334,25 @@ Vector3 Robo::GetEffectorPosition() const
 Vector3 Robo::GetEffectorRotation() const
 {
     Matrix *m = translation_matrix;
-    scalar pitch = atan(m->at(2,0)/m->at(2,1));
-    scalar roll = atan(sin(pitch)*m->at(2,0) - cos(pitch)*m->at(2,1)/m->at(2,2));
-    scalar yaw = atan(m->at(0,2)/m->at(1,2));
+    scalar pitch = atan2(m->at(0, 2), -m->at(1, 2));
+    scalar roll = atan2((sin(pitch)*m->at(0, 2) - cos(pitch)*m->at(1,2)), m->at(2,2));
+    scalar yaw = atan2(m->at(2, 0), m->at(2, 1));
     return Vector3(roll, pitch, yaw);
+}
+
+Quaternion Robo::GetEffectorRotationQuat() const
+{
+    return effector_rot;
+}
+
+Vector3 Robo::GetDeltaR() const
+{
+    return this->delta_r;
 }
 
 void Robo::UpdateThetaValues()
 {
-    for (int i = 0; i < number_of_elements - 1; i++)
+    for (int i = 0; i < number_of_elements; i++)
     {
         configuration_matrix->at(i, 3) = (robot + i)->GetTheta();
     }

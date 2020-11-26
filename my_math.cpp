@@ -249,15 +249,15 @@ void Matrix::GetTheRoots(Vector &V) const
     {
         accum = *(right_val_ptr);
         right_val_ptr -= cols;
-        scalar *row_ptr = row_elem_ptr;
+        scalar *cur_elem_ptr = row_elem_ptr;
         scalar *result_ptr = result_ptr_last;
         for(counter j = 0; j < rows - i; j++)
         {
-            accum -= (*row_ptr) * (*result_ptr);
-            --row_ptr;
+            accum -= (*cur_elem_ptr) * (*result_ptr);
+            --cur_elem_ptr;
             --result_ptr;
         }
-        *result_ptr = accum / *row_ptr;
+        *result_ptr = accum / *cur_elem_ptr;
         row_elem_ptr -= cols;
     }
 }
@@ -589,9 +589,10 @@ void Quaternion::Create(const Vector3 &rotate_vector, const scalar &rotate_angle
 
 void Quaternion::EulerToQuat(const Vector3 &angles)
 {
-    scalar h1 = angles.x * 0.5;
+    //Input angles must be like (ZYX - Yaw, Pitch, Roll)
+    scalar h1 = angles.z * 0.5;
     scalar h2 = angles.y * 0.5;
-    scalar h3 = angles.z * 0.5;
+    scalar h3 = angles.x * 0.5;
     scalar cos1 = cos(h1);
     scalar sin1 = sin(h1);
     scalar cos2 = cos(h2);
@@ -602,6 +603,16 @@ void Quaternion::EulerToQuat(const Vector3 &angles)
     y = cos3 * sin2 * cos1 + sin3 * cos2 * sin1;
     z = cos3 * cos2 * sin1 - sin3 * sin2 * cos1;
     w = cos3 * cos2 * cos1 + sin3 * sin2 * sin1;
+}
+
+Vector3 Quaternion::GetEulerAngles() const
+{
+    scalar roll  = atan2((2 * (w * x + y * z)), (1 - 2 * (x * x + y * y)));
+    scalar sinp = 2 * (w * y - z * x);
+    scalar pitch;
+    abs(sinp) >= 1 ? pitch = std::copysign(M_PI / 2, sinp) : pitch = asin(sinp);
+    scalar yaw   = atan2((2 * (w * z + x * y)), (1 - 2 * (y * y + z * z)));
+    return Vector3(roll, pitch, yaw);
 }
 
 void Quaternion::Invert()
@@ -625,9 +636,9 @@ Vector3 Quaternion::GetAxis() const
     return Vector3(x * s, y * s, z * s);
 }
 
-scalar Quaternion::GetAngle() const
+long double Quaternion::GetAngle() const
 {
-    return (2.0 * acos(w));
+    return (2.0 * acosl(w));
 }
 
 Quaternion Quaternion::operator*(const Quaternion &q) const

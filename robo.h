@@ -18,7 +18,7 @@
 
 inline static scalar ToRad(scalar degrees) {return degrees * RAD;};
 inline static scalar ToDeg(scalar radians) {return radians * DEG;};
-const scalar damping_constant = 0.1;
+const scalar damping_constant = 0.01;
 const scalar damping_constant_sq = damping_constant * damping_constant;
 const scalar MaxAngleDls = ToRad(45.0);
 
@@ -94,6 +94,8 @@ public:
     void UpdateTranslationMatrix();
     RoboMath::Vector3 GetEffectorPosition() const;
     RoboMath::Vector3 GetEffectorRotation() const;
+    RoboMath::Quaternion GetEffectorRotationQuat() const;
+    RoboMath::Vector3 GetDeltaR() const;
     void UpdateThetaValues();
     Elem *Effector() const;
 
@@ -105,6 +107,10 @@ private:
     RoboMath::Vector *delta_thetas;
     RoboMath::Vector3 delta_s;
     RoboMath::Vector3 delta_r;
+    //__test__
+    RoboMath::Quaternion effector_rot;
+    RoboMath::Quaternion effector_rot_base;
+    //__
     int number_of_elements;
     void AllocateForNewRobot();
 };

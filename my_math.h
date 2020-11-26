@@ -152,15 +152,16 @@ namespace RoboMath
     class Quaternion
     {
     public:
-        Quaternion() : x(0), y(0), z(0), w(0){};
+        Quaternion() : x(0), y(0), z(0), w(1){};
         Quaternion(const scalar &x_in, const scalar &y_in, const scalar &z_in, const scalar &w_in);
         Quaternion(const RoboMath::Vector3 &coordXYZ, const scalar &angle);
         void Create(const RoboMath::Vector3 &rotate_vector, const scalar &rotate_angle);
         void EulerToQuat(const Vector3 &angles);
+        Vector3 GetEulerAngles() const;
         void Invert();
         scalar GetLength() const;
         Vector3 GetAxis() const;
-        scalar GetAngle() const;
+        long double GetAngle() const;
         Quaternion operator* (const Quaternion &q) const;
         Quaternion operator* (const Vector3 &v) const;
         void Scale(const scalar &s);
