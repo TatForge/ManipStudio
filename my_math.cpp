@@ -176,7 +176,6 @@ void Matrix::SolveGauss()
     int row_length = cols;
 
     int diagonal_step = cols + 1;
-//    for (counter i = 0; i < (num_iter); i++)
     for (; num_iter > 1; num_iter--)
     {
 
@@ -210,7 +209,7 @@ void Matrix::SolveGauss()
                 max_row_ptr  ++;
             }
         }
-        this->MatrixCout();
+//        this->MatrixCout();
         //subtrack
         row_for_swap = main_elem_ptr;
         for (counter i = 0; i < (num_iter - 1); i++)
@@ -227,7 +226,7 @@ void Matrix::SolveGauss()
                 *to -= (*from) * alpha;
             }
         }
-        this->MatrixCout();
+//        this->MatrixCout();
         main_elem_ptr += diagonal_step;
 //        this->MatrixCout();
         --row_length;
@@ -354,6 +353,7 @@ void Matrix::Transpose()
 
 void Matrix::MatrixCout() const
 {
+//#ifdef DEBUG_COUT
     for (counter i = 0; i < rows; i++)
     {
         for (counter j = 0; j < cols; j++)
@@ -363,6 +363,7 @@ void Matrix::MatrixCout() const
         cout << endl;
     }
     cout << endl;
+//#endif
 }
 
 
