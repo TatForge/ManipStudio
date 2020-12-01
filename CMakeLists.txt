@@ -5,7 +5,7 @@ project(MainKinematic LANGUAGES CXX)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 include_directories(/home/devel/Projects/SimulatorClient/)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #set(CMAKE_BUILD_TYPE Release)

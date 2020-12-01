@@ -24,10 +24,11 @@ typedef double scalar;
 typedef float scalar;
 #endif
 
+const scalar g = 9.80665;
+
 typedef unsigned short counter;
 
 using namespace std;
-
 
 namespace RoboMath
 {
@@ -42,27 +43,38 @@ namespace RoboMath
     public:
         Vector();
         Vector(int size);
-        Vector(initializer_list<scalar> il);
+        Vector(const initializer_list<scalar> il);
         ~Vector();
 
         int GetLength() const {return length;};
         scalar MaxAbs();
         scalar* GetDataPtr () const {return data;};
         scalar& operator()(counter number);
-        Vector& operator=(const Vector &V);
+        Vector& operator=(const Vector &v);
         Vector& operator=(const double &value);
+        Vector operator*(const Vector &v);
         void  operator*=(const scalar &value);
-        Vector  operator-(const Vector &V);
+        Vector  operator-(const Vector &v);
         void VectorCout(const char *ch);
-    private:
+    protected:
         int length;
         scalar *data;
-        void dataNewMemory(const int &length)
-        {
-            data = new scalar [length];
-        }
+        void dataNewMemory(const int &length);
     };
-
+    class Tensor
+    {
+    public:
+        Tensor();
+        Tensor(const initializer_list<scalar> &il);
+        scalar& xx(){return *data;};
+        scalar& yy(){return *(data + 1);};
+        scalar& zz(){return *(data + 2);};
+        scalar& xy(){return *(data + 3);};
+        scalar& xz(){return *(data + 4);};
+        scalar& yz(){return *(data + 5);};
+    private:
+        scalar data[6];
+    };
 
     class Vector3
     {
@@ -88,12 +100,6 @@ namespace RoboMath
         scalar z;
     };
 
-
-    const Vector3 unit_x(1.0, 0.0, 0.0);
-    const Vector3 unit_y(0.0, 1.0, 0.0);
-    const Vector3 unit_z(0.0, 0.0, 1.0);
-    const Vector3 unit_mz(0.0, 0.0, -1.0);
-
     class Matrix
     {
     public:
@@ -110,18 +116,24 @@ namespace RoboMath
         scalar &at(const int &row, const int &col) const;
 
         Matrix Multuply(const Matrix &matrix1, const Matrix &matrix2) const;
+        Matrix MultiplyTranspose(const Matrix &matrix) const;
         size_t Size() const;
         void Transpose();
         void AddDiagonal(const scalar &d);
+        void PlusMatrix(const Matrix &m);
         void SetSubmatrix(const Matrix &source, const int col, const int row);
         void SetColumn(const Vector &v, const int ColNumber);
         void SetColumn(const Vector3 &v, const int col);
         void SetSubColumn(const Vector3 &v, const int ColNumber, const int RowNumber);
         void SolveGauss();               //Решение СЛАУ методом Гаусса (приведение к ступенчатому виду)
         void GetTheRoots(Vector &V) const;     //Получение корней уравнения
+        void MakeIdentity();
+        void MakeZero();
         Matrix operator*(const Matrix &matrix2) const;
         Vector operator*(const Vector &vector2) const;
+        Matrix operator*(const scalar &value) const;
         Matrix operator=(const Matrix &matrix1);
+        Matrix operator+(const Matrix &matrix) const;
 
         scalar& operator()(const int &row, const int &col);
         int GetColsCount() const { return cols; }
@@ -173,6 +185,52 @@ namespace RoboMath
         scalar z;
         scalar w;
     };
+    class MatrixOfMatrix6x6
+    {
+    public:
+        MatrixOfMatrix6x6()
+        {
+            rows = 6;
+            cols = 6;
+            for (int i = 0; i < 36; i++)
+            {
+                Matrix *temp = new Matrix(4,4);
+                *(data + i) = *temp;
+            }
+//            for (int i = 0 ; i < 36; i++)
+//            {
+//                cout << "Elem number" << (data + i) << endl;
+//                (data + i)->operator()(3,3) = i;
+//                (data + i)->MatrixCout();
+//            }
+//            (data + 15)->MatrixCout();
+        }
+        Matrix& operator()(const int &row, const int &col)
+        {
+            return *(data + row * cols + col);
+        }
+    private:
+        counter rows, cols;
+        Matrix *data = new Matrix[36];
+    };
+
+    const Vector3 unit_x(1.0, 0.0, 0.0);
+    const Vector3 unit_y(0.0, 1.0, 0.0);
+    const Vector3 unit_z(0.0, 0.0, 1.0);
+    const Vector3 unit_mz(0.0, 0.0, -1.0);
+
+    static scalar Trace(const Matrix &ma)
+    {
+        //only for square matrix
+        assert(ma.GetColsCount() == ma.GetRowsCount());
+        scalar result(0);
+        counter diag_elem = 0;
+        for (int i = 0; i < ma.GetColsCount(); i++)
+        {
+            result += *(ma.GetDataPtr() + i * ma.GetColsCount() + i);
+        }
+        return result;
+    }
 }
 
 class checkTime
@@ -206,11 +264,13 @@ private:
     std::chrono::_V2::system_clock::time_point stop;
     bool checked;
 };
-
 class AllMath
 {
     template<typename T> static inline T min(T t1, T t2) {return (t1 < t2 ? t1 : t2);};
     template<typename T> static inline T max(T t1, T t2) {return (t1 > t2 ? t1 : t2);};
+
+
+
 };
 
 #endif // MY_MATH_H

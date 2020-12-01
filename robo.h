@@ -6,6 +6,7 @@
 #include "my_math.h"
 
 #define POSITION_AND_ROTATION
+//#define CALC_COUT
 
 #ifdef POSITION_AND_ROTATION
 #define EFFECTOR_DEGREE_OF_FREEDOM 6
@@ -36,22 +37,33 @@ public :
     inline void SetRotationAxisLocal(const RoboMath::Vector3 &rot);
     inline void SetRotationAxis(const RoboMath::Vector3 &rot);
     inline void SetPosition(const RoboMath::Vector3 &V);
-    inline void SetRotation(const RoboMath::Quaternion &rot);
-//    inline void SetRotationLocal(const RoboMath::Quaternion &rot);
+//    inline void SetRotation(const RoboMath::Quaternion &rot);
     const RoboMath::Vector3 &GetRotationAxis() const;
     const RoboMath::Vector3 &GetRotationAxisLocal() const;
     const RoboMath::Vector3 &GetPositionLocal() const;
     const RoboMath::Vector3 &GetPosition() const;
-    const RoboMath::Quaternion &GetRotation() const;
+//    const RoboMath::Quaternion &GetRotation() const;
 //    const RoboMath::Quaternion &GetRotationLocal() const;
-private:
+protected:
     RoboMath::Vector3 pos;
     RoboMath::Vector3 pos_local;
     RoboMath::Vector3 rotation_axis;
     RoboMath::Vector3 rotation_axis_loc;
-    RoboMath::Quaternion rotation_quat_base;
+//    RoboMath::Quaternion rotation_quat;
+//    RoboMath::Quaternion rotation_quat_base;//Положение эффектора, задаваемое на старте программы. Не менять.
     scalar theta;
     scalar theta_added;
+};
+
+class Effector : public Elem
+{
+public:
+    inline void SetRotation(const RoboMath::Quaternion &rot);
+    const RoboMath::Quaternion &GetRotation() const;
+    const RoboMath::Quaternion &GetRotationLocal() const;
+private:
+    RoboMath::Quaternion rotation_quat;
+    RoboMath::Quaternion rotation_quat_base;//Положение эффектора, задаваемое на старте программы. Не менять.
 };
 
 class Robo
@@ -75,14 +87,14 @@ public:
     RoboMath::Quaternion GetEffectorRotationQuat() const;
     RoboMath::Vector3 GetDeltaR() const;
     RoboMath::Vector3 GetDeltaS() const;
-    const Elem *Effector() const;
+    const Elem *GetEffector() const;
 private:
     Elem *robot;
     RoboMath::Matrix *jacobian;
     RoboMath::Vector *delta_thetas;
     RoboMath::Vector3 delta_s;
     RoboMath::Vector3 delta_r;
-    Elem effector;
+    Effector effector;
 //    RoboMath::Quaternion effector_rot;
 //    RoboMath::Quaternion effector_rot_base;
     int number_of_elements;

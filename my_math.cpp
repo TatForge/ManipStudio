@@ -72,7 +72,6 @@ Matrix Matrix::Multuply(const Matrix &matrix1, const Matrix &matrix2) const
 {
     Matrix result(matrix1.rows, matrix2.cols);
     scalar buff = 0;
-    buff = 0;
     for (counter i = 0; i < matrix1.rows; i++)
     {
         for (counter j = 0 ; j < matrix2.cols; j++)
@@ -80,6 +79,27 @@ Matrix Matrix::Multuply(const Matrix &matrix1, const Matrix &matrix2) const
             for (counter k = 0; k < matrix1.cols; k++)
             {
                 buff += matrix1.at(i, k) * matrix2.at(k, j);
+            }
+            result.at(i, j) = buff;
+            buff = 0;
+        }
+    }
+    return result;
+}
+
+Matrix Matrix::MultiplyTranspose(const Matrix &matrix) const
+{
+    assert(cols == matrix.cols && "Failed assertion in 'Matrix::MultiplyTransform'");
+
+    Matrix result(rows, matrix.rows);
+    scalar buff = 0;
+    for (counter i = 0; i < rows; i++)
+    {
+        for (counter j = 0 ; j < matrix.rows; j++)
+        {
+            for (counter k = 0; k < cols; k++)
+            {
+                buff += this->at(i, k) * matrix.at(j, k);
             }
             result.at(i, j) = buff;
             buff = 0;
@@ -102,6 +122,13 @@ void Matrix::AddDiagonal(const scalar &d)
         *scalarP += d;
         scalarP += cols + 1;
     }
+}
+
+void Matrix::PlusMatrix(const Matrix &m)
+{
+    assert(rows == m.rows && cols == m.cols);
+    for (int i = 0; i < rows * cols; i++)
+        *(data + i) += *(m.data + i);
 }
 
 void Matrix::SetSubmatrix(const Matrix &source, const int col, const int row)
@@ -261,6 +288,32 @@ void Matrix::GetTheRoots(Vector &V) const
     }
 }
 
+void Matrix::MakeIdentity()
+{
+    //for square matrix only
+    assert(cols >= 2 && "Identity matrix creation error (size < 2)");
+    assert(cols == rows && "Identity matrix creation error (matrix not square)");
+    int one_pos = 0;
+    for (counter i = 0; i < cols * rows; i++)
+    {
+        if (i == one_pos)
+        {
+            *(data + i) = 1;
+            one_pos += (cols + 1);
+        }
+        else
+            *(data + i) = 0;
+    }
+}
+
+void Matrix::MakeZero()
+{
+    for (counter i = 0; i < cols * rows; i++)
+    {
+        *(data + i) = 0;
+    }
+}
+
 Matrix Matrix::operator*(const Matrix &matrix2) const
 {
     Matrix result(rows, matrix2.cols);
@@ -301,6 +354,20 @@ Vector Matrix::operator*(const Vector &vector2) const
     return result;
 }
 
+Matrix Matrix::operator*(const scalar &value) const
+{
+    Matrix result(*this);
+    scalar buff = 0;
+    for (counter i = 0; i < rows; i++)
+    {
+        for (counter j = 0 ; j < cols; j++)
+        {
+            result(i, j) = result(i,j) * value;
+        }
+    }
+    return result;
+}
+
 Matrix Matrix::operator=(const Matrix &matrix1)
 {
     if (this == &matrix1)
@@ -315,6 +382,17 @@ Matrix Matrix::operator=(const Matrix &matrix1)
     memcpy(data, matrix1.data, sizeof(scalar) * rows * cols);
 
     return *this;
+}
+
+Matrix Matrix::operator+(const Matrix &matrix) const
+{
+    assert(rows == matrix.rows && cols == matrix.cols);
+    Matrix result(rows, cols);
+    for (int i = 0; i < rows * cols; i++)
+    {
+        *(data + i) = *(matrix.data + i);
+    }
+    return result;
 }
 
 scalar &Matrix::operator()(const int &row, const int &col)
@@ -380,7 +458,7 @@ Vector::Vector(int size)
     dataNewMemory(length);
 }
 
-Vector::Vector(initializer_list<scalar> il)
+Vector::Vector(const initializer_list<scalar> il)
 {
     length = il.size();
     dataNewMemory(length);
@@ -418,20 +496,20 @@ scalar &Vector::operator()(counter number)
     return *(data + number);
 }
 
-Vector &Vector::operator=(const Vector &V)
+Vector &Vector::operator=(const Vector &v)
 {
 
-    if (this == &V)
+    if (this == &v)
         return *this;
     if (data != nullptr)
         delete[] data;
-    length = V.length;
+    length = v.length;
     dataNewMemory(length);
 //    for (counter i = 0; i < length; i++)
 //    {
 //        *(data + i) = *(V.GetDataPtr() + i);
 //    }
-    memcpy(data, V.data, sizeof(scalar) * length);
+    memcpy(data, v.data, sizeof(scalar) * length);
     return *this;
 }
 
@@ -444,6 +522,13 @@ Vector &Vector::operator=(const double &value)
     return *this;
 }
 
+Vector Vector::operator*(const Vector &v)
+{
+    return Vector{
+
+    };
+}
+
 void Vector::operator*=(const scalar &value)
 {
     for (counter i = 0; i < length; i++)
@@ -453,13 +538,13 @@ void Vector::operator*=(const scalar &value)
 }
 
 
-Vector Vector::operator-(const Vector &V)
+Vector Vector::operator-(const Vector &v)
 {
-    assert(this->length == V.length && "The operator '-' has different vector lengths");
+    assert(this->length == v.length && "The operator '-' has different vector lengths");
     Vector result(this->length);
-    *(result.data + 0) = (*(V.data + 0) - *(this->data + 0));
-    *(result.data + 1) = (*(V.data + 1) - *(this->data + 1));
-    *(result.data + 2) = (*(V.data + 2) - *(this->data + 2));
+    *(result.data + 0) = (*(v.data + 0) - *(this->data + 0));
+    *(result.data + 1) = (*(v.data + 1) - *(this->data + 1));
+    *(result.data + 2) = (*(v.data + 2) - *(this->data + 2));
     return result;
 
 }
@@ -473,6 +558,11 @@ void Vector::VectorCout(const char *ch)
     }
     cout << endl << endl;
 
+}
+
+void Vector::dataNewMemory(const int &length)
+{
+    data = new scalar [length];
 }
 
 void Vector3::Rotate(const scalar &theta, const Vector3 &V)
@@ -691,4 +781,33 @@ Vector3 Quaternion::RotateVector(const Vector3 &v)
     v_t.z = t.z;
     v_t = v_t * l;
     return v_t;
+}
+
+Tensor::Tensor()
+{
+}
+
+Tensor::Tensor(const initializer_list<scalar> &il)
+{
+    assert(il.size() == 6);
+    int i = 0;
+    for (scalar el:il)
+    {
+        data[i] = el;
+        i++;
+    }
+}
+
+scalar Trace(const Matrix &ma)
+{
+    //only for square matrix
+    assert(ma.GetColsCount() == ma.GetRowsCount());
+    //        Vector v(ma.GetColsCount());
+    scalar result(0);
+    counter diag_elem = 0;
+    for (int i = 0; i < ma.GetColsCount(); i++)
+    {
+        result += *(ma.GetDataPtr() + i * ma.GetColsCount() + i);
+    }
+    return result;
 }
