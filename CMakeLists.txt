@@ -10,8 +10,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #set(CMAKE_BUILD_TYPE Release)
 
-find_package(Qt5Core)
-
 add_executable(MainKinematic
     main.h
     my_math.h
@@ -21,4 +19,3 @@ add_executable(MainKinematic
     my_math.cpp
     robo.cpp
 )
-target_link_libraries(MainKinematic Qt${QT_VERSION_MAJOR}::Core)

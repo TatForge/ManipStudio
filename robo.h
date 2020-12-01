@@ -33,18 +33,23 @@ public :
     void AddDeltaTheta(const scalar &theta_add);
     inline void SetPositionLocal(const scalar &x, const scalar &y, const scalar &z);
     inline void SetPositionLocal(const RoboMath::Vector3 &pos);
-    inline void setRotationLocal(const RoboMath::Vector3 &rot);
-    inline void SetRotation(const RoboMath::Vector3 &rot);
-    inline void SetPos(RoboMath::Vector3 &V);
+    inline void SetRotationAxisLocal(const RoboMath::Vector3 &rot);
+    inline void SetRotationAxis(const RoboMath::Vector3 &rot);
+    inline void SetPosition(const RoboMath::Vector3 &V);
+    inline void SetRotation(const RoboMath::Quaternion &rot);
+//    inline void SetRotationLocal(const RoboMath::Quaternion &rot);
     const RoboMath::Vector3 &GetRotationAxis() const;
     const RoboMath::Vector3 &GetRotationAxisLocal() const;
     const RoboMath::Vector3 &GetPositionLocal() const;
     const RoboMath::Vector3 &GetPosition() const;
+    const RoboMath::Quaternion &GetRotation() const;
+//    const RoboMath::Quaternion &GetRotationLocal() const;
 private:
     RoboMath::Vector3 pos;
     RoboMath::Vector3 pos_local;
     RoboMath::Vector3 rotation_axis;
     RoboMath::Vector3 rotation_axis_loc;
+    RoboMath::Quaternion rotation_quat_base;
     scalar theta;
     scalar theta_added;
 };
@@ -77,8 +82,9 @@ private:
     RoboMath::Vector *delta_thetas;
     RoboMath::Vector3 delta_s;
     RoboMath::Vector3 delta_r;
-    RoboMath::Quaternion effector_rot;
-    RoboMath::Quaternion effector_rot_base;
+    Elem effector;
+//    RoboMath::Quaternion effector_rot;
+//    RoboMath::Quaternion effector_rot_base;
     int number_of_elements;
     void AllocateForNewRobot();
 };

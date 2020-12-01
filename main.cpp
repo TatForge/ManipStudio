@@ -20,17 +20,18 @@ int main(int argc, char *argv[])
                                     Elem(Vector3(0.670, 0.1205, 0.0615), unit_mz, ToRad(0)),
                                     Elem(Vector3(0.670, 0.2431, 0.0615), unit_y,  ToRad(0))};
     Robo manipulator(il_elem);
+    int *a = new int;
     manipulator.ComputeJointsPosition();
-
+    int *i = new int;
     checkTime ct;
     int kolvo = 100;
     for (int i = 0; i < kolvo; i ++)
     {
         bool solved = true;
-        Vector3 target(sin(i) * 0.3, cos(i) * 0.2, cos(i) * 0.1);
-//        Vector3 target(0.3, 0.2431, 0.0615);
-
-        Vector3 target_r(sin(i) * ToRad(90), cos(i) * ToRad(80), cos(i) * ToRad(-30));
+//        Vector3 target(sin(i) * 0.3, cos(i) * 0.2, cos(i) * 0.1);
+        Vector3 target(0.67, 0.2431, 0.0615);
+        Vector3 target_r(ToRad(90), ToRad(30), ToRad(0));
+//        Vector3 target_r(sin(i) * ToRad(90), cos(i) * ToRad(80), cos(i) * ToRad(-30));
         cout << " x = " << manipulator.Effector()->GetPosition().x
              << " y = " << manipulator.Effector()->GetPosition().y
              << " z = " << manipulator.Effector()->GetPosition().z
