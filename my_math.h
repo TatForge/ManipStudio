@@ -18,6 +18,7 @@
 #define DOUBLE_SCALAR
 //#define DEBUG_COUT
 
+
 #ifdef DOUBLE_SCALAR
 typedef double scalar;
 #else

@@ -1,7 +1,5 @@
 #include "robo.h"
 
-#include <QDebug>
-
 using namespace RoboMath;
 
 
@@ -82,43 +80,57 @@ void Robo::CalculateJacobian()
 #endif
         --current_el;
     }
+#ifdef CALC_COUT
     this->jacobian->MatrixCout();
+#endif
 }
 
 void Robo:: CalculateDeltaThetas()
 {
     Matrix jacobian_transposed = *jacobian;
+#ifdef CALC_COUT
     jacobian->MatrixCout();
+#endif
     jacobian_transposed.Transpose();
     Matrix U(EFFECTOR_DEGREE_OF_FREEDOM, EFFECTOR_DEGREE_OF_FREEDOM);
     U =  (*jacobian) * jacobian_transposed;
+#ifdef CALC_COUT
     U.MatrixCout();
+#endif
     U.AddDiagonal(damping_constant_sq);
     Matrix aug_matrix(U.GetRowsCount(), U.GetColsCount() + 1);
     aug_matrix.SetSubmatrix(U, 0, 0);
+#ifdef CALC_COUT
     aug_matrix.MatrixCout();
+#endif
     aug_matrix.SetSubColumn(this->delta_s, aug_matrix.GetColsCount() - 1, 0);
 #ifdef POSITION_AND_ROTATION
     aug_matrix.SetSubColumn(this->delta_r, aug_matrix.GetColsCount() - 1, 3);
 #endif
-    aug_matrix.MatrixCout();
     aug_matrix.SolveGauss();
+#ifdef CALC_COUT
     aug_matrix.MatrixCout();
+#endif
     Vector delta_t(EFFECTOR_DEGREE_OF_FREEDOM);
     aug_matrix.GetTheRoots(delta_t);
+#ifdef CALC_COUT
     delta_t.VectorCout("delta_t");
     aug_matrix.MatrixCout();
     jacobian_transposed.MatrixCout();
+#endif
     *this->delta_thetas = jacobian_transposed * delta_t;
 
     scalar max = delta_thetas->MaxAbs();
+#ifdef CALC_COUT
     delta_thetas->VectorCout("Delta thetas ");
+#endif
     if (max > MaxAngleDls)
     {
         *this->delta_thetas *= MaxAngleDls/max;
     }
-
+#ifdef CALC_COUT
     delta_thetas->VectorCout("Delta thetas normalized");
+#endif
 
 }
 
@@ -132,16 +144,16 @@ void Robo::CalculateCurrentPosition()
 
 void Robo::CalculateDeltaS(Vector3 target)
 {
-    delta_s.x = target.x - this->Effector()->GetPosition().x;
-    delta_s.y = target.y - this->Effector()->GetPosition().y;
-    delta_s.z = target.z - this->Effector()->GetPosition().z;
+    delta_s.x = target.x - this->GetEffector()->GetPosition().x;
+    delta_s.y = target.y - this->GetEffector()->GetPosition().y;
+    delta_s.z = target.z - this->GetEffector()->GetPosition().z;
 }
 
 void Robo::CalculateDeltaR(Vector3 target_r)
 {
     Quaternion end_eff_target_ori;
     Quaternion end_eff_world_ori;
-    auto tt = this->Effector()->GetRotationAxis();
+    auto tt = this->GetEffector()->GetRotationAxis();
     end_eff_world_ori = this->GetEffectorRotationQuat();
     end_eff_target_ori.EulerToQuat(target_r);
     end_eff_world_ori.Invert();
@@ -163,7 +175,9 @@ void Robo::AddDeltaThetas()
     {
         (robot + i)->AddDeltaTheta(delta_thetas->operator()(i));
     }
+#ifdef CALC_COUT
     this->RoboCout();
+#endif
 }
 
 void Robo::ComputeJointsPosition()
@@ -172,7 +186,7 @@ void Robo::ComputeJointsPosition()
     Elem *joint_iter_parent;
     Elem *joint_iter_buff;
     Vector3  pos, pos_local, rot, local_rot;
-    auto effector_rot = effector.GetRotation();
+    Quaternion effector_rot = effector.GetRotationLocal();
     for (counter elem_n = number_of_elements; elem_n >= 1; elem_n--)
     {
         elem_n == number_of_elements ? joint_iter = &this->effector : joint_iter = (this->robot + elem_n);
@@ -224,7 +238,7 @@ void Robo::DeltaThetasCout()
 
 Vector3 Robo::GetEffectorPosition() const
 {
-    return this->Effector()->GetPosition();
+    return this->GetEffector()->GetPosition();
 }
 
 Vector3 Robo::GetEffectorRotation() const
@@ -247,7 +261,7 @@ Vector3 Robo::GetDeltaS() const
     return this->delta_s;
 }
 
-const Elem *Robo::Effector() const
+const Elem *Robo::GetEffector() const
 {
 //    assert(number_of_elements > 0 && robot && robot != nullptr && "Failed assertion in Robo.Effector()");
     return &effector;
@@ -266,9 +280,9 @@ void Elem::SetPosition(const Vector3 &V)
     this->pos = V;
 }
 
-void Elem::SetRotation(const Quaternion &rot)
+void Effector::SetRotation(const Quaternion &rot)
 {
-    this->rotation_quat_base = rot;
+    this->rotation_quat = rot;
 }
 
 void Elem::SetRotationAxis(const Vector3 &rot)
@@ -338,9 +352,9 @@ const Vector3 &Elem::GetPosition() const
     return this->pos;
 }
 
-const Quaternion &Elem::GetRotation() const
+const Quaternion &Effector::GetRotation() const
 {
-    return this->rotation_quat_base;
+    return this->rotation_quat;
 }
 
 //const Quaternion &Elem::GetRotationBase() const
@@ -348,10 +362,10 @@ const Quaternion &Elem::GetRotation() const
 //    return this->rotation_quat_base;
 //}
 
-//const Quaternion &Elem::GetRotationLocal() const
-//{
-//    return this->rotation_quat_loc;
-//}
+const Quaternion &Effector::GetRotationLocal() const
+{
+    return this->rotation_quat_base;
+}
 
 void Elem::AddDeltaTheta(const scalar &theta_add){
     this->theta_added += theta_add;
