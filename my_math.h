@@ -44,19 +44,22 @@ namespace RoboMath
     public:
         Vector();
         Vector(int size);
+        Vector(int size, scalar value);
         Vector(const initializer_list<scalar> il);
         ~Vector();
 
         int GetLength() const {return length;};
         scalar MaxAbs();
-        scalar* GetDataPtr () const {return data;};
-        scalar& operator()(counter number);
+        scalar* GetDataPtr() const {return data;};
+        scalar& operator()(counter number) const;
         Vector& operator=(const Vector &v);
         Vector& operator=(const double &value);
         Vector operator*(const Vector &v);
+        scalar MultiplyTranspose(const Vector &v);
         void  operator*=(const scalar &value);
+        bool operator==(const Vector &v) const;
         Vector  operator-(const Vector &v);
-        void VectorCout(const char *ch);
+        void VectorCout(const char *ch) const;
     protected:
         int length;
         scalar *data;
@@ -118,6 +121,8 @@ namespace RoboMath
 
         Matrix Multuply(const Matrix &matrix1, const Matrix &matrix2) const;
         Matrix MultiplyTranspose(const Matrix &matrix) const;
+        Vector MultiplyTranspose(const Vector &v) const;
+
         size_t Size() const;
         void Transpose();
         void AddDiagonal(const scalar &d);
@@ -135,6 +140,7 @@ namespace RoboMath
         Matrix operator*(const scalar &value) const;
         Matrix operator=(const Matrix &matrix1);
         Matrix operator+(const Matrix &matrix) const;
+        bool operator==(const Matrix &m) const;
 
         scalar& operator()(const int &row, const int &col);
         int GetColsCount() const { return cols; }
@@ -196,6 +202,7 @@ namespace RoboMath
             for (int i = 0; i < 36; i++)
             {
                 Matrix *temp = new Matrix(4,4);
+                temp->MakeIdentity();
                 *(data + i) = *temp;
             }
 //            for (int i = 0 ; i < 36; i++)
@@ -269,8 +276,6 @@ class AllMath
 {
     template<typename T> static inline T min(T t1, T t2) {return (t1 < t2 ? t1 : t2);};
     template<typename T> static inline T max(T t1, T t2) {return (t1 > t2 ? t1 : t2);};
-
-
 
 };
 

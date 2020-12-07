@@ -3,6 +3,8 @@
 #include <chrono>
 #include <string.h>
 #include <thread>
+#include <QTest>
+#include "test_my_math.h"
 
 #include "robo.h"
 //#include "commandworker.h"
@@ -13,17 +15,17 @@ using namespace RoboMath;
 int main(int argc, char *argv[])
 {
     array<scalar, 6> tet {0 * M_PI/180,
-                         -0 * M_PI/180,
+                          0 * M_PI/180,
                           0 * M_PI/180,
                           0 * M_PI/180,
                           0 * M_PI/180,
                           0 * M_PI/180};
-    Matrix A {{0,   -M_PI/3, 232.5,  tet[0]},
-              {375, 0,       0,      tet[1]},
-              {295, 0,       0,      tet[2]},
-              {0,   -M_PI/2, 120.5,  tet[3]},
-              {0,   M_PI/2,  171,    tet[4]},
-              {0,   0,       122.6,  tet[5]}};
+    Matrix A {{0,   -M_PI/2,  232.5,  tet[0]},
+              {0,    0,       0,      tet[1]},
+              {375,  0,       0,      tet[2]},
+              {295, -M_PI/2,  120.5,  tet[3]},
+              {0,    M_PI/2,  171,    tet[4]},
+              {0,    0,       122.6,  tet[5]}};
 
     array<Matrix, 6> T;
     for (counter i = 0; i < T.size(); i++)
@@ -80,74 +82,191 @@ int main(int argc, char *argv[])
 //    Ujk = T[0] * T[1] * Q * T[2] * T[3];
 //    Ujk.MatrixCout();
 
-    MatrixOfMatrix6x6 U;
-    for (int i = 0; i < 6; i++)
-        T[i].MatrixCout();
-    for (int k = 3; k < 6; k++)
+    MatrixOfMatrix6x6 U ;
+//    //--расчет U
+//    for (int i = 0; i < 6; i++)
+//    {
+//        for (int j = 0; j < 6; j++)
+//        {
+//            for (int k = 0; k <= j; k++)
+//            {
+//                if (k == j)
+//                    U(i, j) = U(j, k) * Q * T[ctr - 1];
+//            }
+//        }
+//    }
+
+
+    for (int k = 1; k <= 6; k++)
     {
-        for (int j = max(i, k); j < 6; j++)
+        for (int j = k; j <= 6; j++)
         {
             //Считается Ujk для конкретного i,j,k
-            for (counter ctr = 1; ctr <= j; ctr++)
+            for (counter ctr = 0; ctr < j; ctr++)
             {
                 if (ctr == k - 1)
-                    U(j, k) = U(j, k) * Q * T[ctr - 1];
-                        else
-                    U(j,k) = U(j,k) * T[ctr - 1];
-                U(j,k).MatrixCout();
+                    U(j - 1, k - 1) = U(j - 1, k - 1) * Q * T[ctr];
+                else
+                {
+                    U(j - 1, k - 1) = U(j - 1, k - 1) * T[ctr];
+                }
+//                U(j - 1, k - 1).MatrixCout();
             }
-            //Считается Uji для конкретного i,j,k
-            int *isi = new int;
-            for (counter ctr = 1; ctr <= j; ctr++)
-            {
-                if (ctr == i - 1)
-                    Uji = Uji * Q * T[ctr - 1];
-                        else
-                    Uji = Uji * T[ctr - 1];
-                Uji.MatrixCout();
-            }
-            Uji.Transpose();
-            U(j,k).MatrixCout();
-            Ji.MatrixCout();
-            Uji.MatrixCout();
-            auto temp = U(j,k) * Ji * Uji;
-            temp.MatrixCout();
-            Dik += Trace(temp);
+//            cout << "U" << j << k << endl;
+//            U(j - 1, k - 1).MatrixCout();
         }
     }
-    Vector p(6);
-    Matrix ee{{1,2,3},{4,5,6},{7,8,9},{10,11,12},{13,14,15}};
-    ee.MatrixCout();
-    Matrix uu{{1,2,3},{4,5,6},{7,8,9},{10,11,12},{13,14,15}, {11,12,13}};
-    uu.MatrixCout();
-    auto iii = ee.MultiplyTranspose(uu);
-    iii.MatrixCout();
-//    p(0) =  U(1,1) * cm[0] * gv;
-//    p(0) = - g * (m(0) * U(1,1) * cm[0] + m(1) * U21 * cm[1] + m(2) * U31 * cm[2] +
-//                  m(3) * U(4,1) * cm[3] + m(4) * U51 * cm[4] + m(5) * U61 * cm[5]);
-//    p(1) = - g * (m(1) * U(2,2) * cm[1] + m(2) * U32 * cm[2] + m(3) * U42 * cm[3] +
-//                  m(4) * U(5,2) * cm[4] + m(5) * U62 * cm[5]);
-//    p(2) = - g * (m(2) * U(3,3) * cm[2] + m(3) * U43 * cm[3] + m(4) * U53 * cm[4]+ m(5) * U63 * cm[5]);
-//    p(3) = - g * (m(3) * U(4,4) * cm[3] + m(4) * U54 * cm[4] + m(5) * U64 * cm[5]);
-//    p(4) = - g * (m(4) * U(5,4) * cm[4] + m(5) * U65 * cm[5]);
-//    p(5) = - g * (m(5) * U(6,6) * cm[5]);
-////    Matrix Ujk = Qi * test;
-//    Ujk.MatrixCout();
-    //для 3 сочленения
-    Matrix dAij0 = Q*T[0]*T[1]*T[2]*T[3];
-    Matrix dAij1 = T[0]*Q*T[1]*T[2]*T[3];
-    Matrix dAij2 = T[0]*T[1]*Q*T[2]*T[3];
-    Matrix dAij3 = T[0]*T[1]*T[2]*Q*T[3];
-    for (int j = i; j < n; j ++)
-        for (int k = 0; k < j; k++)
+    //__расчет U
+
+//    for (int i = 0; i < 6; i++)
+//        T[i].MatrixCout();
+//    for (int k = 3; k < 6; k++)
+//    {
+//        for (int j = max(i, k); j < 6; j++)
+//        {
+//            //Считается Ujk для конкретного i,j,k
+//            for (counter ctr = 1; ctr <= j; ctr++)
+//            {
+//                if (ctr == k - 1)
+//                    U(j, k) = U(j, k) * Q * T[ctr - 1];
+//                else
+//                    U(j,k) = U(j,k) * T[ctr - 1];
+//                U(j,k).MatrixCout();
+//            }
+//            //Считается Uji для конкретного i,j,k
+//            int *isi = new int;
+//            for (counter ctr = 1; ctr <= j; ctr++)
+//            {
+//                if (ctr == i - 1)
+//                    Uji = Uji * Q * T[ctr - 1];
+//                        else
+//                    Uji = Uji * T[ctr - 1];
+//                Uji.MatrixCout();
+//            }
+//            Uji.Transpose();
+//            U(j,k).MatrixCout();
+//            Ji.MatrixCout();
+//            Uji.MatrixCout();
+//            auto temp = U(j,k) * Ji * Uji;
+//            temp.MatrixCout();
+//            Dik += Trace(U(j,k) * Ji * Uji);
+//        }
+//    }
+    Vector Dv(6, 0);
+    //Расчет D для i-го элемента манипулятора
+    for (int i = 0; i < 6; i++)
+        for (int k = i; i < 6; i++)
         {
-//            Matrix Ujk =
+            for (int j = max(i, k); j < 6; j++)
+            {
+                Dv(i) += Trace(U(j,k) * Ji * U(j,i));
+            }
         }
+    Dv.VectorCout("D vector");
+
+    Matrix m3 {{1,2,3},{5,6,7},{7,8,9},{4,3,2},{7,6,5}};
+//    Matrix n3 {{3,4,5,5,4},{7,6,5,4,1},{9,3,2,6,3}};
+    m3.MultiplyTranspose(m3).MatrixCout();
+
+//    Matrix ee{{1,2,3},{4,5,6},{7,8,9},{10,11,12},{13,14,15}};
+//    ee.MatrixCout();
+//    Matrix uu{{1,2,3},{4,5,6},{7,8,9},{10,11,12},{13,14,15}, {11,12,13}};
+//    Vector vv{3,4,5};
+//    uu.MatrixCout();
+//    auto iii = ee.MultiplyTranspose(uu);
+//    auto oo = ee.MultiplyTranspose(vv);
+//    oo.VectorCout("vect");
+//    oo = U(1,1).MultiplyTranspose(cm[0]);
+//    U(1,1).MatrixCout();
+//    oo.VectorCout("vect");
 
 
+    Vector p(6,0);
+    int ctr(0);
+    for (int i = 0; i < 6; i++)
+    {
+        for (int j = ctr; j < 6; j++)
+        {
+//            U(j,i).MatrixCout();
+//            cm[j].VectorCout("cm");
+//            gv.VectorCout("gv");
+
+            p(i) += - m(j) * gv.MultiplyTranspose(U(j,i).MultiplyTranspose(cm[j]));
+        }
+        ctr++;
+    }
+    p.VectorCout("P");
+    Vector E(6,0);
+    {
+    auto asd = m(0) * gv.MultiplyTranspose(U(0,0).MultiplyTranspose(cm[0]));
+    E(0) = - (m(0) * gv.MultiplyTranspose(U(0,0).MultiplyTranspose(cm[0])) +
+              m(1) * gv.MultiplyTranspose(U(1,0).MultiplyTranspose(cm[1])) +
+              m(2) * gv.MultiplyTranspose(U(2,0).MultiplyTranspose(cm[2])) +
+              m(3) * gv.MultiplyTranspose(U(3,0).MultiplyTranspose(cm[3])) +
+              m(4) * gv.MultiplyTranspose(U(4,0).MultiplyTranspose(cm[4])) +
+              m(5) * gv.MultiplyTranspose(U(5,0).MultiplyTranspose(cm[5])));
+    E(1) = - (m(1) * gv.MultiplyTranspose(U(1,1).MultiplyTranspose(cm[1])) +
+              m(2) * gv.MultiplyTranspose(U(2,1).MultiplyTranspose(cm[2])) +
+              m(3) * gv.MultiplyTranspose(U(3,1).MultiplyTranspose(cm[3])) +
+              m(4) * gv.MultiplyTranspose(U(4,1).MultiplyTranspose(cm[4])) +
+              m(5) * gv.MultiplyTranspose(U(5,1).MultiplyTranspose(cm[5])));
+    E(2) = - (m(2) * gv.MultiplyTranspose(U(2,2).MultiplyTranspose(cm[2])) +
+              m(3) * gv.MultiplyTranspose(U(3,2).MultiplyTranspose(cm[3])) +
+              m(4) * gv.MultiplyTranspose(U(4,2).MultiplyTranspose(cm[4])) +
+              m(5) * gv.MultiplyTranspose(U(5,2).MultiplyTranspose(cm[5])));
+    E(3) = - (m(3) * gv.MultiplyTranspose(U(3,3).MultiplyTranspose(cm[3])) +
+              m(4) * gv.MultiplyTranspose(U(4,3).MultiplyTranspose(cm[4])) +
+              m(5) * gv.MultiplyTranspose(U(5,3).MultiplyTranspose(cm[5])));
+    E(4) = - (m(4) * gv.MultiplyTranspose(U(4,4).MultiplyTranspose(cm[4])) +
+              m(5) * gv.MultiplyTranspose(U(5,4).MultiplyTranspose(cm[5])));
+    E(5) = - (m(5) * gv.MultiplyTranspose(U(5,5).MultiplyTranspose(cm[5])));
+    }
+    E.VectorCout("E vector");
+    if (E == p)
+        cout << "Вектор p считается правильно" << endl;
+
+    i = 3;
+    Matrix hikm(4,4);
+    Matrix u_buff(4,4);
+    u_buff.MakeIdentity();
+    for (int j = i; j < n; j++)
+    {
+        for (int k = 1; k < j; k++)
+        {
+            for (int p = 1; p < j; p++)
+            {
+                if (k >= p)
+                {
+
+                }
+                else
+                {
+
+                }
+            }
+        }
+    }
 
 
-
+    for (int k = 1; k <= 6; k++)
+    {
+        for (int j = k; j <= 6; j++)
+        {
+            //Считается Ujk для конкретного i,j,k
+            for (counter ctr = 0; ctr < j; ctr++)
+            {
+                if (ctr == k - 1)
+                    U(j - 1, k - 1) = U(j - 1, k - 1) * Q * T[ctr];
+                else
+                {
+                    U(j - 1, k - 1) = U(j - 1, k - 1) * T[ctr];
+                }
+//                U(j - 1, k - 1).MatrixCout();
+            }
+//            cout << "U" << j << k << endl;
+//            U(j - 1, k - 1).MatrixCout();
+        }
+    }
 
 
     initializer_list<Elem> il_elem {Elem(Vector3(0,     0,      0),      unit_z,  ToRad(0)),
@@ -159,7 +278,7 @@ int main(int argc, char *argv[])
     Robo manipulator(il_elem);
     manipulator.ComputeJointsPosition();
     checkTime ct;
-    int kolvo = 100;
+    int kolvo = 0;
     for (int i = 0; i < kolvo; i ++)
     {
         bool solved = true;
@@ -232,9 +351,12 @@ int main(int argc, char *argv[])
 //        cout << "Время расчета составило " << d << " секунд" << endl << endl;
 //        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     }
+
     cout << "Time of " << kolvo << " calculations " << ct.duration().count() << endl;
     cout << "One iter duration = " << ct.duration().count() / kolvo << endl;
     cout << "Точность " << manipulator.GetDeltaR().Length() << endl;
+
+    QTest::qExec(new test_my_math, argc, argv);
     return 0;
 }
 

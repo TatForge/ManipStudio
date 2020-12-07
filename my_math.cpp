@@ -28,7 +28,6 @@ Matrix::Matrix(const Matrix &source)
 
 Matrix::Matrix(const initializer_list<initializer_list<scalar> > &il)
 {
-    //        int il_sec;
     rows = il.size();
     cols = il.begin()->size();
     DataNewMemory(cols, rows);
@@ -92,7 +91,7 @@ Matrix Matrix::MultiplyTranspose(const Matrix &matrix) const
     assert(cols == matrix.cols && "Failed assertion in 'Matrix::MultiplyTransform'");
 
     Matrix result(rows, matrix.rows);
-    scalar buff = 0;
+    scalar buff(0);
     for (counter i = 0; i < rows; i++)
     {
         for (counter j = 0 ; j < matrix.rows; j++)
@@ -104,6 +103,23 @@ Matrix Matrix::MultiplyTranspose(const Matrix &matrix) const
             result.at(i, j) = buff;
             buff = 0;
         }
+    }
+    return result;
+}
+
+Vector Matrix::MultiplyTranspose(const Vector &v) const
+{
+    assert(cols == v.GetLength() && "Failed assertion in 'Matrix::MultiplyTransform'");
+    Vector result(rows);
+    scalar buff(0);
+    for (counter i = 0; i < rows; i++)
+    {
+        for (counter j = 0; j < cols; j++)
+        {
+            buff += *(data + i * cols + j) * v(j);
+        }
+        result(i) = buff;
+        buff = 0;
     }
     return result;
 }
@@ -395,6 +411,20 @@ Matrix Matrix::operator+(const Matrix &matrix) const
     return result;
 }
 
+bool Matrix::operator==(const Matrix &m) const
+{
+    assert(Size() == m.Size());
+    //Сравнение векторов с точностью до 6 знака
+    for (counter i = 0; i < m.rows * m.cols; i++)
+    {
+        if (!(round(*(data + i)*100000)/100000 == round(*(m.data + i) * 100000)/100000)){
+            cout << *(data + i) << " " << *(m.data + i);
+            return false;
+        }
+    }
+    return true;
+}
+
 scalar &Matrix::operator()(const int &row, const int &col)
 {
     assert(col >= 0 && col <= this->cols);
@@ -458,6 +488,14 @@ Vector::Vector(int size)
     dataNewMemory(length);
 }
 
+Vector::Vector(int size, scalar value)
+{
+    length = size;
+    dataNewMemory(length);
+    for (counter i = 0; i < size; i++)
+        *(data + i) = value;
+}
+
 Vector::Vector(const initializer_list<scalar> il)
 {
     length = il.size();
@@ -490,7 +528,7 @@ scalar Vector::MaxAbs()
     return result;
 }
 
-scalar &Vector::operator()(counter number)
+scalar &Vector::operator()(counter number) const
 {
     assert(number >= 0 && number <= length);
     return *(data + number);
@@ -529,12 +567,33 @@ Vector Vector::operator*(const Vector &v)
     };
 }
 
+scalar Vector::MultiplyTranspose(const Vector &v)
+{
+    //Умножение строки на столбец
+    scalar result(0);
+    for (int i = 0; i < v.GetLength(); i++)
+        result += *(data + i) * (*(v.data + i));
+    return result;
+}
+
 void Vector::operator*=(const scalar &value)
 {
     for (counter i = 0; i < length; i++)
     {
         *(data + i) *= value;
     }
+}
+
+bool Vector::operator==(const Vector &v) const
+{
+    assert(length == v.length);
+    //Сравнение векторов с точностью до 6 знака
+    for (counter i = 0; i < v.length; i++)
+    {
+        if (!(round(*(data + i)*100000)/100000 == round(*(v.data + i) * 100000)/100000))
+            return false;
+    }
+    return true;
 }
 
 
@@ -549,12 +608,12 @@ Vector Vector::operator-(const Vector &v)
 
 }
 
-void Vector::VectorCout(const char *ch)
+void Vector::VectorCout(const char *ch) const
 {
     cout << ch << endl;
     for (counter i = 0; i < length; i++)
     {
-        cout << *(data + i) << "\t";
+        cout << setw(8) << *(data + i) << "  ";
     }
     cout << endl << endl;
 
