@@ -14,6 +14,7 @@ set(CMAKE_AUTORCC ON)
 
 #set(CMAKE_BUILD_TYPE Release)
 find_package(Qt5Test REQUIRED)
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
 add_executable(MainKinematic
     main.h

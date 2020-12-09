@@ -459,9 +459,13 @@ void Matrix::Transpose()
     delete[] tdata;
 }
 
-void Matrix::MatrixCout() const
+void Matrix::MatrixCout(const char *ch) const
 {
 //#ifdef DEBUG_COUT
+    cout << "___________________________"
+         << ch
+         << "___________________________"
+         << endl;
     for (counter i = 0; i < rows; i++)
     {
         for (counter j = 0; j < cols; j++)

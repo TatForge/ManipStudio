@@ -20,14 +20,31 @@ int main(int argc, char *argv[])
                           0 * M_PI/180,
                           0 * M_PI/180,
                           0 * M_PI/180};
-    Matrix A {{0,   -M_PI/2,  232.5,  tet[0]},
-              {0,    0,       0,      tet[1]},
-              {375,  0,       0,      tet[2]},
-              {295, -M_PI/2,  120.5,  tet[3]},
-              {0,    M_PI/2,  171,    tet[4]},
-              {0,    0,       122.6,  tet[5]}};
+    Vector speed{1,1,1,1,1,1};
+    Vector acceleration{1,1,1,1,1,1};
+
+    Matrix A {{0,     -M_PI/2, 0.2325, tet[0]},
+              {0.375, 0,       0,      tet[1]},
+              {0.295, 0,       0,      tet[2]},
+              {0,     -M_PI/2, 0.1205, tet[3]},
+              {0,     M_PI/2,  0.171,  tet[4]},
+              {0,     0,       0.1226, tet[5]}};
 
     array<Matrix, 6> T;
+    T[0] = {{cos(A(0,3)),         -sin(A(0,3)),           0,       A(0,0)},
+            {sin(A(0,3)) * cos(0), cos(A(0,3)) * cos(0), -sin(0), -sin(0) * A(0,2)},
+            {sin(A(0,3)) * sin(0), cos(A(0,3)) * sin(0),  cos(0),  cos(0) * A(0,2)},
+            {0,                    0,                     0,       1}};
+    T[0].MatrixCout();
+//    for (counter i = 1; i < T.size(); i++)
+//    {
+//        T[i] = {{cos(A(i,3)),                 -sin(A(i,3)),                0,              A(i-1,0)},
+//                {sin(A(i,3)) * cos(A(i-1,1)), cos(A(i,3)) * cos(A(i-1,1)), -sin(A(i-1,1)), -sin(A(i-1,1)) * A(i,2)},
+//                {sin(A(i,3)) * sin(A(i-1,1)), cos(A(i,3)) * sin(A(i-1,1)), cos(A(i-1,1)),  cos(A(i-1,1)) * A(i,2)},
+//                {0,                           0,                           0,              1}};
+//        T[i].MatrixCout("T");
+//    }
+    //Старая версия
     for (counter i = 0; i < T.size(); i++)
     {
         T[i] = {{cos(A.at(i, 3)), -sin(A.at(i, 3)) * cos(A.at(i, 1)),   sin(A.at(i, 3)) * sin(A.at(i, 1)), A.at(i, 0) * cos(A.at(i, 3))},
@@ -36,9 +53,9 @@ int main(int argc, char *argv[])
                 {0,                  0,                                       0,                                     1}};
 
     }
+
     Matrix L = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
-
-
+    L.MatrixCout();
     //Dik for 3 elem i = 3, k = 3
     const Matrix Q = {{0, -1, 0, 0},
                       {1,  0, 0, 0},
@@ -47,25 +64,35 @@ int main(int argc, char *argv[])
     Matrix test = {{1,2,3,4},{5,6,7,8},{9,10,11,12},{13,14,15,16}};
 
             //Ixx  Iyy  Izz  Ixy   Ixz
-    Tensor I {0.1, 0.2, 0.3, 0.25, 0.14, 0.28};
+    array<Tensor,6> I;
+    I[0] = {0.000588, 0.000587, 0.000929, -1.299e-8, 2.44e-8, 1.79e-6};
+    I[1] = {0.000928, 0.001512, 0.000937, 1.86e-5,  1.55e-10, 5.34e-12};
+    I[2] = {0.001759, 0.000747, 0.001913, 2.32e-8,  6.37e-9,  1.68e-6};
+    I[3] = {0.000198, 0.000479, 0.002059, 3.16e-11, 5.59e-10, 1.59e-7};
+    I[4] = {9.826e-5, 0.000128, 0.000114, -2.74e-9, 4.41e-9,  5.82e-7};
+    I[5] = {5.529e-5, 5.359e-5, 8.415e-5, 1.99e-10, 2.53e-9,  1.85e-7};
+
     //Массы элементов
-    Vector m {1, 2, 3, 4, 5, 6};
+    Vector m {0.9046,
+              1.3074,
+              1.0355,
+              0.3082,
+              0.2171,
+              0.0749};
     //Центры масс каждого элемента в локальной СК
     array<Vector, 6> cm;
     Vector gv{0, 0, -g, 0};
-    for (int i = 0; i < 6; i++)
-    {
-        cm[i] = Vector({1.22 + i * 0.1, 1.34 + i * 0.04, 1.65 + i * 0.12, 1});
-    }
+
+    cm[0] = Vector({0, 0, 0.115, 1});
+    cm[1] = Vector({0.158, 0, 0, 1});
+    cm[2] = Vector({0.137, 0, 0, 1});
+    cm[3] = Vector({0, 0, 0.06 , 1});
+    cm[4] = Vector({0, 0, 0.085 , 1});
+    cm[5] = Vector({0, 0, 0.61 , 1});
+
 
     int i = 4;//4тый джоинт
     int n = 5;
-    Matrix Ji = {{(-I.xx() + I.yy() + I.zz())/2, I.xy(), I.xz(), m(i) * cm[i](0)},
-                 {I.xy(), (I.xx() - I.yy() + I.zz())/2,  I.yz(), m(i) * cm[i](1)},
-                 {I.xz(), I.yz(), (I.xx() + I.yy() - I.zz())/2,  m(i) * cm[i](2)},
-                 {m(i) * cm[i](0),  m(i) * cm[i](1), m(i) * cm[i](2), m(i)}};
-
-    Ji.MatrixCout();
     scalar Dik(0);
     array<Matrix, 6> dAj;/*
     Matrix Ujk(4, 4);
@@ -74,32 +101,26 @@ int main(int argc, char *argv[])
     Uji.MakeIdentity();
     Matrix D(4,4);
     D.MakeZero();
-    L.MatrixCout();
+    L.MatrixCout("L Matrix");
     Matrix KK = Q * L;
     KK.MatrixCout();
     //для i = 4, k = 1
 
-//    Ujk = T[0] * T[1] * Q * T[2] * T[3];
-//    Ujk.MatrixCout();
-
     MatrixOfMatrix6x6 U ;
-//    //--расчет U
-//    for (int i = 0; i < 6; i++)
-//    {
-//        for (int j = 0; j < 6; j++)
-//        {
-//            for (int k = 0; k <= j; k++)
-//            {
-//                if (k == j)
-//                    U(i, j) = U(j, k) * Q * T[ctr - 1];
-//            }
-//        }
-//    }
 
+    Vector res_hikm(6,0);
+    scalar hikm_buff;
+    array<Matrix, 6> Ji;
+    Vector Dv(6, 0);
+    Vector p(6,0);
+    Vector hikm(6,0);
+    Matrix u_buff(4,4);
+    Vector tao(6,0);
 
-    for (int k = 1; k <= 6; k++)
+    checkTime tim;
+    for (counter k = 1; k <= 6; k++)
     {
-        for (int j = k; j <= 6; j++)
+        for (counter j = k; j <= 6; j++)
         {
             //Считается Ujk для конкретного i,j,k
             for (counter ctr = 0; ctr < j; ctr++)
@@ -118,87 +139,51 @@ int main(int argc, char *argv[])
     }
     //__расчет U
 
-//    for (int i = 0; i < 6; i++)
-//        T[i].MatrixCout();
-//    for (int k = 3; k < 6; k++)
-//    {
-//        for (int j = max(i, k); j < 6; j++)
-//        {
-//            //Считается Ujk для конкретного i,j,k
-//            for (counter ctr = 1; ctr <= j; ctr++)
-//            {
-//                if (ctr == k - 1)
-//                    U(j, k) = U(j, k) * Q * T[ctr - 1];
-//                else
-//                    U(j,k) = U(j,k) * T[ctr - 1];
-//                U(j,k).MatrixCout();
-//            }
-//            //Считается Uji для конкретного i,j,k
-//            int *isi = new int;
-//            for (counter ctr = 1; ctr <= j; ctr++)
-//            {
-//                if (ctr == i - 1)
-//                    Uji = Uji * Q * T[ctr - 1];
-//                        else
-//                    Uji = Uji * T[ctr - 1];
-//                Uji.MatrixCout();
-//            }
-//            Uji.Transpose();
-//            U(j,k).MatrixCout();
-//            Ji.MatrixCout();
-//            Uji.MatrixCout();
-//            auto temp = U(j,k) * Ji * Uji;
-//            temp.MatrixCout();
-//            Dik += Trace(U(j,k) * Ji * Uji);
-//        }
-//    }
-    Vector Dv(6, 0);
-    //Расчет D для i-го элемента манипулятора
-    for (int i = 0; i < 6; i++)
-        for (int k = i; i < 6; i++)
-        {
-            for (int j = max(i, k); j < 6; j++)
-            {
-                Dv(i) += Trace(U(j,k) * Ji * U(j,i));
-            }
-        }
-    Dv.VectorCout("D vector");
-
-    Matrix m3 {{1,2,3},{5,6,7},{7,8,9},{4,3,2},{7,6,5}};
-//    Matrix n3 {{3,4,5,5,4},{7,6,5,4,1},{9,3,2,6,3}};
-    m3.MultiplyTranspose(m3).MatrixCout();
-
-//    Matrix ee{{1,2,3},{4,5,6},{7,8,9},{10,11,12},{13,14,15}};
-//    ee.MatrixCout();
-//    Matrix uu{{1,2,3},{4,5,6},{7,8,9},{10,11,12},{13,14,15}, {11,12,13}};
-//    Vector vv{3,4,5};
-//    uu.MatrixCout();
-//    auto iii = ee.MultiplyTranspose(uu);
-//    auto oo = ee.MultiplyTranspose(vv);
-//    oo.VectorCout("vect");
-//    oo = U(1,1).MultiplyTranspose(cm[0]);
-//    U(1,1).MatrixCout();
-//    oo.VectorCout("vect");
-
-
-    Vector p(6,0);
-    int ctr(0);
     for (int i = 0; i < 6; i++)
     {
-        for (int j = ctr; j < 6; j++)
+        Ji[i] = {{(-I[i].xx() + I[i].yy() + I[i].zz())/2, I[i].xy(), I[i].xz(), m(i) * cm[i](0)},
+                 {I[i].xy(), (I[i].xx() - I[i].yy() + I[i].zz())/2,  I[i].yz(), m(i) * cm[i](1)},
+                 {I[i].xz(), I[i].yz(), (I[i].xx() + I[i].yy() - I[i].zz())/2,  m(i) * cm[i](2)},
+                 {m(i) * cm[i](0),  m(i) * cm[i](1), m(i) * cm[i](2), m(i)}};
+//        Ji[i].MatrixCout();
+    }
+
+
+    //Расчет D для i-го элемента манипулятора
+    for (counter i = 0; i < 6; i++)
+    {
+        for (counter k = i; i < 6; i++)
+        {
+            for (counter j = max(i, k); j < 6; j++)
+            {
+                Dv(i) += Trace(U(j,k) * Ji[k].MultiplyTranspose(U(j,i)));
+            }
+            Dv(i) *= acceleration(k);
+        }
+    }
+//    Dv.VectorCout("D vector");
+
+    int ctr(0);
+    for (counter i = 0; i < 6; i++)
+    {
+        for (counter j = i; j < 6; j++)
         {
 //            U(j,i).MatrixCout();
 //            cm[j].VectorCout("cm");
 //            gv.VectorCout("gv");
 
             p(i) += - m(j) * gv.MultiplyTranspose(U(j,i).MultiplyTranspose(cm[j]));
+//            cout << " U " << j <<i << endl;
+//            U(j,i).MatrixCout("U matrix");
+//            U(j,i).MultiplyTranspose(cm[j]).VectorCout("U * cm");
+//            cout << "p = " << p(i) << endl;
         }
         ctr++;
     }
-    p.VectorCout("P");
-    Vector E(6,0);
+//    p.VectorCout("P");
+//    L.MatrixCout();
+   /* Vector E(6,0);
     {
-    auto asd = m(0) * gv.MultiplyTranspose(U(0,0).MultiplyTranspose(cm[0]));
     E(0) = - (m(0) * gv.MultiplyTranspose(U(0,0).MultiplyTranspose(cm[0])) +
               m(1) * gv.MultiplyTranspose(U(1,0).MultiplyTranspose(cm[1])) +
               m(2) * gv.MultiplyTranspose(U(2,0).MultiplyTranspose(cm[2])) +
@@ -223,50 +208,84 @@ int main(int argc, char *argv[])
     }
     E.VectorCout("E vector");
     if (E == p)
-        cout << "Вектор p считается правильно" << endl;
+        cout << "Вектор p считается правильно" << endl;*/
 
-    i = 3;
-    Matrix hikm(4,4);
-    Matrix u_buff(4,4);
-    u_buff.MakeIdentity();
-    for (int j = i; j < n; j++)
+
+//    u_buff.MakeIdentity();
+//    for (counter i = 0; i < 6; i++)
+//    {
+//        for (counter j = i; j < n; j++)
+//        {
+//            for (counter k = 1; k <= j; k++)
+//            {
+//                for (counter m = 1; m <= j; m++)
+//                {
+//                    for (ctr = 0; ctr < j; ctr++)
+//                    {
+//                        if (ctr == (k - 1) && ctr == (m - 1))
+//                            u_buff = u_buff * Q * Q * T[ctr];
+//                        else if (ctr == (k - 1) || ctr == (m - 1))
+//                            u_buff = u_buff * Q * T[ctr];
+//                        else
+//                            u_buff = u_buff * T[ctr];
+//                    }
+//                    hikm(i) += Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i)));// * speed(k - 1) * speed(m- 1);
+//                }
+//            }
+//            u_buff.MakeIdentity();
+//        }
+//    }
+    //НЕ УДАЛЯТЬ, ПОКА НЕ ПРОВЕРЮ ПРАВИЛЬНОСТЬ________________________________________________________
+    for (counter i = 0; i < 6; i++)
     {
-        for (int k = 1; k < j; k++)
+        for (counter k = 0; k < 6; k++)
         {
-            for (int p = 1; p < j; p++)
+            for (counter m = 0; m < 6; m++)
             {
-                if (k >= p)
+                for (counter j = i; j < 6; j++)
                 {
-
+                    hikm_buff = 0;
+                    u_buff.MakeIdentity();
+                    for (counter ctr = 0; ctr < j; ctr++)
+                    {
+                        if (ctr == (k - 1) && ctr == (m - 1))
+                            u_buff = u_buff * Q * Q * T[ctr];
+                        else if (ctr == (k - 1) || ctr == (m - 1))
+                            u_buff = u_buff * Q * T[ctr];
+                        else
+                            u_buff = u_buff * T[ctr];
+                    }
+                    cout << "u buff ikmj " << i << k << m  << j << endl;
+                    u_buff.MatrixCout("u_buff");
+                    hikm_buff += Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i))) * speed(k) * speed(m);
                 }
-                else
-                {
-
-                }
+                hikm(i) += hikm_buff;
             }
         }
     }
+    //_______________________________________________________________________________________________
+//    for (int i = 0; i < 6; i++)
+//    {
+//        for (int p = 0; p < i; p++)
+//        {
+//            for (int r = 0; r < i; r++)
+//            {
+//                hikm(i) += speed(p) * speed(r) * Trace(U(i,p) * Ji[i].MultiplyTranspose(U(i,r)));
+//            }
+//        }
+//        hikm(i) = 0.5 * hikm(i);
+//    }
+    cout << "Duration " << tim.duration().count() << endl;
+    hikm.VectorCout("hikm");
+    Dv.VectorCout("Dv");
+    p.VectorCout("p");
 
 
-    for (int k = 1; k <= 6; k++)
+    for (counter i = 0; i < 6; i++)
     {
-        for (int j = k; j <= 6; j++)
-        {
-            //Считается Ujk для конкретного i,j,k
-            for (counter ctr = 0; ctr < j; ctr++)
-            {
-                if (ctr == k - 1)
-                    U(j - 1, k - 1) = U(j - 1, k - 1) * Q * T[ctr];
-                else
-                {
-                    U(j - 1, k - 1) = U(j - 1, k - 1) * T[ctr];
-                }
-//                U(j - 1, k - 1).MatrixCout();
-            }
-//            cout << "U" << j << k << endl;
-//            U(j - 1, k - 1).MatrixCout();
-        }
+        tao(i) = Dv(i) + hikm(i) + p(i);
     }
+    tao.VectorCout("TAO");
 
 
     initializer_list<Elem> il_elem {Elem(Vector3(0,     0,      0),      unit_z,  ToRad(0)),
@@ -356,7 +375,7 @@ int main(int argc, char *argv[])
     cout << "One iter duration = " << ct.duration().count() / kolvo << endl;
     cout << "Точность " << manipulator.GetDeltaR().Length() << endl;
 
-    QTest::qExec(new test_my_math, argc, argv);
+//    QTest::qExec(new test_my_math, argc, argv);
     return 0;
 }
 

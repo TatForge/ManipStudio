@@ -146,7 +146,7 @@ namespace RoboMath
         int GetColsCount() const { return cols; }
         int GetRowsCount() const { return rows; }
         scalar* GetDataPtr() const {return data;};
-        void MatrixCout() const;
+        void MatrixCout(const char *ch = "Matrix") const;
 
 
     private:
