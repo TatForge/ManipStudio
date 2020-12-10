@@ -236,6 +236,23 @@ void Robo::DeltaThetasCout()
     }
 }
 
+//void Robo::CreateStateMatrixes()
+//{
+//    theta_vector = new Vector({0 * M_PI/180,
+//            0 * M_PI/180,
+//            0 * M_PI/180,
+//            0 * M_PI/180,
+//            0 * M_PI/180,
+//            0 * M_PI/180});
+//    state_matrix = new Matrix({{0,      -M_PI/2, 0.2325, theta_vector->operator()(0)},
+//                               {0.375,   0,      0.100,  theta_vector->operator()(1)},
+//                               {0.295,   0,     -0.100,  theta_vector->operator()(2)},
+//                               {0,      -M_PI/2, 0.1205, theta_vector->operator()(3)},
+//                               {0,       M_PI/2, 0.171,  theta_vector->operator()(4)},
+//                               {0,       0,      0.1226, theta_vector->operator()(5)}});
+
+//}
+
 Vector3 Robo::GetEffectorPosition() const
 {
     return this->GetEffector()->GetPosition();

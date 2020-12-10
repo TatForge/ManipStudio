@@ -15,6 +15,7 @@ private slots:
     void test_vector_multiple_transpose();
     void test_vector_compare();
     void test_matrix_multiple_transpose();
+    void test_translation_matrix();
 
 };
 

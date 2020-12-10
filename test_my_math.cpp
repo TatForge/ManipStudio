@@ -1,5 +1,6 @@
 #include "test_my_math.h"
 #include "my_math.h"
+#include "robo.h"
 
 #include <QTest>
 
@@ -25,4 +26,9 @@ void test_my_math::test_matrix_multiple_transpose()
     Matrix n {{3,4,5,5,4},{7,6,5,4,1},{9,3,2,6,3}};
     QCOMPARE(m.MultiplyTranspose(m), Matrix({{14,38,50,16,34},{38, 110, 146,52,106},{50,146,194,70,142},{16,52,70,29,56},{34,106,142,56,110}}));
     QCOMPARE(m.MultiplyTranspose(Vector({0.1,0.5,0.9})), Vector({3.8, 9.8, 12.8, 3.7, 8.2}));
+}
+
+void test_my_math::test_translation_matrix()
+{
+
 }

@@ -82,6 +82,7 @@ public:
     void AddDeltaThetas();
     void ComputeJointsPosition();
     void DeltaThetasCout();
+//    void CreateStateMatrixes();
     RoboMath::Vector3 GetEffectorPosition() const;
     RoboMath::Vector3 GetEffectorRotation() const;
     RoboMath::Quaternion GetEffectorRotationQuat() const;
@@ -95,8 +96,9 @@ private:
     RoboMath::Vector3 delta_s;
     RoboMath::Vector3 delta_r;
     Effector effector;
-//    RoboMath::Quaternion effector_rot;
-//    RoboMath::Quaternion effector_rot_base;
+//    const RoboMath::Matrix* state_matrix;
+//    const RoboMath::Vector* theta_vector;
+
     int number_of_elements;
     void AllocateForNewRobot();
 };

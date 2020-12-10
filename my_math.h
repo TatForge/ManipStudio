@@ -1,6 +1,7 @@
 #ifndef MY_MATH_H
 #define MY_MATH_H
 
+
 #include <initializer_list>
 #include <vector>
 #include <cmath>
@@ -111,7 +112,6 @@ namespace RoboMath
         Matrix(const int &rows, const int &cols);
         Matrix(const Matrix& source);
         Matrix(const initializer_list<initializer_list<scalar>> &il);
-        Matrix(const initializer_list<scalar> &il);
         ~Matrix()
         {
             if(data != nullptr)
@@ -120,6 +120,7 @@ namespace RoboMath
         scalar &at(const int &row, const int &col) const;
 
         Matrix Multuply(const Matrix &matrix1, const Matrix &matrix2) const;
+        void Multiply(const Matrix &matrix2, Matrix *ret_matrix) const;
         Matrix MultiplyTranspose(const Matrix &matrix) const;
         Vector MultiplyTranspose(const Vector &v) const;
 
@@ -135,7 +136,8 @@ namespace RoboMath
         void GetTheRoots(Vector &V) const;     //Получение корней уравнения
         void MakeIdentity();
         void MakeZero();
-        Matrix operator*(const Matrix &matrix2) const;
+        Matrix &operator *(const Matrix &matrix2) const;
+//        Matrix operator *(const Matrix &matrix2) const;
         Vector operator*(const Vector &vector2) const;
         Matrix operator*(const scalar &value) const;
         Matrix operator=(const Matrix &matrix1);
@@ -143,19 +145,19 @@ namespace RoboMath
         bool operator==(const Matrix &m) const;
 
         scalar& operator()(const int &row, const int &col);
-        int GetColsCount() const { return cols; }
-        int GetRowsCount() const { return rows; }
+        int GetColsCount() const { return m_cols; }
+        int GetRowsCount() const { return m_rows; }
         scalar* GetDataPtr() const {return data;};
         void MatrixCout(const char *ch = "Matrix") const;
 
 
     private:
-        int rows;
-        int cols;
+        int m_rows;
+        int m_cols;
         scalar *data;
         void DataNewMemory()
         {
-            data = new scalar[rows*cols];
+            data = new scalar[m_rows*m_cols];
         }
         void DataNewMemory(const int &rows, const int &cols)
         {
@@ -166,8 +168,9 @@ namespace RoboMath
             cout << endl;
     #endif
         }
-        int index(const int &row, const int &col) const { return row * cols + col;}
+        int index(const int &row, const int &col) const { return row * m_cols + col;}
     };
+
     class Quaternion
     {
     public:
