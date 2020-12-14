@@ -35,7 +35,7 @@ Robo::Robo(initializer_list<Elem> &robo_list)
         ++robo_it;
         ++robo_list_it;
     }
-    this->RoboCout();
+//    this->RoboCout();
     effector.SetRotation(Quaternion(Vector3(1, 0, 0), ToRad(90)));
     (robot + number_of_elements - 1)->GetRotationAxisLocal();
     effector.SetRotationAxis((robot + number_of_elements - 1)->GetRotationAxisLocal());

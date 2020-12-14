@@ -1,12 +1,18 @@
+#include "test_my_math.h"
+#include "robo.h"
+#include "cuda_math.cu"
+
 #include <main.h>
 #include <array>
 #include <chrono>
 #include <string.h>
 #include <thread>
+#include <eigen3/Eigen/Dense>
+#ifdef WITH_TESTS
 #include <QTest>
+#endif
 
-#include "test_my_math.h"
-#include "robo.h"
+
 //#include "commandworker.h"
 
 
@@ -14,7 +20,7 @@ using namespace RoboMath;
 
 int main(int argc, char *argv[])
 {
-
+    CudaCheckDevice();
 
 //    temp_1 = *new Matrix(4,4);
 //    temp_2 = *new Matrix(4,4);
@@ -22,47 +28,125 @@ int main(int argc, char *argv[])
 //    temp_2.MakeIdentity();
 
 
+    Eigen::Matrix4Xd m1(4,4);
+    Eigen::Matrix4Xd m2(4,4);
+    Eigen::Matrix4Xd m3(4,4);
+    Eigen::Matrix4Xd m4(4,4);
+    Eigen::Matrix4Xd m5(4,4);
+    m1 <<  1,1,1,1,
+           1,1,1,1,
+           1,1,1,1,
+           1,1,1,1;
+    m2 <<  2,2,2,2,
+           2,2,2,2,
+           2,2,2,2,
+           2,2,2,2;
+    m3 <<  3,3,3,3,
+           3,3,3,3,
+           3,3,3,3,
+           3,3,3,3;
+    m4 <<  4,4,4,4,
+           4,4,4,4,
+           4,4,4,4,
+           4,4,4,4;
+    checkTime chktmr1;
+    for (int i = 0; i < 1000; i++)
+        for (int j = 0; j < 1000; j++)
+                m5 = m1 * m2 * m3;
+    cout << "Duration 1000000 matrix multiplication Eigen = " << chktmr1.duration().count() << " sek" << endl;
 
-
-    Matrix lolol{{1,1,1,1},
-                 {1,1,1,1},
-                 {1,1,1,1},
-                 {1,1,1,1}};
-    Matrix memem{{2,2,2,2},
-                 {2,2,2,2},
-                 {2,2,2,2},
-                 {2,2,2,2}};
-    Matrix opopo{{3,3,3,3},
-                 {3,3,3,3},
-                 {3,3,3,3},
-                 {3,3,3,3}};
+    Matrix lo{{1,1,1,1},
+              {1,1,1,1},
+              {1,1,1,1},
+              {1,1,1,1}};
+    Matrix me{{2,2,2,2},
+              {2,2,2,2},
+              {2,2,2,2},
+              {2,2,2,2}};
+    Matrix op{{3,3,3,3},
+              {3,3,3,3},
+              {3,3,3,3},
+              {3,3,3,3}};
     Matrix rrrr(4,4);
     checkTime chktmr;
     for (int i = 0; i < 1000; i++)
     {
         for(int j = 0; j < 1000; j++)
         {
-            rrrr =  lolol * memem * opopo * lolol * lolol * memem * opopo * lolol * lolol * memem * opopo * lolol;
+            rrrr =  lo * me * op;
         }
     }
-    cout << "Duration 1000000 matrix multiplication = " << chktmr.duration().count() << " sek" << endl;
+    cout << "Duration 1000000 matrix multiplication MY = " << chktmr.duration().count() << " sek" << endl;
+    scalar sc1 = 0.26;
+    Matrix4x4 mm1(sc1,sc1,sc1,sc1,
+                  sc1,sc1,sc1,sc1,
+                  sc1,sc1,sc1,sc1,
+                  sc1,sc1,sc1,sc1);
+    Matrix4x4 mm2(0.2,0.2,0.2,0.2,
+                  0.2,0.2,0.2,0.2,
+                  0.2,0.2,0.2,0.2,
+                  0.2,0.2,0.2,0.2);
+    Matrix4x4 mm3(0.3,0.3,0.3,0.3,
+                  0.3,0.3,0.3,0.3,
+                  0.3,0.3,0.3,0.3,
+                  0.3,0.3,0.3,0.3);
+    Matrix4x4 mmr(1,1,1,1,
+                  1,1,1,1,
+                  1,1,1,1,
+                  1,1,1,1);
+    checkTime chktmr3;
+    int ctr11 = 0;
+    for (int i = 0; i < 1000; i++)
+    {
+        for(int j = 0; j < 1000; j++)
+        {
+            ctr11++;
+            mmr = mmr * mm1 * mm2 * mm3;
+        }
+    }
+    cout << "Duration 1000000 matrix multiplication 4x4 = " << chktmr3.duration().count() << " sek" << endl;
+    mmr.MatrixCout();
+    cout << "ctr = " << ctr11 << endl;
 
 
-
-
-    double kekeke = 123;
-
-
-
-
-
-
-
-
+    {
+//    checkTime chktmr2;
+//    double kekeke = 123;
+//    Matrix u_buff(4,4);
+//    scalar temp_s;
+//    for (counter i = 0; i < 6; i++)
+//    {
+//        for (counter k = 0; k < 6; k++)
+//        {
+//            for (counter m = 0; m < 6; m++)
+//            {
+//                for (counter j = i; j < 6; j++)
+//                {
+//                    temp_s = 0;
+//                    u_buff.MakeIdentity();
+//                    for (counter ctr = 0; ctr < j; ctr++)
+//                    {
+//                        if (ctr == (k - 1) && ctr == (m - 1))
+////                            rrrr = u_buff * lo * me * op;
+//                            m5 = m1 * m2 * m3 * m4;
+//                        else if (ctr == (k - 1) || ctr == (m - 1))
+////                            u_buff = u_buff * lo * op;
+//                            m5 = m1 * m2 * m3;
+//                        else
+////                            u_buff = u_buff * lo;
+//                            m5 = m1 * m2;
+//                    }
+////                    cout << "u buff ikmj " << i << k << m  << j << endl;
+////                    u_buff.MatrixCout("u_buff");
+//                }
+//            }
+//        }
+//    }
+    }
 
 
     array<scalar, 6> tet {0 * M_PI/180,
-                          -90 * M_PI/180,
+                          0 * M_PI/180,
                           0 * M_PI/180,
                           0 * M_PI/180,
                           0 * M_PI/180,
@@ -256,36 +340,6 @@ int main(int argc, char *argv[])
         }
         ctr++;
     }
-//    p.VectorCout("P");
-//    L.MatrixCout();
-   /* Vector E(6,0);
-    {
-    E(0) = - (m(0) * gv.MultiplyTranspose(U(0,0).MultiplyTranspose(cm[0])) +
-              m(1) * gv.MultiplyTranspose(U(1,0).MultiplyTranspose(cm[1])) +
-              m(2) * gv.MultiplyTranspose(U(2,0).MultiplyTranspose(cm[2])) +
-              m(3) * gv.MultiplyTranspose(U(3,0).MultiplyTranspose(cm[3])) +
-              m(4) * gv.MultiplyTranspose(U(4,0).MultiplyTranspose(cm[4])) +
-              m(5) * gv.MultiplyTranspose(U(5,0).MultiplyTranspose(cm[5])));
-    E(1) = - (m(1) * gv.MultiplyTranspose(U(1,1).MultiplyTranspose(cm[1])) +
-              m(2) * gv.MultiplyTranspose(U(2,1).MultiplyTranspose(cm[2])) +
-              m(3) * gv.MultiplyTranspose(U(3,1).MultiplyTranspose(cm[3])) +
-              m(4) * gv.MultiplyTranspose(U(4,1).MultiplyTranspose(cm[4])) +
-              m(5) * gv.MultiplyTranspose(U(5,1).MultiplyTranspose(cm[5])));
-    E(2) = - (m(2) * gv.MultiplyTranspose(U(2,2).MultiplyTranspose(cm[2])) +
-              m(3) * gv.MultiplyTranspose(U(3,2).MultiplyTranspose(cm[3])) +
-              m(4) * gv.MultiplyTranspose(U(4,2).MultiplyTranspose(cm[4])) +
-              m(5) * gv.MultiplyTranspose(U(5,2).MultiplyTranspose(cm[5])));
-    E(3) = - (m(3) * gv.MultiplyTranspose(U(3,3).MultiplyTranspose(cm[3])) +
-              m(4) * gv.MultiplyTranspose(U(4,3).MultiplyTranspose(cm[4])) +
-              m(5) * gv.MultiplyTranspose(U(5,3).MultiplyTranspose(cm[5])));
-    E(4) = - (m(4) * gv.MultiplyTranspose(U(4,4).MultiplyTranspose(cm[4])) +
-              m(5) * gv.MultiplyTranspose(U(5,4).MultiplyTranspose(cm[5])));
-    E(5) = - (m(5) * gv.MultiplyTranspose(U(5,5).MultiplyTranspose(cm[5])));
-    }
-    E.VectorCout("E vector");
-    if (E == p)
-        cout << "Вектор p считается правильно" << endl;*/
-
 
 //    u_buff.MakeIdentity();
 //    for (counter i = 0; i < 6; i++)
@@ -314,12 +368,51 @@ int main(int argc, char *argv[])
 
 
     //НЕ УДАЛЯТЬ, ПОКА НЕ ПРОВЕРЮ ПРАВИЛЬНОСТЬ________________________________________________________
-//    Matrix temp(4,4);
-//    Matrix temp2(4,4);
 
-//    u_buff.Multiply1(T[ctr], temp2);
-//    u_buff.Multiply2(Q, T[ctr], temp, temp2);
-//    u_buff.Multiply3(Q, T[ctr], temp, temp2);
+//    for (counter i = 0; i < 6; i++)
+//    {
+//        for (counter k = 0; k < 6; k++)
+//        {
+//            for (counter m = 0; m < 6; m++)
+//            {
+//                for (counter j = i; j < 6; j++)
+//                {
+//                    hikm_buff = 0;
+//                    u_buff.MakeIdentity();
+//                    for (counter ctr = 0; ctr < j; ctr++)
+//                    {
+//                        if (ctr == (k - 1) && ctr == (m - 1))
+//                            u_buff = u_buff * Q * Q * T[ctr];
+//                        else if (ctr == (k - 1) || ctr == (m - 1))
+//                            u_buff = u_buff * Q * T[ctr];
+//                        else
+//                            u_buff = u_buff * T[ctr];
+//                    }
+////                    cout << "u buff ikmj " << i << k << m  << j << endl;
+////                    u_buff.MatrixCout("u_buff");
+//                    hikm_buff += Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i))) * speed(k) * speed(m);
+//                }
+//                hikm(i) += hikm_buff;
+//            }
+//        }
+//    }
+
+    Matrix4x4 u_buff4;
+    array<Matrix4x4, 6> T4;
+    array<Matrix4x4, 6> Ji4;
+    Matrix4x4 Q4(0,-1,0,0,
+                1,0,0,0,
+                0,0,0,0,
+                0,0,0,0);
+    for (int i = 0 ; i < 6; i++)
+    {
+        T4[i] = T[i];
+        Ji4[i] = Ji[i];
+    }
+    Matrix4x4 U4 (0.1,0.1,0.1,0.1,
+                  0.1,0.1,0.1,0.1,
+                  0.1,0.1,0.1,0.1,
+                  0.1,0.1,0.1,0.1);
 
     for (counter i = 0; i < 6; i++)
     {
@@ -334,20 +427,21 @@ int main(int argc, char *argv[])
                     for (counter ctr = 0; ctr < j; ctr++)
                     {
                         if (ctr == (k - 1) && ctr == (m - 1))
-                            u_buff = u_buff * Q * Q * T[ctr];
+                            u_buff4 = u_buff4 * Q4 * Q4 * T4[ctr];
                         else if (ctr == (k - 1) || ctr == (m - 1))
-                            u_buff = u_buff * Q * T[ctr];
+                            u_buff4 = u_buff4 * Q4 * T4[ctr];
                         else
-                            u_buff = u_buff * T[ctr];
+                            u_buff4 = u_buff4 * T4[ctr];
                     }
 //                    cout << "u buff ikmj " << i << k << m  << j << endl;
 //                    u_buff.MatrixCout("u_buff");
-                    hikm_buff += Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i))) * speed(k) * speed(m);
+                    hikm_buff += Trace(u_buff4 * Ji4[i].MultiplyTranspose(U4)) * speed(k) * speed(m);
                 }
                 hikm(i) += hikm_buff;
             }
         }
     }
+
     //_______________________________________________________________________________________________
 //    for (int i = 0; i < 6; i++)
 //    {

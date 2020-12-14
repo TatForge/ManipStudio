@@ -338,34 +338,13 @@ void Matrix::MakeZero()
         *(data + i) = 0;
     }
 }
-//Matrix Matrix::operator *(const Matrix &matrix2) const
-//{
-//    Matrix result(m_rows, matrix2.m_cols);
-//    scalar buff = 0;
-////    Matrix *res = temp_1;
-////    if (*this == *temp_1)
-////        res = temp_2;
-//    for (counter i = 0; i < this->m_rows; i++)
-//    {
-//        for (counter j = 0 ; j < matrix2.m_cols; j++)
-//        {
-//            for (counter k = 0; k < this->m_cols; k++)
-//            {
-//                buff += at(i, k) * matrix2.at(k, j);
-//            }
-//            result.at(i, j) = buff;
-//            buff = 0;
-//        }
-//    }
-//    return result;
-//}
-Matrix &Matrix::operator *(const Matrix &matrix2) const
+Matrix Matrix::operator *(const Matrix &matrix2) const
 {
-//    Matrix result(rows, matrix2.cols);
+    Matrix result(m_rows, matrix2.m_cols);
     scalar buff = 0;
-    Matrix *res = temp_1;
-    if (*this == *temp_1)
-        res = temp_2;
+//    Matrix *res = temp_1;
+//    if (*this == *temp_1)
+//        res = temp_2;
     for (counter i = 0; i < this->m_rows; i++)
     {
         for (counter j = 0 ; j < matrix2.m_cols; j++)
@@ -374,12 +353,33 @@ Matrix &Matrix::operator *(const Matrix &matrix2) const
             {
                 buff += at(i, k) * matrix2.at(k, j);
             }
-            res->at(i, j) = buff;
+            result.at(i, j) = buff;
             buff = 0;
         }
     }
-    return *res;
+    return result;
 }
+//Matrix &Matrix::operator *(const Matrix &matrix2) const
+//{
+////    Matrix result(rows, matrix2.cols);
+//    scalar buff = 0;
+//    Matrix *res = temp_1;
+//    if (*this == *temp_1)
+//        res = temp_2;
+//    for (counter i = 0; i < this->m_rows; i++)
+//    {
+//        for (counter j = 0 ; j < matrix2.m_cols; j++)
+//        {
+//            for (counter k = 0; k < this->m_cols; k++)
+//            {
+//                buff += at(i, k) * matrix2.at(k, j);
+//            }
+//            res->at(i, j) = buff;
+//            buff = 0;
+//        }
+//    }
+//    return *res;
+//}
 
 Vector Matrix::operator*(const Vector &vector2) const
 {

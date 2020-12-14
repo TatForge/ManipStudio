@@ -1,6 +1,9 @@
 #ifndef TEST_MY_MATH_H
 #define TEST_MY_MATH_H
 
+//#define WITH_TESTS
+
+#ifdef WITH_TESTS
 #include <QObject>
 
 
@@ -18,5 +21,6 @@ private slots:
     void test_translation_matrix();
 
 };
+#endif // WITH_TESTS
 
 #endif // TEST_MY_MATH_H

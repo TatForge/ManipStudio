@@ -1,4 +1,5 @@
 #include "test_my_math.h"
+#ifdef WITH_TESTS
 #include "my_math.h"
 #include "robo.h"
 
@@ -32,3 +33,4 @@ void test_my_math::test_translation_matrix()
 {
 
 }
+#endif
