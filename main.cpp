@@ -380,12 +380,19 @@ int main(int argc, char *argv[])
                     u_buff.MakeIdentity();
                     for (counter ctr = 0; ctr < j; ctr++)
                     {
-                        if (ctr == (k - 1) && ctr == (m - 1))
+                        if (ctr == (k) && ctr == (m))
                             u_buff = u_buff * Q * Q * T[ctr];
-                        else if (ctr == (k - 1) || ctr == (m - 1))
+                        else if (ctr == (k) || ctr == (m))
                             u_buff = u_buff * Q * T[ctr];
                         else
                             u_buff = u_buff * T[ctr];
+                    }
+                    if (i == 5 && k == 0 && m == 0)
+                    {
+                        cout << "j = " << j << "i = " << i << endl;
+                        U(j,i).MatrixCout("U ji");
+                        Ji[i].MatrixCout("Ji");
+                        u_buff.MatrixCout("u_buff");
                     }
                     hikm_buff += Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i))) * speed(k) * speed(m);
                 }
@@ -393,6 +400,7 @@ int main(int argc, char *argv[])
             }
         }
     }
+    U(5,5).MatrixCout("U55");
     for (int i = 0; i <6; i++)
         cout << " h(" << i << ") = " << hikm(i) << endl;
 
@@ -478,12 +486,12 @@ int main(int argc, char *argv[])
 //    int *asd = new int [20];
 //    int *sizes = new int (20);
 //    CudaCheckKoefficients(asd, sizes);
-    lo.MatrixCout("lo");
-    me.MatrixCout("me");
-    op.MatrixCout("op");
+//    lo.MatrixCout("lo");
+//    me.MatrixCout("me");
+//    op.MatrixCout("op");
 
-    CudaMatrixMultiplication(lo.GetDataPtr(),me.GetDataPtr(),op.GetDataPtr());
-    op.MatrixCout("op solved");
+//    CudaMatrixMultiplication(lo.GetDataPtr(),me.GetDataPtr(),op.GetDataPtr());
+//    op.MatrixCout("op solved");
 
 //    for (int i = 0; i < 6 * 4 * 4; i++)
 //        cout << "T_ptr " << i << " = " << *(T_ptr + i);

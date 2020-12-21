@@ -15,7 +15,6 @@ find_package(CUDA REQUIRED)
 
 include_directories(${CUDA_INCLUDE_DIRS} ${CUDART_INCLUDE_DIRS})
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build)
 #find_library(CUDA_LIB lib "-L/opt/cuda/lib64")
 #if (NOT CUDA_LIB)
 #    message("cuda lib not found in /opt/cuda/lib64 \ntrying to find in /usr/local/cuda-10.2/lib64")
