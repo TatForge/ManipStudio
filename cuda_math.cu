@@ -18,13 +18,13 @@ typedef double scalar;
 //                         0,  0, 0, 0, 0, 0, 0, 0};
 
 __device__ __constant__ scalar Q_sq[4 * 4] = {-1,  0, 0, 0,
-                                   0, -1, 0, 0,
-                                   0,  0, 0, 0,
-                                   0,  0, 0, 0};
+                                               0, -1, 0, 0,
+                                               0,  0, 0, 0,
+                                               0,  0, 0, 0};
 __device__ __constant__ scalar Q[4 * 4] =     {0, -1, 0, 0,
-                                    1,  0, 0, 0,
-                                    0,  0, 0, 0,
-                                    0,  0, 0, 0};
+                                               1,  0, 0, 0,
+                                               0,  0, 0, 0,
+                                               0,  0, 0, 0};
 //__device__ __constant__ scalar J_c[6 * 4 * 4];
 //__device__ __constant__ scalar U_c[6 * 6 * 4 * 4];
 //__device__ __constant__ scalar T_c[6 * 4 * 4];
@@ -186,39 +186,36 @@ __device__ void calc_hikm_buff(scalar *u_buff, scalar *uij, scalar *ji, scalar *
                       s_j_i[n*n],
                       s_u_ij[n*n],
                       s_temp[n*n],
-                      s_temp1[n*n],
-                      s_s[6];
+                      s_temp1[n*n];
+//                      s_s[6];
 
 //    int block = blockIdx.z;
-    int row = threadIdx.y;
-    int col = threadIdx.x;
-    int rown = row*n;
+    int row;
+    int col;
+    int rown;
+    row = threadIdx.y;
+    col = threadIdx.x;
+    rown = row * 4;
     s_u_b[row*n  + col] = u_buff[row*n  + col];
     s_j_i[row*n  + col] = ji[row*n      + col];
     s_u_ij[row*n + col] = uij[row*n     + col];
-    s_s[blockIdx.z] = speed[blockIdx.z];
-
-    if (threadIdx.x == 0 && threadIdx.y == 0){
-        *(s_u_ij + 4) = 0;
-//        *(s_u_ij + 3) = 555444;
-    }
+//    s_s[blockIdx.z] = speed[blockIdx.z];
     __syncthreads();
 //    C[row*n + col] = A[row*n] * B[col] + A[row*n + 1]*B[col + 1*n] + A[row*n + 2] * B[col + 2*n] + A[row*n + 3] * B[col + 3*n];
 //    res_s[row*n + col] = a_s[row*n] * b_s[col] + a_s[row*n + 1] * b_s[col + 1*n] + a_s[row*n + 2] * b_s[col + 2*n] + a_s[row*n + 3] * b_s[col + 3*n];
     //Умножение Ji на U транспонированное
-//    s_temp[rown + col] = s_j_i[rown] * s_u_ij[rown] + s_j_i[rown + 1] * s_u_ij[rown + 1] + s_j_i[rown + 2] * s_u_ij[rown + 2] + s_j_i[rown + 3] * s_u_ij[rown + 3];
+    s_temp[rown + col] = s_j_i[rown] * s_u_ij[col*n] + s_j_i[rown + 1] * s_u_ij[col*n + 1] + s_j_i[rown + 2] * s_u_ij[col*n + 2] + s_j_i[rown + 3] * s_u_ij[col*n + 3];
 
-    s_temp[rown + col] = s_j_i[threadIdx.y * n] * s_u_ij[threadIdx.x] + s_j_i[threadIdx.y*n+ 1] * s_u_ij[threadIdx.x + 1*n] + s_j_i[threadIdx.y*n + 2] * s_u_ij[col * 2*n] + s_j_i[threadIdx.y*n + 3] * s_u_ij[col + 3*n];
-
-
-    //Умножение  u_buff на результат
-//    s_temp1[rown + col] =  s_u_ij[rown] * s_temp[col] + s_u_ij[rown + 1] * s_temp[col + 1*n] + s_u_ij[rown + 2] * s_temp[col + 2*n] +  s_u_ij[rown + 3] * s_temp[col + 3*n];
     __syncthreads();
-    res_matr[rown + col] = s_temp[rown + col];
-    if (threadIdx.x == 0 && threadIdx.y == 0)
-    {
-        *result = 141;//(s_temp1[0] + s_temp1[5] + s_temp1[10] + s_temp1[15]) * s_s[blockIdx.x] * s_s[blockIdx.y];
-    }
+    //Умножение  u_buff на результат
+    s_temp1[rown + col] =  s_u_b[rown] * s_temp[col] + s_u_b[rown + 1] * s_temp[col + 1*n] + s_u_b[rown + 2] * s_temp[col + 2*n] +  s_u_b[rown + 3] * s_temp[col + 3*n];
+
+//    __syncthreads();
+//    res_matr[rown + col] = s_temp1[rown + col];
+//    __syncthreads();
+    if (threadIdx.x == 3 && threadIdx.y == 3)
+    *result = (s_temp1[0] + s_temp1[5] + s_temp1[10] + s_temp1[15]) * speed[blockIdx.x] * speed[blockIdx.y];
+
 }
 //__global__ void CalculateHikmTestForOneBlock(scalar *T, scalar *Uij, scalar *J, scalar *speed, int i, scalar *hi, scalar *res_matrix)
 __global__ void CalcucaleHjkm(scalar *T, scalar *Uij, scalar *J, scalar *speed, int i, scalar *hi, scalar *res_matrix)
@@ -227,12 +224,12 @@ __global__ void CalcucaleHjkm(scalar *T, scalar *Uij, scalar *J, scalar *speed, 
 //    __constant__ scalar c_u[6*6*6];
 //    __shared__ scalar u_buff[4][4];
 
-    __global__ scalar hikm_buff[6][6][6];
+    __global__ scalar hikm_buff[6*6*6];
     __shared__ scalar u_buff[16];
 //    __global__ scalar *UU;
-    __global__ scalar temp;
+    __shared__ scalar temp;
 //    grid_group gg = this_gris();
-    *hi = 10;
+//    *hi = 10;
 
 //    u_buff = new scalar[4*4];
 //    UU = new scalar [4*4];
@@ -240,9 +237,10 @@ __global__ void CalcucaleHjkm(scalar *T, scalar *Uij, scalar *J, scalar *speed, 
     int index_y = blockIdx.y;
     int index_z = blockIdx.z;
     int index_b_z_16 = blockIdx.z * 16;
+
     if (threadIdx.x == 0 && threadIdx.y == 0)
-        hikm_buff[blockIdx.x][blockIdx.y][blockIdx.z] = 0;
-    i = 5;
+        hikm_buff[blockIdx.x* 36 + blockIdx.y * 6 + blockIdx.z] = 0;
+    i = 0;
     if (index_z >= i)
     {
         MakeIdentity(u_buff, 4);
@@ -258,20 +256,22 @@ __global__ void CalcucaleHjkm(scalar *T, scalar *Uij, scalar *J, scalar *speed, 
                 CudaMatrixMultiply(u_buff, (T + ctr * 16), u_buff);
             __syncthreads();
         }
-//        CudaMatrixMultiply(u_buff, Q, (T + index_b_z_16), u_buff);
-        if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 5)
-        {
-//            res_matrix[threadIdx.y * 4 + threadIdx.x] = (J + i * 16)[threadIdx.y * 4 + threadIdx.x];//(T + index_b_z_16)[threadIdx.y * 4 + threadIdx.x];//
-            calc_hikm_buff(u_buff, (Uij + blockIdx.z * 6 * 4 * 4 + i * 4 * 4), (J + i * 16), speed, &temp, res_matrix);
-            *hi = 0;
-        }
-        __syncthreads();
-//        calc_hikm_buff(u_buff, (Uij + blockIdx.z * 6 * 4 * 4 + i * 4 * 4), (J + i * 16), speed, &temp);
+
+//        if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 5)
+//        {
+////            res_matrix[threadIdx.y * 4 + threadIdx.x] = (J + i * 16)[threadIdx.y * 4 + threadIdx.x];//(T + index_b_z_16)[threadIdx.y * 4 + threadIdx.x];//
+//            calc_hikm_buff(u_buff, (Uij + blockIdx.z * 6 * 4 * 4 + i * 4 * 4), (J + i * 16), speed, &temp, res_matrix);
+//            *hi += temp;
+//        }
+//        __syncthreads();
+        calc_hikm_buff(u_buff, (Uij + blockIdx.z * 6 * 4 * 4 + i * 4 * 4), (J + i * 16), speed, &temp, res_matrix);
 //        if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 5 && threadIdx.x == 0 && threadIdx.y == 0)
 //            *hi = temp;
         if (threadIdx.x == 0 && threadIdx.y == 0)
         {
-            hikm_buff[blockIdx.x][blockIdx.y][blockIdx.z] = temp;
+            hikm_buff[blockIdx.x* 36 + blockIdx.y * 6 + blockIdx.z] = temp;
+//            res_matrix[blockIdx.x * 36 + blockIdx.y * 6 + blockIdx.z] = temp;//blockIdx.x * 36 + blockIdx.y * 6 + blockIdx.z;
+//            *hi+= temp;
         }
         __syncthreads();
 //        Массив выше сформирован по j(blockIdx). Теперь надо просуммировать по j и получить квадратную матрицу для m и k
@@ -284,37 +284,50 @@ __global__ void CalcucaleHjkm(scalar *T, scalar *Uij, scalar *J, scalar *speed, 
 
     if (threadIdx.y == 0 && threadIdx.x == 0 && blockIdx.z == 5)
     {
-        scalar buff(0);
+        //Суммирование по Z
+        __shared__ scalar buff;
+        buff = 0;
         for (int i = 0; i < 6; i++)
         {
-            *hi += hikm_buff[blockIdx.x][i][0];
-            buff += hikm_buff[blockIdx.x][blockIdx.y][i];
+            buff += i;//hikm_buff[blockIdx.x* 36 + blockIdx.y * 6 + i];
         }
-        hikm_buff[blockIdx.x][blockIdx.y][0] = buff;
+        res_matrix[blockIdx.x * 6 + blockIdx.y] = buff;
+        hikm_buff[blockIdx.x * 6 + blockIdx.y] = buff;
     }
-//    __syncthreads();
+    __syncthreads();
     //Получили матрицу результатов размером 6x6. Теперь надо просуммировать по blockIdx.y
     if (threadIdx.y == 0 && threadIdx.x == 0 && blockIdx.z == 5 && blockIdx.y == 0)
     {
-        scalar buff(0);
+        //Суммирование по y
+        __shared__ scalar buff;
+        buff = 0;
         for (int i = 0; i < 6; i++)
         {
-//            *hi += hikm_buff[blockIdx.x][i][0];
+            buff += hikm_buff[blockIdx.x * 6 + i];
         }
-        hikm_buff[blockIdx.x][0][0] = buff;
+        if (threadIdx.y == 0 && threadIdx.x == 0 && blockIdx.z == 5 && blockIdx.y == 0)
+            *hi = hikm_buff[blockIdx.x * 6 + 6];
+//        res_matrix[blockIdx.x] = buff;
+        hikm_buff[blockIdx.x] = buff;
     }
-    __syncthreads();
+//    __syncthreads();
     if (threadIdx.x == 0 && threadIdx.x == 0 && blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 5)
     {
-        for (int i = 0; i < 6; i++)
-            *hi += hikm_buff[i][0][0];
+//        for (int i = 0; i < 6; i++)
+//            *hi += hikm_buff[i][0][0];
 //            *hi += 1;
     }
 }
 
-__global__ void SetHi(scalar *hi)
+__device__ void SetInDevice(scalar *var)
 {
-    *hi = 123.99;
+    if (threadIdx.x == 0 && threadIdx.z == 0)
+        *var= 0.0000000016;
+}
+__global__ void SetHi(scalar *var)
+{
+    if (threadIdx.x == 0 && threadIdx.y == 0)
+        SetInDevice(var);
 }
 float CudaCalcucaleHikm(scalar *T, scalar *U, scalar *J, scalar *speed, int i)
 {
@@ -325,7 +338,6 @@ float CudaCalcucaleHikm(scalar *T, scalar *U, scalar *J, scalar *speed, int i)
     __global__ int i_d = 1;
     __global__ scalar u_buff[16];
     __global__ scalar *T_c, *U_c, *J_c, *speed_c;
-    scalar *aad = new scalar [16];
     cudaMalloc((void **) &T_c, sizeof(scalar) * 6 * 4 * 4);
     cudaMalloc((void **) &U_c, sizeof(scalar) * 6 * 6 * 4 * 4);
     cudaMalloc((void **) &J_c, sizeof(scalar) * 6 * 4 * 4);
@@ -361,13 +373,22 @@ float CudaCalcucaleHikm(scalar *T, scalar *U, scalar *J, scalar *speed, int i)
 //    cout << " __________________ " << endl;
 
     __global__ scalar *res_matr;
+    __global__ scalar *res_hikm_matr;
+    cudaMalloc((void **) &res_hikm_matr, sizeof(scalar) * 6 * 6 * 6);
     cudaMalloc((void **) &res_matr, sizeof(scalar) * 4 * 4);
-    SetHi<<<dim3(1), dim3(1)>>>(hi);
-    cudaMemcpy(gege, hi, sizeof(scalar), cudaMemcpyDeviceToHost);//copy
-    cout << "h_i from cuda = \ngege = " << *gege << " hi = " << hi << endl;;
-    CalcucaleHjkm<<<blocks, threads>>>(T_c, U_c, J_c, speed_c, i_d, hi, res_matr);
+//    SetHi<<<dim3(1), dim3(1)>>>(hi);
+//    cudaMemcpy(gege, hi, sizeof(scalar), cudaMemcpyDeviceToHost);//copy
+//    cout << "h_i from cuda = \ngege = " << *gege << " hi = " << hi << endl;;
+    CalcucaleHjkm<<<blocks, threads>>>(T_c, U_c, J_c, speed_c, i_d, hi, res_hikm_matr);
+
+
+    scalar *aad = new scalar [16];
+    scalar *bbd = new scalar [6*6*6];
     cudaMemcpy(aad, res_matr, sizeof(scalar) * 4 * 4, cudaMemcpyDeviceToHost);
-    CudaMatrixCout(aad, "result matrix hikm", 16);
+    cudaMemcpy(bbd, res_hikm_matr, sizeof(scalar) * 6 * 6 * 6, cudaMemcpyDeviceToHost);
+
+    CudaMatrixCout(bbd, "result matrix hikm", 6*6*6);
+//    CudaMatrixCout(speed, "speed array cuda", 6);
     cudaMemcpy(gege, hi, sizeof(scalar), cudaMemcpyDeviceToHost);//copy
 
     cout << "h_i from cuda = \ngege = " << *gege << " hi = " << hi << endl;;

@@ -467,6 +467,11 @@ int main(int argc, char *argv[])
         memcpy(Ji_ptr + i * 4 * 4, Ji[i].GetDataPtr(), sizeof(scalar) * 4 * 4);
     }
     memcpy(speed_ptr, speed.GetDataPtr(), sizeof(scalar) * 6);
+//    cout << "speed " << endl;
+//    for (int i = 0 ; i < 6; i++)
+//    {
+//        cout << *(speed_ptr + i) << endl;
+//    }
 //    cout << "T_ptr " << endl;
 //    for (int i = 0; i < 6 * 4 * 4; i++)
 //    {
