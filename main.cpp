@@ -148,11 +148,11 @@ int main(int argc, char *argv[])
                           0 * M_PI/180,
                           0 * M_PI/180,
                           0 * M_PI/180,
-                          0 * M_PI/180,
+                          -90 * M_PI/180,
                           0 * M_PI/180};
-//    Vector speed{1,1,1,1,1,1};
-//    Vector acceleration{1,1,1,1,1,1};
     Vector speed{1,1,1,1,1,1};
+//    Vector acceleration{1,1,1,1,1,1};
+//    Vector speed{0,1,0,0,0,0};
     Vector acceleration{0,0,0,0,0,0};
 
     Matrix A {{0,     -M_PI/2, 0.2325, tet[0]},
@@ -368,15 +368,18 @@ int main(int argc, char *argv[])
 
     //НЕ УДАЛЯТЬ, ПОКА НЕ ПРОВЕРЮ ПРАВИЛЬНОСТЬ________________________________________________________
 
+    int schet = 0;
+    scalar just_buff(0);
     for (counter i = 0; i < 6; i++)
     {
         for (counter k = 0; k < 6; k++)
         {
             for (counter m = 0; m < 6; m++)
             {
+
+                hikm_buff = 0;
                 for (counter j = i; j < 6; j++)
                 {
-                    hikm_buff = 0;
                     u_buff.MakeIdentity();
                     for (counter ctr = 0; ctr < j; ctr++)
                     {
@@ -387,15 +390,20 @@ int main(int argc, char *argv[])
                         else
                             u_buff = u_buff * T[ctr];
                     }
-                    if (i == 5 && k == 0 && m == 0)
-                    {
-                        cout << "j = " << j << "i = " << i << endl;
-                        U(j,i).MatrixCout("U ji");
-                        Ji[i].MatrixCout("Ji");
-                        u_buff.MatrixCout("u_buff");
-                    }
+//                    if (i == 0 && k == 0 && m == 0 && j == 1)
+//                    {
+//                        cout << "j = " << j << "i = " << i << endl;
+//                        U(j,i).MatrixCout("U ji");
+//                        Ji[i].MatrixCout("Ji");
+//                        u_buff.MatrixCout("u_buff");
+//                    }
+                    cout << "k = " << k << " m = " << m << " j = " << j << " hikm = " << Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i))) * speed(k) * speed(m) << endl;
                     hikm_buff += Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i))) * speed(k) * speed(m);
+//                    just_buff += Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i))) * speed(k) * speed(m);
+                    schet ++;
                 }
+                schet++;
+//                cout << "i = " << i << "k = " << k << " m = " << m << " hikm = " << hikm_buff << endl;
                 hikm(i) += hikm_buff;
             }
         }
@@ -403,6 +411,7 @@ int main(int argc, char *argv[])
     U(5,5).MatrixCout("U55");
     for (int i = 0; i <6; i++)
         cout << " h(" << i << ") = " << hikm(i) << endl;
+    cout << "just buff " << just_buff << endl;
 
 //    Matrix4x4 u_buff4;
 //    array<Matrix4x4, 6> T4;
@@ -500,7 +509,11 @@ int main(int argc, char *argv[])
 
 //    for (int i = 0; i < 6 * 4 * 4; i++)
 //        cout << "T_ptr " << i << " = " << *(T_ptr + i);
-    cout << " Cuda Hikm calculated for i(0) = " << CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 0) << endl;
+//    checkTime kktt;
+    CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 0);
+
+//    cout << " Cuda Hikm calculated for i(0) time = " << kktt.duration().count() << endl;
+
 //    cout << " Cuda Hikm calculated for i(1) = " << CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 1) << endl;
 //    cout << " Cuda Hikm calculated for i(2) = " << CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 2) << endl;
 //    cout << " Cuda Hikm calculated for i(3) = " << CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 3) << endl;

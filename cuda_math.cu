@@ -26,10 +26,6 @@ __device__ __constant__ scalar Q[4 * 4] =     {0, -1, 0, 0,
                                                1,  0, 0, 0,
                                                0,  0, 0, 0,
                                                0,  0, 0, 0};
-//__device__ __constant__ scalar J_c[6 * 4 * 4];
-//__device__ __constant__ scalar U_c[6 * 6 * 4 * 4];
-//__device__ __constant__ scalar T_c[6 * 4 * 4];
-//__device__ __constant__ scalar speed_c[6];
 void CudaMatrixCout(scalar *m, char *ch, int size)
 {
     cout << endl;
@@ -42,6 +38,7 @@ void CudaMatrixCout(scalar *m, char *ch, int size)
     }
     cout << endl;
 }
+
 void CudaCheckDevice()
 {
     cudaDeviceProp deviceProp;
@@ -219,30 +216,30 @@ __device__ void calc_hikm_buff(scalar *u_buff, scalar *uij, scalar *ji, scalar *
 
 }
 //__global__ void CalculateHikmTestForOneBlock(scalar *T, scalar *Uij, scalar *J, scalar *speed, int i, scalar *hi, scalar *res_matrix)
-__global__ void CalcucaleHjkm(scalar *T, scalar *Uij, scalar *J, scalar *speed, int i, scalar *hi, scalar *res_matrix)
+__global__ void PlusI(int *i, int *i_in)
 {
-//    __constant__ scalar c_t[6*4*4];
-//    __constant__ scalar c_u[6*6*6];
-//    __shared__ scalar u_buff[4][4];
-
+    *i = *i_in;
+}
+__global__ void CalcucaleHjkm(scalar *T, scalar *Uij, scalar *J, scalar *speed, int *i, scalar *hi, scalar *res_matrix)
+{
     __global__ scalar hikm_buff[6*6*6];
     __shared__ scalar u_buff[16];
-//    __global__ scalar *UU;
     __shared__ scalar temp;
 //    grid_group gg = this_gris();
 //    *hi = 10;
 
 //    u_buff = new scalar[4*4];
 //    UU = new scalar [4*4];
+//    *hi = scalar(*i);
+//    *hi = *i;
+//    *i = 3;
     int index_x = blockIdx.x;
     int index_y = blockIdx.y;
     int index_z = blockIdx.z;
     int index_b_z_16 = blockIdx.z * 16;
-
     if (threadIdx.x == 0 && threadIdx.y == 0)
         hikm_buff[blockIdx.x* 36 + blockIdx.y * 6 + blockIdx.z] = 0;
-    i = 0;
-    if (index_z >= i)
+    if (index_z >= *i)
     {
         MakeIdentity(u_buff, 4);
 //        if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 5 && threadIdx.x == 0 && threadIdx.y == 0)
@@ -258,14 +255,15 @@ __global__ void CalcucaleHjkm(scalar *T, scalar *Uij, scalar *J, scalar *speed, 
             __syncthreads();
         }
 
-        if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 5)
-        {
+//        if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 2)
+//        {
+//            calc_hikm_buff(u_buff, (Uij + blockIdx.z * 6 * 4 * 4 + i * 4 * 4), (J + i * 16), speed, &temp, res_matrix);
 //            res_matrix[threadIdx.y * 4 + threadIdx.x] = (J + i * 16)[threadIdx.y * 4 + threadIdx.x];//(T + index_b_z_16)[threadIdx.y * 4 + threadIdx.x];//
-            calc_hikm_buff(u_buff, (Uij + blockIdx.z * 6 * 4 * 4 + i * 4 * 4), (J + i * 16), speed, &temp, res_matrix);
-//            *hi += temp;
-        }
+//            calc_hikm_buff(u_buff, (Uij + blockIdx.z * 6 * 4 * 4 + i * 4 * 4), (J + i * 16), speed, &temp, res_matrix);
+//            *hi = temp;
+//        }
 //        __syncthreads();
-        calc_hikm_buff(u_buff, (Uij + blockIdx.z * 6 * 4 * 4 + i * 4 * 4), (J + i * 16), speed, &temp, res_matrix);
+        calc_hikm_buff(u_buff, (Uij + blockIdx.z * 6 * 4 * 4 + *i * 4 * 4), (J + *i * 16), speed, &temp, res_matrix);
 //        if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 5 && threadIdx.x == 0 && threadIdx.y == 0)
 //            *hi = temp;
         if (threadIdx.x == 0 && threadIdx.y == 0)
@@ -336,6 +334,8 @@ __global__ void SummMatrElems(scalar *hikm_matr, scalar *hi)
     hikm_matr[idx] = matr[idx];
     if (idx == 0)
         *hi = matr[0];
+    for (int i = idx; i < MATR_SIZE; i+= BLOCK_SIZE)
+        hikm_matr[i] = 0;
 }
 __device__ void SetInDevice(scalar *var)
 {
@@ -347,71 +347,71 @@ __global__ void SetHi(scalar *var)
     if (threadIdx.x == 0 && threadIdx.y == 0)
         SetInDevice(var);
 }
-float CudaCalcucaleHikm(scalar *T, scalar *U, scalar *J, scalar *speed, int i)
+void CudaCalcucaleHikm(scalar *T, scalar *U, scalar *J, scalar *speed, int i)
 {
+    std::cout << "Cuda started" << std::endl;
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+    float milliseconds(0.0);
+
 
     scalar *gege = new scalar (8.22);
     __global__ scalar *hi; //scalar allocated in device memory
-    cudaMalloc((void **) &hi, sizeof(scalar));//memory allocation in device memory
-    __global__ int i_d = 1;
+    __global__ int *i_d;
     __global__ scalar u_buff[16];
     __global__ scalar *T_c, *U_c, *J_c, *speed_c;
+    __global__ scalar *res_matr;
+    __global__ scalar *res_hikm_matr;
+    scalar *res_hi = new scalar[6];
+    cudaMalloc((void **) &hi, sizeof(scalar));//memory allocation in device memory
     cudaMalloc((void **) &T_c, sizeof(scalar) * 6 * 4 * 4);
     cudaMalloc((void **) &U_c, sizeof(scalar) * 6 * 6 * 4 * 4);
     cudaMalloc((void **) &J_c, sizeof(scalar) * 6 * 4 * 4);
     cudaMalloc((void **) &speed_c, sizeof(scalar) * 6);
-//    cudaMalloc((void **) u_buf, sizeof(float) * 4 * 4);
     cudaMemcpy(T_c, T, sizeof(scalar) * 6 * 4 * 4, cudaMemcpyHostToDevice);
     cudaMemcpy(U_c, U, sizeof(scalar) * 6 * 6 * 4 * 4, cudaMemcpyHostToDevice);
     cudaMemcpy(J_c, J, sizeof(scalar) * 6 * 4 * 4, cudaMemcpyHostToDevice);
     cudaMemcpy(speed_c, speed, sizeof(scalar) * 6, cudaMemcpyHostToDevice);
     dim3 blocks = dim3(6, 6, 6);
     dim3 threads = dim3(4, 4);
-//    __constant__ scalar *J_c;
-//    __constant__ scalar *U_c;
-//    __constant__ scalar *T_c;
-//    __constant__ scalar *speed_c;
-//    cudaMemcpyToSymbol(J_c, J, sizeof(scalar) * 6 * 4 * 4, cudaMemcpyHostToDevice);
-//    cudaMalloc((void **) &J_c,     sizeof(scalar) * 6 * 4 * 4);
-//    cudaMalloc((void **) &U_c,     sizeof(scalar) * 6 * 6 * 4 * 4);
-//    cudaMalloc((void **) &T_c,     sizeof(scalar) * 6 * 4 * 4);
-//    cudaMalloc((void **) &speed_c, sizeof(scalar) * 6);
-//    cudaMalloc((void **) &hi_g, sizeof(scalar));
-//    cudaMemcpyToSymbol("J_c",     J,     sizeof(scalar) * 6 * 4 * 4,     0, cudaMemcpyHostToDevice);
-//    cudaMemcpyToSymbol("U_c",     U,     sizeof(scalar) * 6 * 6 * 4 * 4, 0, cudaMemcpyHostToDevice);
-//    cudaMemcpyToSymbol("T_c",     T,     sizeof(scalar) * 6 * 4 * 4,     0, cudaMemcpyHostToDevice);
-//    cudaMemcpyToSymbol("speed_c", speed, sizeof(scalar) * 6,             0, cudaMemcpyHostToDevice);
-    cudaMemcpy(&i_d, &i, sizeof(int), cudaMemcpyHostToDevice);
-//    cudaMemcpy(hi_c,      hi,    sizeof(scalar), cudaMemcpyHostToDevice);
-//    cudaMemcpy(J, J_c, sizeof(scalar) * 6 * 4 * 4,      cudaMemcpyDeviceToHost);
-//    cudaMemcpy(T, T_c, sizeof(scalar) * 6 * 4 * 4,      cudaMemcpyDeviceToHost);
-
-//    CudaMatrixCout(J, "J_c matrix", 6*4*4);
-//    CudaMatrixCout(T, "T matrix",   6*4*4);
-//    cout << " __________________ " << endl;
-
-    __global__ scalar *res_matr;
-    __global__ scalar *res_hikm_matr;
+    cudaMalloc((void **) &i_d, sizeof(int));
     cudaMalloc((void **) &res_hikm_matr, sizeof(scalar) * 6 * 6 * 6);
     cudaMalloc((void **) &res_matr, sizeof(scalar) * 4 * 4);
+//    cudaMalloc((void **) &res_hi, sizeof(scalar) * 6);
 //    SetHi<<<dim3(1), dim3(1)>>>(hi);
 //    cudaMemcpy(gege, hi, sizeof(scalar), cudaMemcpyDeviceToHost);//copy
 //    cout << "h_i from cuda = \ngege = " << *gege << " hi = " << hi << endl;;
-    CalcucaleHjkm<<<blocks, threads>>>(T_c, U_c, J_c, speed_c, i_d, hi, res_hikm_matr);
-    SummMatrElems<<<dim3(1), dim3(BLOCK_SIZE)>>>(res_hikm_matr, hi);
 
+    for (int i = 0; i < 6; i++)
+    {
+        cudaMemcpy(i_d, &i, sizeof(int), cudaMemcpyHostToDevice);
+//        PlusI<<<dim3(1),dim3(1)>>>(i_d, i);
+        CalcucaleHjkm<<<blocks, threads>>>(T_c, U_c, J_c, speed_c, i_d, hi, res_hikm_matr);
+        SummMatrElems<<<dim3(1), dim3(BLOCK_SIZE)>>>(res_hikm_matr, hi);
+        cudaMemcpy((res_hi + i), hi, sizeof(scalar), cudaMemcpyDeviceToHost);
+    }
 
-    scalar *aad = new scalar [16];
-    scalar *bbd = new scalar [6*6*6];
-    cudaMemcpy(aad, res_matr, sizeof(scalar) * 4 * 4, cudaMemcpyDeviceToHost);
-    cudaMemcpy(bbd, res_hikm_matr, sizeof(scalar) * 6 * 6 * 6, cudaMemcpyDeviceToHost);
+//    scalar *aad = new scalar [16];
+//    scalar *bbd = new scalar [6*6*6];
+//    cudaMemcpy(aad, res_matr, sizeof(scalar) * 4 * 4, cudaMemcpyDeviceToHost);
+//    cudaMemcpy(bbd, res_hikm_matr, sizeof(scalar) * 6 * 6 * 6, cudaMemcpyDeviceToHost);
 
-    CudaMatrixCout(bbd, "result matrix hikm", 6*6*6);
+//    CudaMatrixCout(bbd, "result matrix hikm", 6*6*6);
 //    CudaMatrixCout(speed, "speed array cuda", 6);
-    cudaMemcpy(gege, hi, sizeof(scalar), cudaMemcpyDeviceToHost);//copy
+//    cudaMemcpy(gege, hi, sizeof(scalar), cudaMemcpyDeviceToHost);//copy
 
-    cout << "h_i from cuda = \ngege = " << *gege << " hi = " << hi << endl;;
-//    return hi;
+    cudaEventRecord(stop, 0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    std::cout << "Cuda ended" << std::endl;
+    std::cout << "Cuda time in milliseconds " << milliseconds << std::endl;
+    for (int i = 0; i < 6; i++)
+    {
+        cout << "h_i from cuda = "  << *(res_hi + i) << endl;
+    }
+
 }
 
 
