@@ -7,7 +7,7 @@
 #include <chrono>
 #include <string.h>
 #include <thread>
-#include <eigen3/Eigen/Dense>
+
 #ifdef WITH_TESTS
 #include <QTest>
 #endif
@@ -20,130 +20,6 @@ using namespace RoboMath;
 
 int main(int argc, char *argv[])
 {
-//    CudaCheckDevice();
-
-//    temp_1 = *new Matrix(4,4);
-//    temp_2 = *new Matrix(4,4);
-//    temp_1.MakeIdentity();
-//    temp_2.MakeIdentity();
-
-
-    Eigen::Matrix4Xd m1(4,4);
-    Eigen::Matrix4Xd m2(4,4);
-    Eigen::Matrix4Xd m3(4,4);
-    Eigen::Matrix4Xd m4(4,4);
-    Eigen::Matrix4Xd m5(4,4);
-    m1 <<  1,1,1,1,
-           1,1,1,1,
-           1,1,1,1,
-           1,1,1,1;
-    m2 <<  2,2,2,2,
-           2,2,2,2,
-           2,2,2,2,
-           2,2,2,2;
-    m3 <<  3,3,3,3,
-           3,3,3,3,
-           3,3,3,3,
-           3,3,3,3;
-    m4 <<  4,4,4,4,
-           4,4,4,4,
-           4,4,4,4,
-           4,4,4,4;
-    checkTime chktmr1;
-    for (int i = 0; i < 100; i++)
-        for (int j = 0; j < 100; j++)
-                m5 = m1 * m2 * m3;
-    cout << "Duration 1000000 matrix multiplication Eigen = " << chktmr1.duration().count() << " sek" << endl;
-
-    Matrix lo{{1,1,1,1},
-              {1,1,1,1},
-              {1,1,1,1},
-              {1,1,1,1}};
-    Matrix me{{2,2,2,2},
-              {2,2,2,2},
-              {2,2,2,2},
-              {2,2,2,2}};
-    Matrix op{{3,3,3,3},
-              {3,3,3,3},
-              {3,3,3,3},
-              {3,3,3,3}};
-    Matrix rrrr(4,4);
-    checkTime chktmr;
-    for (int i = 0; i < 100; i++)
-    {
-        for(int j = 0; j < 100; j++)
-        {
-            rrrr =  lo * me * op;
-        }
-    }
-    cout << "Duration 1000000 matrix multiplication MY = " << chktmr.duration().count() << " sek" << endl;
-    scalar sc1 = 0.26;
-    Matrix4x4 mm1(sc1,sc1,sc1,sc1,
-                  sc1,sc1,sc1,sc1,
-                  sc1,sc1,sc1,sc1,
-                  sc1,sc1,sc1,sc1);
-    Matrix4x4 mm2(0.2,0.2,0.2,0.2,
-                  0.2,0.2,0.2,0.2,
-                  0.2,0.2,0.2,0.2,
-                  0.2,0.2,0.2,0.2);
-    Matrix4x4 mm3(0.3,0.3,0.3,0.3,
-                  0.3,0.3,0.3,0.3,
-                  0.3,0.3,0.3,0.3,
-                  0.3,0.3,0.3,0.3);
-    Matrix4x4 mmr(1,1,1,1,
-                  1,1,1,1,
-                  1,1,1,1,
-                  1,1,1,1);
-    checkTime chktmr3;
-    int ctr11 = 0;
-    for (int i = 0; i < 100; i++)
-    {
-        for(int j = 0; j < 100; j++)
-        {
-            ctr11++;
-            mmr = mmr * mm1 * mm2 * mm3;
-        }
-    }
-    cout << "Duration 1000000 matrix multiplication 4x4 = " << chktmr3.duration().count() << " sek" << endl;
-    mmr.MatrixCout();
-    cout << "ctr = " << ctr11 << endl;
-
-    {
-//    checkTime chktmr2;
-//    double kekeke = 123;
-//    Matrix u_buff(4,4);
-//    scalar temp_s;
-//    for (counter i = 0; i < 6; i++)
-//    {
-//        for (counter k = 0; k < 6; k++)
-//        {
-//            for (counter m = 0; m < 6; m++)
-//            {
-//                for (counter j = i; j < 6; j++)
-//                {
-//                    temp_s = 0;
-//                    u_buff.MakeIdentity();
-//                    for (counter ctr = 0; ctr < j; ctr++)
-//                    {
-//                        if (ctr == (k - 1) && ctr == (m - 1))
-////                            rrrr = u_buff * lo * me * op;
-//                            m5 = m1 * m2 * m3 * m4;
-//                        else if (ctr == (k - 1) || ctr == (m - 1))
-////                            u_buff = u_buff * lo * op;
-//                            m5 = m1 * m2 * m3;
-//                        else
-////                            u_buff = u_buff * lo;
-//                            m5 = m1 * m2;
-//                    }
-////                    cout << "u buff ikmj " << i << k << m  << j << endl;
-////                    u_buff.MatrixCout("u_buff");
-//                }
-//            }
-//        }
-//    }
-    }
-
-
     array<scalar, 6> tet {0 * M_PI/180,
                           0 * M_PI/180,
                           0 * M_PI/180,
@@ -151,9 +27,9 @@ int main(int argc, char *argv[])
                           -90 * M_PI/180,
                           0 * M_PI/180};
     Vector speed{1,1,1,1,1,1};
-//    Vector acceleration{1,1,1,1,1,1};
+    Vector acceleration{1,1,1,1,1,1};
 //    Vector speed{0,1,0,0,0,0};
-    Vector acceleration{0,0,0,0,0,0};
+//    Vector acceleration{0,0,0,0,0,0};
 
     Matrix A {{0,     -M_PI/2, 0.2325, tet[0]},
               {0.375,  0,      0.100,  tet[1]},
@@ -215,38 +91,17 @@ int main(int argc, char *argv[])
               0.1747,
               0.1667};
     //Центры масс каждого элемента в локальной СК
-    array<Vector, 6> cm;
+
     Vector gv{0, 0, -g, 0};
 
-//    cm[0] = Vector({0, 0, 0.115, 1});
-//    cm[1] = Vector({0.158, 0, 0, 1});
-//    cm[2] = Vector({0.137, 0, 0, 1});
-//    cm[3] = Vector({0, 0, 0.06 , 1});
-//    cm[4] = Vector({0, 0, 0.085 , 1});
-//    cm[5] = Vector({0, 0, 0.61 , 1});
-    cm[0] = Vector({0, 0, 0, 1});
-    cm[1] = Vector({0, 0, 0, 1});
-    cm[2] = Vector({0, 0, 0, 1});
-    cm[3] = Vector({0, 0, 0, 1});
-    cm[4] = Vector({0, 0, +0.085, 1});
-    cm[5] = Vector({0, 0, 0, 1});
 
-    int i = 4;//4тый джоинт
-    int n = 5;
-    scalar Dik(0);
-    array<Matrix, 6> dAj;/*
-    Matrix Ujk(4, 4);
-    Ujk.MakeIdentity();*/
+
+    array<Matrix, 6> dAj;
+
     Matrix Uji(4, 4);
     Uji.MakeIdentity();
-    Matrix D(4,4);
-    D.MakeZero();
-    L.MatrixCout("L Matrix");
-    Matrix KK = Q * L;
-//    KK.MatrixCout();
-    //для i = 4, k = 1
 
-    MatrixOfMatrix6x6 U ;
+    MatrixOfMatrix6x6 U;
 
     Vector res_hikm(6,0);
     scalar hikm_buff;
@@ -298,166 +153,68 @@ int main(int argc, char *argv[])
         }
     //__расчет U
 
-    for (int i = 0; i < 6; i++)
-    {
-        Ji[i] = {{(-I[i].xx() + I[i].yy() + I[i].zz())/2, I[i].xy(), I[i].xz(), m(i) * cm[i](0)},
-                 {I[i].xy(), (I[i].xx() - I[i].yy() + I[i].zz())/2,  I[i].yz(), m(i) * cm[i](1)},
-                 {I[i].xz(), I[i].yz(), (I[i].xx() + I[i].yy() - I[i].zz())/2,  m(i) * cm[i](2)},
-                 {m(i) * cm[i](0),  m(i) * cm[i](1), m(i) * cm[i](2), m(i)}};
-        Ji[i].MatrixCout("Ji matrix");
-    }
-
-
-    //Расчет D для i-го элемента манипулятора
-    for (counter i = 0; i < 6; i++)
-    {
-        for (counter k = i; i < 6; i++)
-        {
-            for (counter j = max(i, k); j < 6; j++)
-            {
-                Dv(i) += Trace(U(j,k) * Ji[k].MultiplyTranspose(U(j,i)));
-            }
-            Dv(i) *= acceleration(k);
-        }
-    }
-//    Dv.VectorCout("D vector");
-
-    int ctr(0);
-    for (counter i = 0; i < 6; i++)
-    {
-        for (counter j = i; j < 6; j++)
-        {
-//            cout << i << j<< "__________________________________________________" << endl;
-////            U(j,i).MatrixCout();
-//            cm[j].VectorCout("cm");
-
-            p(i) += - m(j) * gv.MultiplyTranspose(U(j, i).MultiplyTranspose(cm[j]));
-//            cout << " U " << j + 1 << i + 1 << endl;
-//            U(j, i).MatrixCout("U matrix");
-//            U(j, i).MultiplyTranspose(cm[j]).VectorCout("U * cm");
-//            cout << "p = " << p(i) << endl;
-        }
-        ctr++;
-    }
-
-//    u_buff.MakeIdentity();
-//    for (counter i = 0; i < 6; i++)
-//    {
-//        for (counter j = i; j < n; j++)
-//        {
-//            for (counter k = 1; k <= j; k++)
-//            {
-//                for (counter m = 1; m <= j; m++)
-//                {
-//                    for (ctr = 0; ctr < j; ctr++)
-//                    {
-//                        if (ctr == (k - 1) && ctr == (m - 1))
-//                            u_buff = u_buff * Q * Q * T[ctr];
-//                        else if (ctr == (k - 1) || ctr == (m - 1))
-//                            u_buff = u_buff * Q * T[ctr];
-//                        else
-//                            u_buff = u_buff * T[ctr];
-//                    }
-//                    hikm(i) += Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i)));// * speed(k - 1) * speed(m- 1);
-//                }
-//            }
-//            u_buff.MakeIdentity();
-//        }
-//    }
 
 
     //НЕ УДАЛЯТЬ, ПОКА НЕ ПРОВЕРЮ ПРАВИЛЬНОСТЬ________________________________________________________
-
-    int schet = 0;
-    scalar just_buff(0);
-    for (counter i = 0; i < 6; i++)
-    {
-        for (counter k = 0; k < 6; k++)
-        {
-            for (counter m = 0; m < 6; m++)
-            {
-
-                hikm_buff = 0;
-                for (counter j = i; j < 6; j++)
-                {
-                    u_buff.MakeIdentity();
-                    for (counter ctr = 0; ctr < j; ctr++)
-                    {
-                        if (ctr == (k) && ctr == (m))
-                            u_buff = u_buff * Q * Q * T[ctr];
-                        else if (ctr == (k) || ctr == (m))
-                            u_buff = u_buff * Q * T[ctr];
-                        else
-                            u_buff = u_buff * T[ctr];
-                    }
-//                    if (i == 0 && k == 0 && m == 0 && j == 1)
-//                    {
-//                        cout << "j = " << j << "i = " << i << endl;
-//                        U(j,i).MatrixCout("U ji");
-//                        Ji[i].MatrixCout("Ji");
-//                        u_buff.MatrixCout("u_buff");
-//                    }
-                    cout << "k = " << k << " m = " << m << " j = " << j << " hikm = " << Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i))) * speed(k) * speed(m) << endl;
-                    hikm_buff += Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i))) * speed(k) * speed(m);
-//                    just_buff += Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i))) * speed(k) * speed(m);
-                    schet ++;
-                }
-                schet++;
-//                cout << "i = " << i << "k = " << k << " m = " << m << " hikm = " << hikm_buff << endl;
-                hikm(i) += hikm_buff;
-            }
-        }
-    }
-    U(5,5).MatrixCout("U55");
-    for (int i = 0; i <6; i++)
-        cout << " h(" << i << ") = " << hikm(i) << endl;
-    cout << "just buff " << just_buff << endl;
-
-//    Matrix4x4 u_buff4;
-//    array<Matrix4x4, 6> T4;
-//    array<Matrix4x4, 6> Ji4;
-//    Matrix4x4 Q4(0,-1,0,0,
-//                1,0,0,0,
-//                0,0,0,0,
-//                0,0,0,0);
-//    for (int i = 0 ; i < 6; i++)
+//счетчик    using namespace std::chrono;
+    auto start = chrono::high_resolution_clock::now();
+//    int ctr(0);
+//    for (counter i = 0; i < 6; i++)
 //    {
-//        T4[i] = T[i];
-//        Ji4[i] = Ji[i];
+//        for (counter j = i; j < 6; j++)
+//        {
+//            p(i) += - m(j) * gv.MultiplyTranspose(U(j, i).MultiplyTranspose(cm[j]));
+//        }
+//        ctr++;
 //    }
-//    Matrix4x4 U4 (0.1,0.1,0.1,0.1,
-//                  0.1,0.1,0.1,0.1,
-//                  0.1,0.1,0.1,0.1,
-//                  0.1,0.1,0.1,0.1);
-    //Тестовые расчеты
+//    //Расчет D для i-го элемента манипулятора
+//    for (counter i = 0; i < 6; i++)
+//    {
+//        for (counter k = i; i < 6; i++)
+//        {
+//            for (counter j = max(i, k); j < 6; j++)
+//            {
+//                Dv(i) += Trace(U(j,k) * Ji[k].MultiplyTranspose(U(j,i)));
+//            }
+//            Dv(i) *= acceleration(k);
+//        }
+//    }
+
+//    int schet = 0;
+//    scalar just_buff(0);
 //    for (counter i = 0; i < 6; i++)
 //    {
 //        for (counter k = 0; k < 6; k++)
 //        {
 //            for (counter m = 0; m < 6; m++)
 //            {
+
 //                hikm_buff = 0;
 //                for (counter j = i; j < 6; j++)
 //                {
 //                    u_buff.MakeIdentity();
 //                    for (counter ctr = 0; ctr < j; ctr++)
 //                    {
-//                        if (ctr == (k - 1) && ctr == (m - 1))
-//                            u_buff4 = u_buff4 * Q4 * Q4 * T4[ctr];
-//                        else if (ctr == (k - 1) || ctr == (m - 1))
-//                            u_buff4 = u_buff4 * Q4 * T4[ctr];
+//                        if (ctr == (k) && ctr == (m))
+//                            u_buff = u_buff * Q * Q * T[ctr];
+//                        else if (ctr == (k) || ctr == (m))
+//                            u_buff = u_buff * Q * T[ctr];
 //                        else
-//                            u_buff4 = u_buff4 * T4[ctr];
+//                            u_buff = u_buff * T[ctr];
 //                    }
-////                    cout << "u buff ikmj " << i << k << m  << j << endl;
-////                    u_buff.MatrixCout("u_buff");
-////                    hikm_buff[j] = Trace(u_buff4 * Ji4[i].MultiplyTranspose(U4)) * speed(k) * speed(m);
-//                    hikm_buff += Trace(u_buff4 * Ji4[i].MultiplyTranspose(U4)) * speed(k) * speed(m);
+//                    hikm_buff += Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i))) * speed(k) * speed(m);
+//                    schet ++;
 //                }
+//                schet++;
 //                hikm(i) += hikm_buff;
 //            }
 //        }
 //    }
+
+    auto stop = chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+    cout << "Moments calc CPU = " << duration.count() << " microsec" << endl << endl;
+
     scalar *T_ptr = new scalar [6 * 4 * 4];
     scalar *Ji_ptr = new scalar [6 * 4 * 4];
     scalar *U_ptr = new scalar [6 * 6 * 4 * 4];
@@ -476,71 +233,24 @@ int main(int argc, char *argv[])
         memcpy(Ji_ptr + i * 4 * 4, Ji[i].GetDataPtr(), sizeof(scalar) * 4 * 4);
     }
     memcpy(speed_ptr, speed.GetDataPtr(), sizeof(scalar) * 6);
-//    cout << "speed " << endl;
-//    for (int i = 0 ; i < 6; i++)
-//    {
-//        cout << *(speed_ptr + i) << endl;
-//    }
-//    cout << "T_ptr " << endl;
-//    for (int i = 0; i < 6 * 4 * 4; i++)
-//    {
-//        cout << "\t" << *(T_ptr + i);
-//        if ((i + 1) % 4 == 0 && i != 0)
-//            cout << endl;
-//    }
-//    cout << "Ji_ptr " << endl;
-//    for (int i = 0; i < 6 * 4 * 4; i++)
-//    {
-//        cout << "\t" << *(Ji_ptr + i);
-//        if ((i + 1) % 4 == 0 && i != 0)
-//            cout << endl;
-//    }
 
+    for (int i = 0; i < 10; i++)
+    {
+        using namespace std::chrono;
+        auto start = high_resolution_clock::now();
+        CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 0);
 
-//    int *asd = new int [20];
-//    int *sizes = new int (20);
-//    CudaCheckKoefficients(asd, sizes);
-//    lo.MatrixCout("lo");
-//    me.MatrixCout("me");
-//    op.MatrixCout("op");
+        auto stop = high_resolution_clock::now();
+        auto duration = duration_cast<microseconds>(stop - start);
 
-//    CudaMatrixMultiplication(lo.GetDataPtr(),me.GetDataPtr(),op.GetDataPtr());
-//    op.MatrixCout("op solved");
+//        auto bf = kktt.duration().count();
+        cout << "Cuda Hikm calculated for i(0) time = " << duration.count() << " microsec" << endl;
+    }
 
-//    for (int i = 0; i < 6 * 4 * 4; i++)
-//        cout << "T_ptr " << i << " = " << *(T_ptr + i);
-//    checkTime kktt;
-    CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 0);
-
-//    cout << " Cuda Hikm calculated for i(0) time = " << kktt.duration().count() << endl;
-
-//    cout << " Cuda Hikm calculated for i(1) = " << CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 1) << endl;
-//    cout << " Cuda Hikm calculated for i(2) = " << CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 2) << endl;
-//    cout << " Cuda Hikm calculated for i(3) = " << CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 3) << endl;
-//    cout << " Cuda Hikm calculated for i(4) = " << CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 4) << endl;
-//    cout << " Cuda Hikm calculated for i(5) = " << CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 5) << endl;
-
-    //_______________________________________________________________________________________________
-//    for (int i = 0; i < 6; i++)
-//    {
-//        for (int p = 0; p < i; p++)
-//        {
-//            for (int r = 0; r < i; r++)
-//            {
-//                hikm(i) += speed(p) * speed(r) * Trace(U(i,p) * Ji[i].MultiplyTranspose(U(i,r)));
-//            }
-//        }
-//        hikm(i) = 0.5 * hikm(i);
-//    }
     cout << "Duration " << tim.duration().count() << endl;
     hikm.VectorCout("hikm");
     Dv.VectorCout("Dv");
     p.VectorCout("p");
-
-
-
-
-
 
 
     for (counter i = 0; i < 6; i++)

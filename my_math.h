@@ -52,7 +52,8 @@ namespace RoboMath
         int GetLength() const {return length;};
         scalar MaxAbs();
         scalar* GetDataPtr() const {return data;};
-        scalar& operator()(counter number) const;
+        scalar& operator()(const counter &number);
+        scalar& at(const counter &number);
         Vector& operator=(const Vector &v);
         Vector& operator=(const double &value);
         Vector operator*(const Vector &v);
@@ -177,6 +178,7 @@ namespace RoboMath
         scalar a11,a12,a13,a14,a21,a22,a23,a24,a31,a32,a33,a34,a41,a42,a43,a44;
         Matrix4x4()
         {
+            MakeNull();
             this->a11 = 0;
             this->a12 = 0;
             this->a13 = 0;
@@ -235,7 +237,7 @@ namespace RoboMath
             a43 = m.at(3,2);
             a44 = m.at(3,3);
         }
-        Matrix4x4 operator*=(const scalar &sc)
+        void operator*=(const scalar &sc)
         {
             a11 *= sc;
             a12 *= sc;
@@ -309,7 +311,33 @@ namespace RoboMath
             cout << a31 << "\t" << a32 << "\t" << a33 << "\t" << a34 << "\t" << endl;
             cout << a41 << "\t" << a42 << "\t" << a43 << "\t" << a44 << "\t" << endl;
         }
-    private:
+        void MakeIdentity()
+        {
+            MakeNull;
+            a11 = 1;
+            a22 = 1;
+            a33 = 1;
+            a44 = 1;
+        }
+        void MakeNull()
+        {
+            this->a11 = 0;
+            this->a12 = 0;
+            this->a13 = 0;
+            this->a14 = 0;
+            this->a21 = 0;
+            this->a22 = 0;
+            this->a23 = 0;
+            this->a24 = 0;
+            this->a31 = 0;
+            this->a32 = 0;
+            this->a33 = 0;
+            this->a34 = 0;
+            this->a41 = 0;
+            this->a42 = 0;
+            this->a43 = 0;
+            this->a44 = 0;
+        }
     };
 
 

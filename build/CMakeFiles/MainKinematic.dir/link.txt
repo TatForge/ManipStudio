@@ -1,0 +1,1 @@
+/usr/bin/c++ -L/opt/cuda/lib64 CMakeFiles/MainKinematic.dir/main.cpp.o CMakeFiles/MainKinematic.dir/my_math.cpp.o CMakeFiles/MainKinematic.dir/robo.cpp.o CMakeFiles/MainKinematic.dir/test_my_math.cpp.o CMakeFiles/cuda_compile_1.dir/cuda_compile_1_generated_cuda_math.cu.o -o MainKinematic  /usr/lib/libQt5Test.so.5.15.2 -lcudart /usr/lib/libQt5Core.so.5.15.2 

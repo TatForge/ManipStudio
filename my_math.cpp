@@ -564,9 +564,14 @@ scalar Vector::MaxAbs()
     return result;
 }
 
-scalar &Vector::operator()(counter number) const
+scalar &Vector::operator()(const counter &number)
 {
     assert(number >= 0 && number <= length);
+    return *(data + number);
+}
+
+scalar &Vector::at(const counter &number)
+{
     return *(data + number);
 }
 

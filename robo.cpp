@@ -1,6 +1,24 @@
 #include "robo.h"
 
 using namespace RoboMath;
+const Matrix q = {{0, -1, 0, 0},
+                  {1,  0, 0, 0},
+                  {0,  0, 0, 0},
+                  {0,  0, 0, 0}};
+const Matrix q_sq = {{-1,  0, 0, 0},
+                     {0,  -1, 0, 0},
+                     {0,   0, 0, 0},
+                     {0,   0, 0, 0}};
+Vector
+
+
+
+
+
+
+
+
+
 
 
 Robo::Robo()
@@ -35,13 +53,13 @@ Robo::Robo(initializer_list<Elem> &robo_list)
         ++robo_it;
         ++robo_list_it;
     }
-//    this->RoboCout();
     effector.SetRotation(Quaternion(Vector3(1, 0, 0), ToRad(90)));
     (robot + number_of_elements - 1)->GetRotationAxisLocal();
     effector.SetRotationAxis((robot + number_of_elements - 1)->GetRotationAxisLocal());
     effector.SetRotationAxisLocal((robot + number_of_elements - 1)->GetRotationAxisLocal());
     effector.SetPosition((robot + number_of_elements - 1)->GetPosition());
     effector.SetPositionLocal(Vector3(0, 0, 0));
+    RoboSettingsInit();
 }
 
 Robo::~Robo()
@@ -236,6 +254,67 @@ void Robo::DeltaThetasCout()
     }
 }
 
+void Robo::CalcMoments()
+{
+    Vector p(6,0);
+    Vector d_v(6,0);
+    Vector h_ikm;
+    int ctr(0);
+    for (counter i = 0; i < 6; i++)
+    {
+        for (counter j = i; j < 6; j++)
+        {
+            p(i) += - m_mass->at(j) * gv.MultiplyTranspose(U(j, i).MultiplyTranspose(cm[j]));
+        }
+        ctr++;
+    }
+    //Расчет D для i-го элемента манипулятора
+    for (counter i = 0; i < 6; i++)
+    {
+        for (counter k = i; i < 6; i++)
+        {
+            for (counter j = max(i, k); j < 6; j++)
+            {
+                d_v(i) += Trace(U(j,k) * Ji[k].MultiplyTranspose(U(j,i)));
+            }
+            d_v(i) *= acceleration(k);
+        }
+    }
+
+    int schet = 0;
+    scalar hikm_buff(0);
+    Matrix4x4 u_buff;
+    for (counter i = 0; i < 6; i++)
+    {
+        for (counter k = 0; k < 6; k++)
+        {
+            for (counter m = 0; m < 6; m++)
+            {
+
+                hikm_buff = 0;
+                for (counter j = i; j < 6; j++)
+                {
+                    u_buff.MakeIdentity();
+                    for (counter ctr = 0; ctr < j; ctr++)
+                    {
+                        if (ctr == (k) && ctr == (m))
+                            u_buff = u_buff * Q * Q * T[ctr];
+                        else if (ctr == (k) || ctr == (m))
+                            u_buff = u_buff * Q * T[ctr];
+                        else
+                            u_buff = u_buff * T[ctr];
+                    }
+                    hikm_buff += Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i))) * speed(k) * speed(m);
+                    schet ++;
+                }
+                schet++;
+                h_ikm(i) += hikm_buff;
+            }
+        }
+    }
+
+}
+
 //void Robo::CreateStateMatrixes()
 //{
 //    theta_vector = new Vector({0 * M_PI/180,
@@ -282,6 +361,37 @@ const Elem *Robo::GetEffector() const
 {
 //    assert(number_of_elements > 0 && robot && robot != nullptr && "Failed assertion in Robo.Effector()");
     return &effector;
+}
+
+void Robo::RoboSettingsInit()
+{
+    m_mass = new Vector {0.5982,
+              1.1495,
+              0.6399,
+              0.3551,
+              0.1747,
+              0.1667};
+    m_cm[0] = Vector({0, 0, 0, 1});
+    m_cm[1] = Vector({0, 0, 0, 1});
+    m_cm[2] = Vector({0, 0, 0, 1});
+    m_cm[3] = Vector({0, 0, 0, 1});
+    m_cm[4] = Vector({0, 0, 0.085, 1});
+    m_cm[5] = Vector({0, 0, 0, 1});
+    array<Tensor,6> I;
+    m_i[0] = {0.000588, 0.000587, 0.000929, -1.299e-8, 2.44e-8, 1.79e-6};
+    m_i[1] = {0.000928, 0.001512, 0.000937, 1.86e-5,  1.55e-10, 5.34e-12};
+    m_i[2] = {0.001759, 0.000747, 0.001913, 2.32e-8,  6.37e-9,  1.68e-6};
+    m_i[3] = {0.000198, 0.000479, 0.002059, 3.16e-11, 5.59e-10, 1.59e-7};
+    m_i[4] = {9.826e-5, 0.000128, 0.000114, -2.74e-9, 4.41e-9,  5.82e-7};
+    m_i[5] = {5.529e-5, 5.359e-5, 8.415e-5, 1.99e-10, 2.53e-9,  1.85e-7};
+
+    for (int i = 0; i < 6; i++)
+    {
+        m_ji[i] = {{(-I[i].xx() + I[i].yy() + I[i].zz())/2, I[i].xy(), I[i].xz(), m_mass->operator()(i) * m_cm[i](0)},
+                 {I[i].xy(), (I[i].xx() - I[i].yy() + I[i].zz())/2,  I[i].yz(), m_mass->operator()(i) * m_cm[i](1)},
+                 {I[i].xz(), I[i].yz(), (I[i].xx() + I[i].yy() - I[i].zz())/2,  m_mass->operator()(i) * m_cm[i](2)},
+                 {m_mass->operator()(i) * m_cm[i](0),  m_mass->operator()(i) * m_cm[i](1), m_mass->operator()(i) * m_cm[i](2), m_mass->operator()(i)}};
+    }
 }
 
 void Robo::AllocateForNewRobot()

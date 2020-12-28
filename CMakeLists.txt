@@ -40,6 +40,7 @@ add_executable(MainKinematic
     my_math.cpp
     robo.cpp
     test_my_math.cpp
+    some_trash.cpp
     ${CUDA_OBJECTS}
 )
 

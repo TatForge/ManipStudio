@@ -1,0 +1,3 @@
+/home/devel/Projects/MainKinematic/build/CMakeFiles/rebuild_cache.dir
+/home/devel/Projects/MainKinematic/build/CMakeFiles/edit_cache.dir
+/home/devel/Projects/MainKinematic/build/CMakeFiles/MainKinematic.dir

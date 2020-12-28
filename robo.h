@@ -82,6 +82,17 @@ public:
     void AddDeltaThetas();
     void ComputeJointsPosition();
     void DeltaThetasCout();
+    void CalcMoments();
+
+//    RoboMath::Vector *GetCMData(const int &number)
+//    {
+//        return &m_cm[number];
+//    };
+//    RoboMath::Tensor *GetIData(const int &number)
+//    {
+//        return &m_i[number];
+//    };
+
 //    void CreateStateMatrixes();
     RoboMath::Vector3 GetEffectorPosition() const;
     RoboMath::Vector3 GetEffectorRotation() const;
@@ -89,6 +100,7 @@ public:
     RoboMath::Vector3 GetDeltaR() const;
     RoboMath::Vector3 GetDeltaS() const;
     const Elem *GetEffector() const;
+
 private:
     Elem *robot;
     RoboMath::Matrix *jacobian;
@@ -96,9 +108,17 @@ private:
     RoboMath::Vector3 delta_s;
     RoboMath::Vector3 delta_r;
     Effector effector;
+
+    array<RoboMath::Vector, 6> m_cm;
+    array<RoboMath::Tensor, 6> m_i;
+    array<RoboMath::Matrix, 6> m_ji;
+    RoboMath::Vector *m_mass;
+
+    //moments calculate methods
+    void CalcHjkm();
 //    const RoboMath::Matrix* state_matrix;
 //    const RoboMath::Vector* theta_vector;
-
+    void RoboSettingsInit();
     int number_of_elements;
     void AllocateForNewRobot();
 };
