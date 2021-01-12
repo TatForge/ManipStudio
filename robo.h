@@ -104,21 +104,26 @@ public:
 private:
     Elem *robot;
     RoboMath::Matrix *jacobian;
+    RoboMath::Matrix4x4 T[6];
     RoboMath::Vector *delta_thetas;
     RoboMath::Vector3 delta_s;
     RoboMath::Vector3 delta_r;
     Effector effector;
+    scalar m_acceleration[6];
+    scalar m_speed[6];
+    scalar m_mass[6];
 
+    RoboMath::Matrix4x4 U[36];
     array<RoboMath::Vector, 6> m_cm;
     array<RoboMath::Tensor, 6> m_i;
-    array<RoboMath::Matrix, 6> m_ji;
-    RoboMath::Vector *m_mass;
+    array<RoboMath::Matrix4x4, 6> m_ji;
 
     //moments calculate methods
     void CalcHjkm();
 //    const RoboMath::Matrix* state_matrix;
 //    const RoboMath::Vector* theta_vector;
     void RoboSettingsInit();
+    void CalcUMatrix();
     int number_of_elements;
     void AllocateForNewRobot();
 };

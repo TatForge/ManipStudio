@@ -1,4 +1,4 @@
-#include <eigen3/Eigen/Dense>
+//#include <eigen3/Eigen/Dense>
 #include <iostream>
 
 #include "test_my_math.h"
@@ -45,32 +45,32 @@ void JustFoo()
     }
 
 
-    Eigen::Matrix4Xd m1(4,4);
-    Eigen::Matrix4Xd m2(4,4);
-    Eigen::Matrix4Xd m3(4,4);
-    Eigen::Matrix4Xd m4(4,4);
-    Eigen::Matrix4Xd m5(4,4);
-    m1 <<  1,1,1,1,
-           1,1,1,1,
-           1,1,1,1,
-           1,1,1,1;
-    m2 <<  2,2,2,2,
-           2,2,2,2,
-           2,2,2,2,
-           2,2,2,2;
-    m3 <<  3,3,3,3,
-           3,3,3,3,
-           3,3,3,3,
-           3,3,3,3;
-    m4 <<  4,4,4,4,
-           4,4,4,4,
-           4,4,4,4,
-           4,4,4,4;
-    checkTime chktmr1;
-    for (int i = 0; i < 100; i++)
-        for (int j = 0; j < 100; j++)
-                m5 = m1 * m2 * m3;
-    cout << "Duration 1000000 matrix multiplication Eigen = " << chktmr1.duration().count() << " sek" << endl;
+//    Eigen::Matrix4Xd m1(4,4);
+//    Eigen::Matrix4Xd m2(4,4);
+//    Eigen::Matrix4Xd m3(4,4);
+//    Eigen::Matrix4Xd m4(4,4);
+//    Eigen::Matrix4Xd m5(4,4);
+//    m1 <<  1,1,1,1,
+//           1,1,1,1,
+//           1,1,1,1,
+//           1,1,1,1;
+//    m2 <<  2,2,2,2,
+//           2,2,2,2,
+//           2,2,2,2,
+//           2,2,2,2;
+//    m3 <<  3,3,3,3,
+//           3,3,3,3,
+//           3,3,3,3,
+//           3,3,3,3;
+//    m4 <<  4,4,4,4,
+//           4,4,4,4,
+//           4,4,4,4,
+//           4,4,4,4;
+//    checkTime chktmr1;
+//    for (int i = 0; i < 100; i++)
+//        for (int j = 0; j < 100; j++)
+//                m5 = m1 * m2 * m3;
+//    cout << "Duration 1000000 matrix multiplication Eigen = " << chktmr1.duration().count() << " sek" << endl;
 
     Matrix lo{{1,1,1,1},
               {1,1,1,1},
@@ -122,6 +122,6 @@ void JustFoo()
         }
     }
     cout << "Duration 1000000 matrix multiplication 4x4 = " << chktmr3.duration().count() << " sek" << endl;
-    mmr.MatrixCout();
+    mmr.MatrixCout("mmr");
     cout << "ctr = " << ctr11 << endl;
 }

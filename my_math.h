@@ -54,6 +54,7 @@ namespace RoboMath
         scalar* GetDataPtr() const {return data;};
         scalar& operator()(const counter &number);
         scalar& at(const counter &number);
+        scalar at(const counter &number) const;
         Vector& operator=(const Vector &v);
         Vector& operator=(const double &value);
         Vector operator*(const Vector &v);
@@ -123,7 +124,7 @@ namespace RoboMath
         Matrix Multuply(const Matrix &matrix1, const Matrix &matrix2) const;
         void Multiply(const Matrix &matrix2, Matrix *ret_matrix) const;
         Matrix MultiplyTranspose(const Matrix &matrix) const;
-        Vector MultiplyTranspose(const Vector &v) const;
+        Vector MultiplyTranspose(Vector &v) const;
 
         size_t Size() const;
         void Transpose();
@@ -280,6 +281,17 @@ namespace RoboMath
             result.a44 = a41*b.a41 + a42*b.a42 + a43*b.a43 + a44*b.a44;
             return result;
         }
+        Vector MultiplyTranspose(const Vector &v)
+        {
+            Vector res(v.GetLength());
+//            v.VectorCout("input vector");
+            res(0) = a11*v.at(0) + a12*v.at(1) + a13*v.at(2) + a14*v.at(3);
+            res(1) = a21*v.at(0) + a22*v.at(1) + a23*v.at(2) + a24*v.at(3);
+            res(2) = a31*v.at(0) + a32*v.at(1) + a33*v.at(2) + a34*v.at(3);
+            res(3) = a41*v.at(0) + a42*v.at(1) + a43*v.at(2) + a44*v.at(3);
+            res.VectorCout("res vector");
+            return res;
+        }
         Matrix4x4 operator*(const Matrix4x4 &b)
         {
             Matrix4x4 result;
@@ -304,16 +316,21 @@ namespace RoboMath
             result.a44 = a41*b.a14 + a42*b.a24 + a43*b.a34 + a44*b.a44;
             return result;
         }
-        void MatrixCout()
+        void MatrixCout(const char *ch)
         {
-            cout << a11 << "\t" << a12 << "\t" << a13 << "\t" << a14 << "\t" << endl;
-            cout << a21 << "\t" << a22 << "\t" << a23 << "\t" << a24 << "\t" << endl;
-            cout << a31 << "\t" << a32 << "\t" << a33 << "\t" << a34 << "\t" << endl;
-            cout << a41 << "\t" << a42 << "\t" << a43 << "\t" << a44 << "\t" << endl;
+            cout << "___________________________"
+                 << ch
+                 << "___________________________"
+                 << endl;
+            const int w = 13;
+            cout << setw(w) << a11 << setw(w) << a12 << setw(w) << a13 << setw(w) << a14 << endl;
+            cout << setw(w) << a21 << setw(w) << a22 << setw(w) << a23 << setw(w) << a24 << endl;
+            cout << setw(w) << a31 << setw(w) << a32 << setw(w) << a33 << setw(w) << a34 << endl;
+            cout << setw(w) << a41 << setw(w) << a42 << setw(w) << a43 << setw(w) << a44 << endl;
         }
         void MakeIdentity()
         {
-            MakeNull;
+            MakeNull();
             a11 = 1;
             a22 = 1;
             a33 = 1;

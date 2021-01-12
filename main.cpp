@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
                           0 * M_PI/180,
                           0 * M_PI/180,
                           0 * M_PI/180,
-                          -90 * M_PI/180,
+                          0 * M_PI/180,
                           0 * M_PI/180};
     Vector speed{1,1,1,1,1,1};
     Vector acceleration{1,1,1,1,1,1};
@@ -113,45 +113,26 @@ int main(int argc, char *argv[])
     Vector tao(6,0);
 
     checkTime tim;
-//    for (counter k = 1; k <= 6; k++)
-//    {
-//        for (counter j = k; j <= 6; j++)
+//        for (counter k = 0; k < 6; k++)
 //        {
-//            //Считается Ujk для конкретного i,j,k
-//            for (counter ctr = 0; ctr < j; ctr++)
+//            for (counter j = k; j < 6; j++)
 //            {
-//                if (ctr == k - 1)
-//                    U(j - 1, k - 1) = U(j - 1, k - 1) * Q * T[ctr];
-//                else
+//                //Считается Ujk для конкретного i,j,k
+//                for (int ctr = 0; ctr <= j; ctr++)
 //                {
-//                    U(j - 1, k - 1) = U(j - 1, k - 1) * T[ctr];
+//                    if (ctr == k)
+//                        U(j, k) = U(j, k) * T[ctr] * Q;
+//                    else
+//                    {
+//                        U(j, k) = U(j, k) * T[ctr];
+//                    }
+////                    U(j, k).MatrixCout();
 //                }
-//                U(j - 1, k - 1).MatrixCout();
+////                cout << "U" << j << k << endl;
+////                U(j, k).MatrixCout();
 //            }
-//            cout << "U" << j << k << endl;
-//            U(j - 1, k - 1).MatrixCout();
 //        }
-//    }
-        for (counter k = 0; k < 6; k++)
-        {
-            for (counter j = k; j < 6; j++)
-            {
-                //Считается Ujk для конкретного i,j,k
-                for (int ctr = 0; ctr <= j; ctr++)
-                {
-                    if (ctr == k)
-                        U(j, k) = U(j, k) * T[ctr] * Q;
-                    else
-                    {
-                        U(j, k) = U(j, k) * T[ctr];
-                    }
-//                    U(j, k).MatrixCout();
-                }
-//                cout << "U" << j << k << endl;
-//                U(j, k).MatrixCout();
-            }
-        }
-    //__расчет U
+//    //__расчет U
 
 
 
@@ -215,49 +196,48 @@ int main(int argc, char *argv[])
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
     cout << "Moments calc CPU = " << duration.count() << " microsec" << endl << endl;
 
+
+
     scalar *T_ptr = new scalar [6 * 4 * 4];
     scalar *Ji_ptr = new scalar [6 * 4 * 4];
     scalar *U_ptr = new scalar [6 * 6 * 4 * 4];
     scalar *speed_ptr = new scalar[6];
-    for (int i = 0; i < 6; i++)
-    {
-        memcpy(T_ptr + i * 4 * 4, T[i].GetDataPtr(), sizeof(scalar) * 4 * 4);
-    }
-    for (int i = 0; i < 6; i++)
-    {
-        for (int j = 0; j < 6; j++)
-            memcpy(U_ptr + i * 6 * 4 * 4 + j * 4 * 4, U(i,j).GetDataPtr(), sizeof(scalar) * 4 * 4);
-    }
-    for (int i = 0; i < 6; i++)
-    {
-        memcpy(Ji_ptr + i * 4 * 4, Ji[i].GetDataPtr(), sizeof(scalar) * 4 * 4);
-    }
-    memcpy(speed_ptr, speed.GetDataPtr(), sizeof(scalar) * 6);
+//    for (int i = 0; i < 6; i++)
+//    {
+//        memcpy(T_ptr + i * 4 * 4, T[i].GetDataPtr(), sizeof(scalar) * 4 * 4);
+//    }
+//    for (int i = 0; i < 6; i++)
+//    {
+//        for (int j = 0; j < 6; j++)
+//            memcpy(U_ptr + i * 6 * 4 * 4 + j * 4 * 4, U(i,j).GetDataPtr(), sizeof(scalar) * 4 * 4);
+//    }
+//    for (int i = 0; i < 6; i++)
+//    {
+//        memcpy(Ji_ptr + i * 4 * 4, Ji[i].GetDataPtr(), sizeof(scalar) * 4 * 4);
+//    }
+//    memcpy(speed_ptr, speed.GetDataPtr(), sizeof(scalar) * 6);
 
-    for (int i = 0; i < 10; i++)
-    {
-        using namespace std::chrono;
-        auto start = high_resolution_clock::now();
-        CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 0);
+//    for (int i = 0; i < 10; i++)
+//    {
+//        using namespace std::chrono;
+//        auto start = high_resolution_clock::now();
+//        CudaCalcucaleHikm(T_ptr, U_ptr, Ji_ptr, speed_ptr, 0);
 
-        auto stop = high_resolution_clock::now();
-        auto duration = duration_cast<microseconds>(stop - start);
+//        auto stop = high_resolution_clock::now();
+//        auto duration = duration_cast<microseconds>(stop - start);
 
-//        auto bf = kktt.duration().count();
-        cout << "Cuda Hikm calculated for i(0) time = " << duration.count() << " microsec" << endl;
-    }
+////        auto bf = kktt.duration().count();
+//        cout << "Cuda Hikm calculated for i(0) time = " << duration.count() << " microsec" << endl;
+//    }
 
-    cout << "Duration " << tim.duration().count() << endl;
-    hikm.VectorCout("hikm");
-    Dv.VectorCout("Dv");
-    p.VectorCout("p");
+
 
 
     for (counter i = 0; i < 6; i++)
     {
         tao(i) = Dv(i) + hikm(i) + p(i);
     }
-    tao.VectorCout("TAO");
+//    tao.VectorCout("TAO");
 
 
     initializer_list<Elem> il_elem {Elem(Vector3(0,     0,      0),      unit_z,  ToRad(0)),
@@ -268,6 +248,12 @@ int main(int argc, char *argv[])
                                     Elem(Vector3(0.670, 0.2431, 0.0615), unit_y,  ToRad(0))};
     Robo manipulator(il_elem);
     manipulator.ComputeJointsPosition();
+    manipulator.CalcMoments();
+//    cout << "Duration " << tim.duration().count() << endl;
+//    hikm.VectorCout("hikm");
+//    Dv.VectorCout("Dv");
+//    p.VectorCout("p");
+
     checkTime ct;
     int kolvo = 0;
     for (int i = 0; i < kolvo; i ++)
@@ -346,8 +332,9 @@ int main(int argc, char *argv[])
     cout << "Time of " << kolvo << " calculations " << ct.duration().count() << endl;
     cout << "One iter duration = " << ct.duration().count() / kolvo << endl;
     cout << "Точность " << manipulator.GetDeltaR().Length() << endl;
-
-//    QTest::qExec(new test_my_math, argc, argv);
+#ifdef WITH_TESTS
+    QTest::qExec(new test_my_math, argc, argv);
+#endif
     return 0;
 }
 

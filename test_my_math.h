@@ -11,8 +11,9 @@ class test_my_math : public QObject
 {
     Q_OBJECT
 public:
-//    explicit test_my_math(QObject *parent = nullptr);
-//    ~test_my_math();
+    explicit test_my_math(QObject *parent = nullptr);
+//    test_my_math();
+    ~test_my_math();
 
 private slots:
     void test_vector_multiple_transpose();

@@ -116,7 +116,7 @@ Matrix Matrix::MultiplyTranspose(const Matrix &matrix) const
     return result;
 }
 
-Vector Matrix::MultiplyTranspose(const Vector &v) const
+Vector Matrix::MultiplyTranspose(Vector &v) const
 {
     assert(m_cols == v.GetLength() && "Failed assertion in 'Matrix::MultiplyTransform'");
     Vector result(m_rows);
@@ -571,6 +571,11 @@ scalar &Vector::operator()(const counter &number)
 }
 
 scalar &Vector::at(const counter &number)
+{
+    return *(data + number);
+}
+
+scalar Vector::at(const counter &number) const
 {
     return *(data + number);
 }
