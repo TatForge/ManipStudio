@@ -112,11 +112,13 @@ private:
     scalar m_acceleration[6];
     scalar m_speed[6];
     scalar m_mass[6];
+    scalar m_tao[6];
 
     RoboMath::Matrix4x4 U[36];
     array<RoboMath::Vector, 6> m_cm;
     array<RoboMath::Tensor, 6> m_i;
     array<RoboMath::Matrix4x4, 6> m_ji;
+
 
     //moments calculate methods
     void CalcHjkm();

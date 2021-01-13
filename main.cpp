@@ -9,7 +9,7 @@
 #include <thread>
 
 #ifdef WITH_TESTS
-#include <QTest>
+#include <QtTest/QTest>
 #endif
 
 
@@ -54,20 +54,8 @@ int main(int argc, char *argv[])
 //        T[i].MatrixCout("T");
     }
     }
-    //Старая версия
-//    for (counter i = 0; i < T.size(); i++)
-//    {
-//        T[i] = {{cos(A.at(i, 3)), -sin(A.at(i, 3)) * cos(A.at(i, 1)),   sin(A.at(i, 3)) * sin(A.at(i, 1)), A.at(i, 0) * cos(A.at(i, 3))},
-//                {sin(A.at(i, 3)),  cos(A.at(i, 3)) * cos(A.at(i, 1)), - cos(A.at(i, 3)) * sin(A.at(i, 1)), A.at(i, 0) * sin(A.at(i, 3))},
-//                {0,                  sin(A.at(i, 1)),                       cos(A.at(i, 1)),                     A.at(i, 2)},
-//                {0,                  0,                                       0,                                     1}};
-//        T[i].MatrixCout("Ti");
-
-//    }
-
     Matrix L =  T[0] * T[1] * T[2] * T[3] * T[4]* T[5];
-//    L.MatrixCout();
-    //Dik for 3 elem i = 3, k = 3
+
     const Matrix Q = {{0, -1, 0, 0},
                       {1,  0, 0, 0},
                       {0,  0, 0, 0},
@@ -111,92 +99,6 @@ int main(int argc, char *argv[])
     Vector hikm(6,0);
     Matrix u_buff(4,4);
     Vector tao(6,0);
-
-    checkTime tim;
-//        for (counter k = 0; k < 6; k++)
-//        {
-//            for (counter j = k; j < 6; j++)
-//            {
-//                //Считается Ujk для конкретного i,j,k
-//                for (int ctr = 0; ctr <= j; ctr++)
-//                {
-//                    if (ctr == k)
-//                        U(j, k) = U(j, k) * T[ctr] * Q;
-//                    else
-//                    {
-//                        U(j, k) = U(j, k) * T[ctr];
-//                    }
-////                    U(j, k).MatrixCout();
-//                }
-////                cout << "U" << j << k << endl;
-////                U(j, k).MatrixCout();
-//            }
-//        }
-//    //__расчет U
-
-
-
-    //НЕ УДАЛЯТЬ, ПОКА НЕ ПРОВЕРЮ ПРАВИЛЬНОСТЬ________________________________________________________
-//счетчик    using namespace std::chrono;
-    auto start = chrono::high_resolution_clock::now();
-//    int ctr(0);
-//    for (counter i = 0; i < 6; i++)
-//    {
-//        for (counter j = i; j < 6; j++)
-//        {
-//            p(i) += - m(j) * gv.MultiplyTranspose(U(j, i).MultiplyTranspose(cm[j]));
-//        }
-//        ctr++;
-//    }
-//    //Расчет D для i-го элемента манипулятора
-//    for (counter i = 0; i < 6; i++)
-//    {
-//        for (counter k = i; i < 6; i++)
-//        {
-//            for (counter j = max(i, k); j < 6; j++)
-//            {
-//                Dv(i) += Trace(U(j,k) * Ji[k].MultiplyTranspose(U(j,i)));
-//            }
-//            Dv(i) *= acceleration(k);
-//        }
-//    }
-
-//    int schet = 0;
-//    scalar just_buff(0);
-//    for (counter i = 0; i < 6; i++)
-//    {
-//        for (counter k = 0; k < 6; k++)
-//        {
-//            for (counter m = 0; m < 6; m++)
-//            {
-
-//                hikm_buff = 0;
-//                for (counter j = i; j < 6; j++)
-//                {
-//                    u_buff.MakeIdentity();
-//                    for (counter ctr = 0; ctr < j; ctr++)
-//                    {
-//                        if (ctr == (k) && ctr == (m))
-//                            u_buff = u_buff * Q * Q * T[ctr];
-//                        else if (ctr == (k) || ctr == (m))
-//                            u_buff = u_buff * Q * T[ctr];
-//                        else
-//                            u_buff = u_buff * T[ctr];
-//                    }
-//                    hikm_buff += Trace(u_buff * Ji[i].MultiplyTranspose(U(j,i))) * speed(k) * speed(m);
-//                    schet ++;
-//                }
-//                schet++;
-//                hikm(i) += hikm_buff;
-//            }
-//        }
-//    }
-
-    auto stop = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
-    cout << "Moments calc CPU = " << duration.count() << " microsec" << endl << endl;
-
-
 
     scalar *T_ptr = new scalar [6 * 4 * 4];
     scalar *Ji_ptr = new scalar [6 * 4 * 4];

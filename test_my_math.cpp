@@ -3,7 +3,7 @@
 #include "my_math.h"
 #include "robo.h"
 
-#include <QTest>
+#include <QtTest/QTest>
 
 using namespace RoboMath;
 

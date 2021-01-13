@@ -8,12 +8,16 @@ include_directories(/home/devel/Projects/SimulatorClient/)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+SET(CMAKE_AUTOMOC ON)
+SET(CMAKE_AUTOUIC ON)
+SET(CMAKE_AUTORCC ON)
 
 find_package(Qt5Test REQUIRED)
+#find_package(GTest REQUIRED)
 
 find_package(CUDA REQUIRED)
 
-include_directories(${CUDA_INCLUDE_DIRS} ${CUDART_INCLUDE_DIRS} #[[${Qt5Test_INCLUDE_DIRS}]])
+include_directories(${CUDA_INCLUDE_DIRS} ${CUDART_INCLUDE_DIRS} ${QTEST_INCLUDE_DIRS}#[[${GTEST_INCLUDE_DIRS}]]#[[${Qt5Test_INCLUDE_DIRS}]])
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build)
 #find_library(CUDA_LIB lib "-L/opt/cuda/lib64")
 #if (NOT CUDA_LIB)
@@ -45,4 +49,4 @@ add_executable(MainKinematic
     ${CUDA_OBJECTS}
 )
 
-target_link_libraries(MainKinematic Qt5::Core Qt5::Test #[[Qt5Test]] cudart)
+target_link_libraries(MainKinematic Qt5::Core Qt5Test cudart #[[${GTest}]])

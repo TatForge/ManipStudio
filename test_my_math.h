@@ -1,7 +1,7 @@
 #ifndef TEST_MY_MATH_H
 #define TEST_MY_MATH_H
 
-//#define WITH_TESTS
+#define WITH_TESTS
 
 #ifdef WITH_TESTS
 #include <QObject>
@@ -11,9 +11,9 @@ class test_my_math : public QObject
 {
     Q_OBJECT
 public:
-    explicit test_my_math(QObject *parent = nullptr);
+    test_my_math(QObject *parent = 0);;
 //    test_my_math();
-    ~test_my_math();
+    virtual ~test_my_math(){};
 
 private slots:
     void test_vector_multiple_transpose();

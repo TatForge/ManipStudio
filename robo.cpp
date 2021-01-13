@@ -312,9 +312,8 @@ void Robo::CalcMoments()
             }
         }
     }
-    d_v.VectorCout("Dv");
-    p.VectorCout("P");
-    h_ikm.VectorCout("hikm");
+    for ( int i = 0; i < 6; i++)
+        m_tao[i] = p(i) + d_v(i) + h_ikm(i);
 
 }
 
