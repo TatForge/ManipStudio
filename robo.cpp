@@ -248,12 +248,9 @@ void Robo::DeltaThetasCout()
     }
 }
 
-void Robo::CalcMoments()
+void Robo::SolveDirectDynamic()
 {
     CalcUMatrix();
-    Vector p(6,0);
-    Vector d_v(6,0);
-    Vector h_ikm(6,0);
     int ctr(0);
     for (counter i = 0; i < 6; i++)
     {
@@ -261,7 +258,7 @@ void Robo::CalcMoments()
         {
             U[i*6 + j].MatrixCout("U");
             m_cm[j].VectorCout("m_cm");
-            p(i) += - m_mass[j] * gv.MultiplyTranspose(U[i*6 + j].MultiplyTranspose(m_cm[j]));
+            m_moments[i].p += - m_mass[j] * gv.MultiplyTranspose(U[i*6 + j].MultiplyTranspose(m_cm[j]));
         }
         ctr++;
     }
@@ -272,18 +269,18 @@ void Robo::CalcMoments()
         {
             for (counter j = max(i, k); j < 6; j++)
             {
-                d_v(i) += Trace(U[k*6 + j] * m_ji[k].MultiplyTranspose(U[i*6 + j]));
+                m_moments[i].dv += Trace(U[k*6 + j] * m_ji[k].MultiplyTranspose(U[i*6 + j]));
             }
-            d_v(i) *= m_acceleration[k];
+            m_moments[i].dv *= m_angles[k].q_pp;
         }
     }
 
-    for (int i = 5; i < 6; i++)
-        for (int j = i; j < 6; j++)
-        {
-            std:cout << "U " << i << j << std::endl;
-            U[i*6 + j].MatrixCout("U");
-        }
+//    for (int i = 5; i < 6; i++)
+//        for (int j = i; j < 6; j++)
+//        {
+//            std::cout << "U " << i << j << std::endl;
+//            U[i*6 + j].MatrixCout("U");
+//        }
 
     scalar hikm_buff(0);
     Matrix4x4 u_buff;
@@ -306,15 +303,36 @@ void Robo::CalcMoments()
                         else
                             u_buff = u_buff * T[ctr];
                     }
-                    hikm_buff += Trace(u_buff * m_ji[i].MultiplyTranspose(U[i*6 + j])) * m_speed[k] * m_speed[m];
+                    hikm_buff += Trace(u_buff * m_ji[i].MultiplyTranspose(U[i*6 + j])) * m_angles[k].q_p * m_angles[m].q_p;
                 }
-                h_ikm(i) += hikm_buff;
+                m_moments[i].hikm += hikm_buff;
             }
         }
     }
     for ( int i = 0; i < 6; i++)
-        m_tao[i] = p(i) + d_v(i) + h_ikm(i);
+        m_moments[i].tao = m_moments[i].p + m_moments[i].dv + m_moments[i].hikm;
+    
+}
 
+void Robo::SolveInverseDynamic()
+{
+    //Calc position, speed and acceleration for the next spet (+dt)
+    for (int i = 0; i < 6; i++)
+    {
+        m_angles[i].q_pp = (m_moments[i].tao - m_moments[i].hikm - m_moments[i].p)/m_moments[i].dv;
+        m_angles[i].q_p  = m_angles[i].q_p  + m_angles[i].q_pp * dt;
+        m_angles[i].q    = m_angles[i].q    + m_angles[i].q_p * dt;
+    }
+}
+
+Robo::Moments *Robo::GetMoments()
+{
+    return m_moments;
+}
+
+Robo::Angles *Robo::GetAngles()
+{
+    return m_angles;
 }
 
 //void Robo::CreateStateMatrixes()
@@ -367,24 +385,22 @@ const Elem *Robo::GetEffector() const
 
 void Robo::RoboSettingsInit()
 {
+    dt = 0.01;
+    for (int i = 0; i < 6; i++)
+    {
+        m_moments[i].hikm = 0;
+        m_moments[i].dv = 0;
+        m_moments[i].p = 0;
+        m_angles[i].q_p = 1;
+        m_angles[i].q_pp = 1;
+    }
     m_mass[0] = 0.5982;
     m_mass[1] = 1.1495;
     m_mass[2] = 0.6399;
     m_mass[3] = 0.3551;
     m_mass[4] = 0.1747;
     m_mass[5] = 0.1667;
-    m_speed[0] = 1;
-    m_speed[1] = 1;
-    m_speed[2] = 1;
-    m_speed[3] = 1;
-    m_speed[4] = 1;
-    m_speed[5] = 1;
-    m_acceleration[0] = 1;
-    m_acceleration[1] = 1;
-    m_acceleration[2] = 1;
-    m_acceleration[3] = 1;
-    m_acceleration[4] = 1;
-    m_acceleration[5] = 1;
+
 
     Matrix A {{0,     -M_PI/2, 0.2325, 0 * M_PI/180,  },                          //(robot + 0)->GetTheta()},
               {0.375,  0,      0.100,  0 * M_PI/180,  },//(robot + 1)->GetTheta()},

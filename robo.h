@@ -5,6 +5,7 @@
 
 #include "my_math.h"
 
+//#define dt 0.01
 #define POSITION_AND_ROTATION
 //#define CALC_COUT
 
@@ -69,6 +70,19 @@ private:
 class Robo
 {
 public:
+    struct Moments
+    {
+        scalar tao;
+        scalar p;
+        scalar hikm;
+        scalar dv;
+    };
+    struct Angles
+    {
+        scalar q_pp;
+        scalar q_p;
+        scalar q;
+    };
     Robo();
     Robo(int number_of_elements);
     Robo(initializer_list<Elem> &robo_list);
@@ -82,18 +96,13 @@ public:
     void AddDeltaThetas();
     void ComputeJointsPosition();
     void DeltaThetasCout();
-    void CalcMoments();
+    void SolveDirectDynamic();
+    void SolveInverseDynamic();
+    void CalcPolynomLine(const Angles *angle_start, const Angles *angle_stop, const scalar t0, const scalar t1, RoboMath::Polynom *result);
+    Moments *GetMoments();
+    Angles *GetAngles();
 
-//    RoboMath::Vector *GetCMData(const int &number)
-//    {
-//        return &m_cm[number];
-//    };
-//    RoboMath::Tensor *GetIData(const int &number)
-//    {
-//        return &m_i[number];
-//    };
 
-//    void CreateStateMatrixes();
     RoboMath::Vector3 GetEffectorPosition() const;
     RoboMath::Vector3 GetEffectorRotation() const;
     RoboMath::Quaternion GetEffectorRotationQuat() const;
@@ -109,15 +118,17 @@ private:
     RoboMath::Vector3 delta_s;
     RoboMath::Vector3 delta_r;
     Effector effector;
-    scalar m_acceleration[6];
-    scalar m_speed[6];
+
     scalar m_mass[6];
-    scalar m_tao[6];
+
+    Angles m_angles[6];
+    Moments m_moments[6];
 
     RoboMath::Matrix4x4 U[36];
     array<RoboMath::Vector, 6> m_cm;
     array<RoboMath::Tensor, 6> m_i;
     array<RoboMath::Matrix4x4, 6> m_ji;
+
 
 
     //moments calculate methods
@@ -127,6 +138,7 @@ private:
     void RoboSettingsInit();
     void CalcUMatrix();
     int number_of_elements;
+    float dt;
     void AllocateForNewRobot();
 };
 

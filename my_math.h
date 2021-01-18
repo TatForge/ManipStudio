@@ -39,6 +39,10 @@ namespace RoboMath
     class Vector;
     class Vector3;
     class Matrix;
+    struct Polynom
+    {
+        scalar elems[6];
+    };
 
     class Vector
     {

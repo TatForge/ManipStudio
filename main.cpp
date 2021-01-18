@@ -150,7 +150,25 @@ int main(int argc, char *argv[])
                                     Elem(Vector3(0.670, 0.2431, 0.0615), unit_y,  ToRad(0))};
     Robo manipulator(il_elem);
     manipulator.ComputeJointsPosition();
-    manipulator.CalcMoments();
+    manipulator.SolveDirectDynamic();
+    manipulator.SolveInverseDynamic();
+    Robo::Moments *res_mom = manipulator.GetMoments();
+    Robo::Angles *res_ang = manipulator.GetAngles();
+    for (int i = 0; i < 6; i++)
+    {
+        cout << "tao " << setw(10) << (res_mom + i)->tao
+             << "\tDv "  << setw(10) << (res_mom + i)->dv
+             << "\thikm "<< setw(10) << (res_mom + i)->hikm
+             << "\tp "   << setw(10) << (res_mom + i)->p
+             << endl;
+    }
+    for (int i = 0; i < 6; i++)
+    {
+        cout << "Q " << setw(10) << (res_ang + i)->q
+             << "\tQp " << setw(10) << (res_ang + i)->q_p
+             << "\tQpp " << setw(10) << (res_ang + i)->q_pp
+             << endl;
+    }
 //    cout << "Duration " << tim.duration().count() << endl;
 //    hikm.VectorCout("hikm");
 //    Dv.VectorCout("Dv");
