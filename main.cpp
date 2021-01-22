@@ -1,6 +1,7 @@
 #include "test_my_math.h"
 #include "robo.h"
 #include "cuda_math.h"
+#include "emulator.h"
 
 #include <main.h>
 #include <array>
@@ -12,6 +13,7 @@
 #include <QtTest/QTest>
 #endif
 
+#include <QApplication>
 
 //#include "commandworker.h"
 
@@ -20,6 +22,8 @@ using namespace RoboMath;
 
 int main(int argc, char *argv[])
 {
+    QApplication app(argc, argv);
+
     array<scalar, 6> tet {0 * M_PI/180,
                           0 * M_PI/180,
                           0 * M_PI/180,
@@ -39,22 +43,22 @@ int main(int argc, char *argv[])
               {0,      0,      0.1226, tet[5]}};
 
     array<Matrix, 6> T;
-    {
+
     T[0] = {{cos(A(0,3)),         -sin(A(0,3)),           0,       A(0,0)},
             {sin(A(0,3)) * cos(0), cos(A(0,3)) * cos(0), -sin(0), -sin(0) * A(0,2)},
             {sin(A(0,3)) * sin(0), cos(A(0,3)) * sin(0),  cos(0),  cos(0) * A(0,2)},
             {0,                    0,                     0,       1}};
-//    T[0].MatrixCout();
+    T[0].MatrixCout("T");
     for (counter i = 1; i < T.size(); i++)
     {
         T[i] = {{cos(A(i,3)),                 -sin(A(i,3)),                0,              A(i-1,0)},
                 {sin(A(i,3)) * cos(A(i-1,1)), cos(A(i,3)) * cos(A(i-1,1)), -sin(A(i-1,1)), -sin(A(i-1,1)) * A(i,2)},
                 {sin(A(i,3)) * sin(A(i-1,1)), cos(A(i,3)) * sin(A(i-1,1)), cos(A(i-1,1)),  cos(A(i-1,1)) * A(i,2)},
                 {0,                           0,                           0,              1}};
-//        T[i].MatrixCout("T");
+        T[i].MatrixCout("T");
     }
-    }
-    Matrix L =  T[0] * T[1] * T[2] * T[3] * T[4]* T[5];
+
+//    Matrix4x4 L =  T[0] * T[1] * T[2] * T[3] * T[4]* T[5];
 
     const Matrix Q = {{0, -1, 0, 0},
                       {1,  0, 0, 0},
@@ -145,28 +149,30 @@ int main(int argc, char *argv[])
     initializer_list<Elem> il_elem {Elem(Vector3(0,     0,      0),      unit_z,  ToRad(0)),
                                     Elem(Vector3(0,     0,      0.2325), unit_y,  ToRad(0)),
                                     Elem(Vector3(0.375, 0,      0.2325), unit_y,  ToRad(0)),
-                                    Elem(Vector3(0.670, 0.1205, 0.2325), unit_y,  ToRad(0)),
+                                    Elem(Vector3(0.670, 0.1205, 0.2325), unit_y,  ToRad(-90)),
                                     Elem(Vector3(0.670, 0.1205, 0.0615), unit_mz, ToRad(0)),
                                     Elem(Vector3(0.670, 0.2431, 0.0615), unit_y,  ToRad(0))};
     Robo manipulator(il_elem);
     manipulator.ComputeJointsPosition();
     manipulator.SolveDirectDynamic();
-    manipulator.SolveInverseDynamic();
+    manipulator.ComputeJointsPosition();
+//    manipulator.SolveInverseDynamic();
+//    manipulator.SolveDirectKinematic(manipulator.get)
     Robo::Moments *res_mom = manipulator.GetMoments();
     Robo::Angles *res_ang = manipulator.GetAngles();
     for (int i = 0; i < 6; i++)
     {
-        cout << "tao " << setw(10) << (res_mom + i)->tao
-             << "\tDv "  << setw(10) << (res_mom + i)->dv
-             << "\thikm "<< setw(10) << (res_mom + i)->hikm
-             << "\tp "   << setw(10) << (res_mom + i)->p
+        cout << "tao " << setw(10) << res_mom->tao[i]
+             << "\tDv "  << setw(10) << res_mom->dv[i]
+             << "\thikm "<< setw(10) << res_mom->hikm[i]
+             << "\tp "   << setw(10) << res_mom->p[i]
              << endl;
     }
     for (int i = 0; i < 6; i++)
     {
-        cout << "Q " << setw(10) << (res_ang + i)->q
-             << "\tQp " << setw(10) << (res_ang + i)->q_p
-             << "\tQpp " << setw(10) << (res_ang + i)->q_pp
+        cout << "Q " << setw(10) << res_ang->q[i]
+             << "\tQp " << setw(10) << res_ang->q_p[i]
+             << "\tQpp " << setw(10) << res_ang->q_pp[i]
              << endl;
     }
 //    cout << "Duration " << tim.duration().count() << endl;
@@ -175,14 +181,15 @@ int main(int argc, char *argv[])
 //    p.VectorCout("p");
 
     checkTime ct;
-    int kolvo = 0;
+    int kolvo = 1;
     for (int i = 0; i < kolvo; i ++)
     {
         bool solved = true;
-        Vector3 target(sin(i) * 0.3, cos(i) * 0.2, cos(i) * 0.1);
+//        Vector3 target(sin(i) * 0.3, cos(i) * 0.2, cos(i) * 0.1);
 //        Vector3 target(0.67, 0.2431, 0.0615);
-//        Vector3 target_r(ToRad(90), ToRad(30), ToRad(0));
-        Vector3 target_r(sin(i) * ToRad(90), cos(i) * ToRad(80), cos(i) * ToRad(-30));
+        Vector3 target(0.53, 0.2831, 0.0615);
+        Vector3 target_r(ToRad(50), ToRad(30), ToRad(0));
+//        Vector3 target_r(sin(i) * ToRad(90), cos(i) * ToRad(80), cos(i) * ToRad(-30));
 //        cout << " x = " << manipulator.GetEffector()->GetPosition().x
 //             << " y = " << manipulator.GetEffector()->GetPosition().y
 //             << " z = " << manipulator.GetEffector()->GetPosition().z
@@ -227,23 +234,23 @@ int main(int argc, char *argv[])
 //        auto d = ct.duration().count();
         if (solved)
         {
-//            cout << "Уравнение сошлось за " << ctr << " решений" << endl;
-//            cout << "Положение эффектора " << endl
-//                 << " ang1 = " << ToDeg(manipulator.GetEffectorRotationQuat().GetEulerAngles().x)
-//                 << " ang2 = " << ToDeg(manipulator.GetEffectorRotationQuat().GetEulerAngles().y)
-//                 << " ang3 = " << ToDeg(manipulator.GetEffectorRotationQuat().GetEulerAngles().z)
-//                 << " x = " << manipulator.GetEffectorPosition().x
-//                 << " y = " << manipulator.GetEffectorPosition().y
-//                 << " z = " << manipulator.GetEffectorPosition().z
-//                 << endl ;
-//            cout << "Положение цели \n"
-//                 << " ang1 = " << ToDeg(target_r.x)
-//                 << " ang2 = " << ToDeg(target_r.y)
-//                 << " ang3 = " << ToDeg(target_r.z)
-//                 << " x = " << target.x
-//                 << " y = " << target.y
-//                 << " z = " << target.z
-//                 << endl;
+            cout << "Уравнение сошлось за " << ctr << " решений" << endl;
+            cout << "Положение эффектора " << endl
+                 << " ang1 = " << ToDeg(manipulator.GetEffectorRotationQuat().GetEulerAngles().x)
+                 << " ang2 = " << ToDeg(manipulator.GetEffectorRotationQuat().GetEulerAngles().y)
+                 << " ang3 = " << ToDeg(manipulator.GetEffectorRotationQuat().GetEulerAngles().z)
+                 << " x = " << manipulator.GetEffectorPosition().x
+                 << " y = " << manipulator.GetEffectorPosition().y
+                 << " z = " << manipulator.GetEffectorPosition().z
+                 << endl ;
+            cout << "Положение цели \n"
+                 << " ang1 = " << ToDeg(target_r.x)
+                 << " ang2 = " << ToDeg(target_r.y)
+                 << " ang3 = " << ToDeg(target_r.z)
+                 << " x = " << target.x
+                 << " y = " << target.y
+                 << " z = " << target.z
+                 << endl;
         }
 //        cout << "Время расчета составило " << d << " секунд" << endl << endl;
 //        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
@@ -252,9 +259,29 @@ int main(int argc, char *argv[])
     cout << "Time of " << kolvo << " calculations " << ct.duration().count() << endl;
     cout << "One iter duration = " << ct.duration().count() / kolvo << endl;
     cout << "Точность " << manipulator.GetDeltaR().Length() << endl;
+
+    delete[] T_ptr;
+    delete[] Ji_ptr;
+    delete[] U_ptr;
+    delete[] speed_ptr;
+    Robo::Angles angle_stop;
+    Robo::Angles angle_start;
+    RoboMath::Polynom pol[6];
+    for  (int i = 0; i < 6; i++)
+    {
+        angle_start.q[i] = 0;
+        angle_stop.q[i] = manipulator.GetElem(i)->GetTheta();
+    }
+    double ti = 3;
+    manipulator.CalcPolynomLine(&angle_start, &angle_stop, ti, pol);
+//    pol[0].elem[3] = 1;
+    Emulator emulator(manipulator);
+    emulator.MoveManip(pol, ti);
+
 #ifdef WITH_TESTS
     QTest::qExec(new test_my_math, argc, argv);
 #endif
-    return 0;
+    cout << "!!!___FINISH___!!!" << endl;
+    return app.exec();
 }
 

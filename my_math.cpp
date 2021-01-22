@@ -34,6 +34,14 @@ Matrix::Matrix(const Matrix &source) : Matrix (source.m_rows, source.m_cols)
     memcpy(data, source.data, sizeof(scalar) * m_rows * m_cols);
 }
 
+Matrix::Matrix(Matrix &&source)
+{
+    this->m_cols = source.m_cols;
+    this->m_rows = source.m_rows;
+    this->data = source.data;
+    source.data = nullptr;
+}
+
 Matrix::Matrix(const initializer_list<initializer_list<scalar> > &il) : Matrix (il.size(), il.begin()->size())
 {
     int i = 0;
@@ -430,6 +438,18 @@ Matrix Matrix::operator=(const Matrix &matrix1)
     memcpy(data, matrix1.data, sizeof(scalar) * m_rows * m_cols);
 
     return *this;
+}
+
+void Matrix::operator =(Matrix &&matrix1)
+{
+//    if (this->data == matrix1.data)
+//        return *this;
+    if (this->data != nullptr)
+        delete[] data;
+    this->m_cols = matrix1.m_cols;
+    this->m_rows = matrix1.m_rows;
+    this->data = matrix1.data;
+    matrix1.data = nullptr;
 }
 
 Matrix Matrix::operator+(const Matrix &matrix) const

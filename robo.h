@@ -9,6 +9,8 @@
 #define POSITION_AND_ROTATION
 //#define CALC_COUT
 
+#define JOINTS_COUNT 6
+
 #ifdef POSITION_AND_ROTATION
 #define EFFECTOR_DEGREE_OF_FREEDOM 6
 #else
@@ -18,8 +20,7 @@
 #define RAD M_PI/180
 #define DEG 180/M_PI
 
-inline static scalar ToRad(scalar degrees) {return degrees * RAD;};
-inline static scalar ToDeg(scalar radians) {return radians * DEG;};
+
 const scalar damping_constant = 0.01;
 const scalar damping_constant_sq = damping_constant * damping_constant;
 const scalar MaxAngleDls = ToRad(45.0);
@@ -70,18 +71,19 @@ private:
 class Robo
 {
 public:
+    friend class Emulator;
     struct Moments
     {
-        scalar tao;
-        scalar p;
-        scalar hikm;
-        scalar dv;
+        scalar tao[JOINTS_COUNT];
+        scalar p[JOINTS_COUNT];
+        scalar hikm[JOINTS_COUNT];
+        scalar dv[JOINTS_COUNT];
     };
     struct Angles
     {
-        scalar q_pp;
-        scalar q_p;
-        scalar q;
+        scalar q_pp[JOINTS_COUNT];
+        scalar q_p[JOINTS_COUNT];
+        scalar q[JOINTS_COUNT];
     };
     Robo();
     Robo(int number_of_elements);
@@ -95,12 +97,16 @@ public:
     void CalculateDeltaR(RoboMath::Vector3 target_r);
     void AddDeltaThetas();
     void ComputeJointsPosition();
+    void SolveDirectKinematic(const scalar *tet, RoboMath::Matrix * const state_matrix);
+    void SolveInverseKinematic();
     void DeltaThetasCout();
     void SolveDirectDynamic();
     void SolveInverseDynamic();
-    void CalcPolynomLine(const Angles *angle_start, const Angles *angle_stop, const scalar t0, const scalar t1, RoboMath::Polynom *result);
+    void CalcPolynomLine(const Angles *angle_start, const Angles *angle_stop, const scalar t, RoboMath::Polynom *result);
+    void CalcPolynomCurve(const Angles *angle_0, const Angles *angle_1, const Angles *angle2, const Angles *angle3);
     Moments *GetMoments();
     Angles *GetAngles();
+    void SimulateManipPolinoms(RoboMath::Polynom *pol, const scalar t);
 
 
     RoboMath::Vector3 GetEffectorPosition() const;
@@ -110,31 +116,32 @@ public:
     RoboMath::Vector3 GetDeltaS() const;
     const Elem *GetEffector() const;
 
+    const Elem *GetElem(int number) const;
+
+    //maybe trash
+
 private:
     Elem *robot;
     RoboMath::Matrix *jacobian;
-    RoboMath::Matrix4x4 T[6];
+    RoboMath::Matrix4x4 T[JOINTS_COUNT];
     RoboMath::Vector *delta_thetas;
     RoboMath::Vector3 delta_s;
     RoboMath::Vector3 delta_r;
     Effector effector;
 
-    scalar m_mass[6];
+    scalar m_mass[JOINTS_COUNT];
 
-    Angles m_angles[6];
-    Moments m_moments[6];
+    Angles m_angles;
+    Moments m_moments;
 
     RoboMath::Matrix4x4 U[36];
-    array<RoboMath::Vector, 6> m_cm;
-    array<RoboMath::Tensor, 6> m_i;
-    array<RoboMath::Matrix4x4, 6> m_ji;
+    array<RoboMath::Vector, JOINTS_COUNT> m_cm;
+    array<RoboMath::Tensor, JOINTS_COUNT> m_i;
+    array<RoboMath::Matrix4x4, JOINTS_COUNT> m_ji;
 
+    RoboMath::Matrix *state_matrix;
+    RoboMath::Vector *theta_vector;
 
-
-    //moments calculate methods
-    void CalcHjkm();
-//    const RoboMath::Matrix* state_matrix;
-//    const RoboMath::Vector* theta_vector;
     void RoboSettingsInit();
     void CalcUMatrix();
     int number_of_elements;

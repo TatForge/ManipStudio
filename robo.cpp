@@ -104,8 +104,8 @@ void Robo:: CalculateDeltaThetas()
     jacobian->MatrixCout();
 #endif
     jacobian_transposed.Transpose();
-    Matrix U(EFFECTOR_DEGREE_OF_FREEDOM, EFFECTOR_DEGREE_OF_FREEDOM);
-    U =  (*jacobian) * jacobian_transposed;
+    Matrix U(6, 6);//EFFECTOR_DEGREE_OF_FREEDOM, EFFECTOR_DEGREE_OF_FREEDOM);
+    U = (*jacobian) * jacobian_transposed;
 #ifdef CALC_COUT
     U.MatrixCout();
 #endif
@@ -187,6 +187,8 @@ void Robo::AddDeltaThetas()
     {
         (robot + i)->AddDeltaTheta(delta_thetas->operator()(i));
     }
+
+    this->RoboCout();
 #ifdef CALC_COUT
     this->RoboCout();
 #endif
@@ -194,6 +196,7 @@ void Robo::AddDeltaThetas()
 
 void Robo::ComputeJointsPosition()
 {
+    //Расчет положения джоинтов и эффектора (прямая задача кинематики)
     Elem *joint_iter;
     Elem *joint_iter_parent;
     Elem *joint_iter_buff;
@@ -236,7 +239,26 @@ void Robo::ComputeJointsPosition()
 //    cout << " x = " << this->Effector()->GetPosition().x
 //         << " y = " << this->Effector()->GetPosition().y
 //         << " z = " << this->Effector()->GetPosition().z
-//         << endl;
+    //         << endl;
+}
+
+void Robo::SolveDirectKinematic(const scalar *tet, Matrix *const state_matrix)
+{
+    RoboMath::Matrix4x4 T[JOINTS_COUNT];
+    Matrix &A = *state_matrix;
+    T[0] = {{cos(A(0,3)),         -sin(A(0,3)),           0,       A(0,0)},
+            {sin(A(0,3)) * cos(0), cos(A(0,3)) * cos(0), -sin(0), -sin(0) * A(0,2)},
+            {sin(A(0,3)) * sin(0), cos(A(0,3)) * sin(0),  cos(0),  cos(0) * A(0,2)},
+            {0,                    0,                     0,       1}};
+    for (counter i = 1; i < 6; i++)
+    {
+        T[i] = {{cos(A(i,3)),                 -sin(A(i,3)),                0,              A(i-1,0)},
+                {sin(A(i,3)) * cos(A(i-1,1)), cos(A(i,3)) * cos(A(i-1,1)), -sin(A(i-1,1)), -sin(A(i-1,1)) * A(i,2)},
+                {sin(A(i,3)) * sin(A(i-1,1)), cos(A(i,3)) * sin(A(i-1,1)), cos(A(i-1,1)),  cos(A(i-1,1)) * A(i,2)},
+                {0,                           0,                           0,              1}};
+    }
+    Matrix4x4 L =  T[0] * T[1] * T[2] * T[3] * T[4]* T[5];
+    cout << "effector position \nx= " << L.a14 << " y = " << L.a24 << " z = " << L.a34 << endl;
 }
 
 
@@ -258,7 +280,7 @@ void Robo::SolveDirectDynamic()
         {
             U[i*6 + j].MatrixCout("U");
             m_cm[j].VectorCout("m_cm");
-            m_moments[i].p += - m_mass[j] * gv.MultiplyTranspose(U[i*6 + j].MultiplyTranspose(m_cm[j]));
+            m_moments.p[i] += - m_mass[j] * gv.MultiplyTranspose(U[i*6 + j].MultiplyTranspose(m_cm[j]));
         }
         ctr++;
     }
@@ -269,9 +291,9 @@ void Robo::SolveDirectDynamic()
         {
             for (counter j = max(i, k); j < 6; j++)
             {
-                m_moments[i].dv += Trace(U[k*6 + j] * m_ji[k].MultiplyTranspose(U[i*6 + j]));
+                m_moments.dv[i] += Trace(U[k*6 + j] * m_ji[k].MultiplyTranspose(U[i*6 + j]));
             }
-            m_moments[i].dv *= m_angles[k].q_pp;
+            m_moments.dv[i] *= m_angles.q_pp[i];
         }
     }
 
@@ -303,36 +325,90 @@ void Robo::SolveDirectDynamic()
                         else
                             u_buff = u_buff * T[ctr];
                     }
-                    hikm_buff += Trace(u_buff * m_ji[i].MultiplyTranspose(U[i*6 + j])) * m_angles[k].q_p * m_angles[m].q_p;
+                    hikm_buff += Trace(u_buff * m_ji[i].MultiplyTranspose(U[i*6 + j])) * m_angles.q_p[i] * m_angles.q_p[i];
                 }
-                m_moments[i].hikm += hikm_buff;
+                m_moments.hikm[i] += hikm_buff;
             }
         }
     }
     for ( int i = 0; i < 6; i++)
-        m_moments[i].tao = m_moments[i].p + m_moments[i].dv + m_moments[i].hikm;
+        m_moments.tao[i] = m_moments.p[i] + m_moments.dv[i] + m_moments.hikm[i];
     
 }
 
 void Robo::SolveInverseDynamic()
 {
-    //Calc position, speed and acceleration for the next spet (+dt)
+    //Calc position, speed and acceleration for the next step (+dt)
     for (int i = 0; i < 6; i++)
     {
-        m_angles[i].q_pp = (m_moments[i].tao - m_moments[i].hikm - m_moments[i].p)/m_moments[i].dv;
-        m_angles[i].q_p  = m_angles[i].q_p  + m_angles[i].q_pp * dt;
-        m_angles[i].q    = m_angles[i].q    + m_angles[i].q_p * dt;
+        m_angles.q_pp[i] = (m_moments.tao[i] - m_moments.hikm[i] - m_moments.p[i])/m_moments.dv[i];
+        m_angles.q_p[i]  = m_angles.q_p[i]   + m_angles.q_pp[i] * dt;
+        m_angles.q[i]    = m_angles.q[i]     + m_angles.q_p[i] * dt;
     }
+}
+
+void Robo::CalcPolynomLine(const Robo::Angles *angle_start, const Robo::Angles *angle_stop, const scalar t, Polynom *result)
+{
+    // ввести ограничение на минимальное время движения, исходя из максимальной заданной скорости и бросать исключение в случае превышения
+    const auto a0 = angle_start;
+    const auto a1 = angle_stop;
+    //подстановка вместо t0 нуля и получение аналитических зависимостей позволяет сэкономить кучу процессорного времени на расчет обратной матрицы O(n^3)
+    for (int i = 0; i < 6; i++)
+    {
+        (result + i)->elem[0] =   a0->q[i];
+        (result + i)->elem[1] =   a0->q_p[i];
+        (result + i)->elem[2] =   0.5 * a0->q_pp[i];
+        (result + i)->elem[3] = - 10/pow(t, 3) * a0->q[i] - 6/pow(t, 2) * a0->q_p[i] - 3/(2*t)          * a0->q_pp[i]
+                                + 10/pow(t, 3) * a1->q[i] - 4/pow(t, 2) * a1->q_p[i] + 1/(2*t)          * a1->q_pp[i];
+        (result + i)->elem[4] =   15/pow(t, 4) * a0->q[i] + 8/pow(t, 3) * a0->q_p[i] + 3/(2*pow(t, 2))  * a0->q_pp[i]
+                                - 15/pow(t, 4) * a1->q[i] + 7/pow(t, 3) * a1->q_p[i] - 1/pow(t, 2)      * a1->q_pp[i];
+        (result + i)->elem[5] = - 6 /pow(t, 5) * a0->q[i] - 3/pow(t, 4) * a0->q_p[i] - 1/(2*pow(t, 3))  * a0->q_pp[i]
+                                + 6 /pow(t, 5) * a1->q[i] - 3/pow(t, 4) * a1->q_p[i] + 1/(2*pow(t, 3))  * a1->q_pp[i];
+    }
+    
+}
+
+void Robo::CalcPolynomCurve(const Robo::Angles *angle0, const Robo::Angles *angle1, const Robo::Angles *angle2, const Robo::Angles *angle3)
+{
+    for (int i = 0; i < 6; i++)
+    {
+        scalar a4 = angle1->q[i];
+        scalar a3 = angle1->q[i];
+        scalar a2 = 2*angle0->q_pp[i] + angle1->q[i];
+        scalar a1 = angle0->q_p[i] + angle1->q[i];
+        scalar a0 = angle1->q[i] + angle1->q[i];
+        scalar b3 = angle2->q[i];
+        scalar b2 = angle2->q[i];
+        scalar b1 = angle2->q[i];
+        scalar b0 = angle1->q[i] + angle2->q[i];
+        scalar c4 = angle3->q[i] + 4 * angle3->q_p[i] + 12 * angle3->q_pp[i];
+        scalar c3 = angle3->q[i] + 3 * angle3->q_p[i] + 6 * angle3->q_pp[i];
+        scalar c2 = angle3->q[i] + 2 * angle3->q_p[i] + 2 * angle3->q_pp[i];
+        scalar c1 = angle3->q[i] + angle3->q_p[i];
+        scalar c0 = angle2->q[i] + angle3->q[i];
+        
+    }  
 }
 
 Robo::Moments *Robo::GetMoments()
 {
-    return m_moments;
+    return &m_moments;
 }
 
 Robo::Angles *Robo::GetAngles()
 {
-    return m_angles;
+    return &m_angles;
+}
+
+void Robo::SimulateManipPolinoms(Polynom *pol, const scalar t)
+{
+    scalar q[6];
+    for (int i = 0; i < 6; i++)
+    {
+        q[i] = (pol + i)->elem[5] * pow(t, 5) + (pol + i)->elem[4] * pow(t, 4) + (pol + i)->elem[3] * pow(t, 3) +
+               (pol + i)->elem[2] * pow(t, 2) + (pol + i)->elem[1] * pow(t, 1) + (pol + i)->elem[0];
+    }
+    cout << "manip station " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << " " << q[4] << " " << q[5] << endl;
 }
 
 //void Robo::CreateStateMatrixes()
@@ -383,16 +459,21 @@ const Elem *Robo::GetEffector() const
     return &effector;
 }
 
+const Elem *Robo::GetElem(int number) const
+{
+    return (robot + number);
+}
+
 void Robo::RoboSettingsInit()
 {
     dt = 0.01;
     for (int i = 0; i < 6; i++)
     {
-        m_moments[i].hikm = 0;
-        m_moments[i].dv = 0;
-        m_moments[i].p = 0;
-        m_angles[i].q_p = 1;
-        m_angles[i].q_pp = 1;
+        m_moments.hikm[i] = 0;
+        m_moments.dv[i] = 0;
+        m_moments.p[i] = 0;
+        m_angles.q_p[i] = 1;
+        m_angles.q_pp[i] = 1;
     }
     m_mass[0] = 0.5982;
     m_mass[1] = 1.1495;
@@ -401,13 +482,22 @@ void Robo::RoboSettingsInit()
     m_mass[4] = 0.1747;
     m_mass[5] = 0.1667;
 
-
-    Matrix A {{0,     -M_PI/2, 0.2325, 0 * M_PI/180,  },                          //(robot + 0)->GetTheta()},
-              {0.375,  0,      0.100,  0 * M_PI/180,  },//(robot + 1)->GetTheta()},
-              {0.295,  0,     -0.100,  0 * M_PI/180,  },//(robot + 2)->GetTheta()},
-              {0,     -M_PI/2, 0.1205, -90 * M_PI/180,},//(robot + 3)->GetTheta()},
-              {0,      M_PI/2, 0.171,  0 * M_PI/180,  },//(robot + 4)->GetTheta()},
-              {0,      0,      0.1226, 0 * M_PI/180   }};//(robot + 5)->GetTheta()}};
+    *state_matrix = {{0,    -M_PI/2, 0.2325, 0 * M_PI/180},
+                    {0.375,  0,      0.100,  0 * M_PI/180},
+                    {0.295,  0,     -0.100,  0 * M_PI/180},
+                    {0,     -M_PI/2, 0.1205, 0 * M_PI/180},
+                    {0,      M_PI/2, 0.171,  0 * M_PI/180},
+                    {0,      0,      0.1226, 0 * M_PI/180}};
+    for (int i = 0; i < 6; i++)
+    {
+        m_angles.q[i] = state_matrix->at(i, 3);
+    }
+    Matrix A {{0,     -M_PI/2, 0.2325, 0 * M_PI/180},                          //(robot + 0)->GetTheta()},
+              {0.375,  0,      0.100,  0 * M_PI/180},//(robot + 1)->GetTheta()},
+              {0.295,  0,     -0.100,  0 * M_PI/180},//(robot + 2)->GetTheta()},
+              {0,     -M_PI/2, 0.1205, 0 * M_PI/180},//(robot + 3)->GetTheta()},
+              {0,      M_PI/2, 0.171,  0 * M_PI/180},//(robot + 4)->GetTheta()},
+              {0,      0,      0.1226, 0 * M_PI/180}};//(robot + 5)->GetTheta()}};
     m_cm[0] = Vector({0, 0, 0, 1});
     m_cm[1] = Vector({0, 0, 0, 1});
     m_cm[2] = Vector({0, 0, 0, 1});
@@ -470,7 +560,9 @@ void Robo::CalcUMatrix()
 void Robo::AllocateForNewRobot()
 {
     jacobian     = new Matrix(EFFECTOR_DEGREE_OF_FREEDOM, number_of_elements);
+    state_matrix = new Matrix(number_of_elements, 4);
     delta_thetas = new Vector(number_of_elements);
+    theta_vector = new Vector(number_of_elements);
     if (number_of_elements > 0)
         robot = new Elem [number_of_elements];
 }

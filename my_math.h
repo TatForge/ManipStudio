@@ -29,8 +29,10 @@ typedef float scalar;
 const scalar g = 9.80665;
 
 typedef unsigned short counter;
-
 using namespace std;
+
+inline static scalar ToRad(scalar degrees) {return degrees * RAD;};
+inline static scalar ToDeg(scalar radians) {return radians * DEG;};
 
 namespace RoboMath
 {
@@ -41,7 +43,7 @@ namespace RoboMath
     class Matrix;
     struct Polynom
     {
-        scalar elems[6];
+        scalar elem[6]{0,0,0,0,0,0};
     };
 
     class Vector
@@ -117,6 +119,7 @@ namespace RoboMath
         Matrix();
         Matrix(const int &rows, const int &cols);
         Matrix(const Matrix& source);
+        Matrix(Matrix &&source);
         Matrix(const initializer_list<initializer_list<scalar>> &il);
         ~Matrix()
         {
@@ -147,6 +150,7 @@ namespace RoboMath
         Vector operator*(const Vector &vector2) const;
         Matrix operator*(const scalar &value) const;
         Matrix operator=(const Matrix &matrix1);
+        void operator=(Matrix &&matrix1);
         Matrix operator+(const Matrix &matrix) const;
         bool operator==(const Matrix &m) const;
 
