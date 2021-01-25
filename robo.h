@@ -2,8 +2,10 @@
 #define ROBO_H
 
 #include <iostream>
+#include <QSettings>
 
 #include "my_math.h"
+
 
 //#define dt 0.01
 #define POSITION_AND_ROTATION
@@ -98,12 +100,180 @@ public:
     void AddDeltaThetas();
     void ComputeJointsPosition();
     void SolveDirectKinematic(const scalar *tet, RoboMath::Matrix * const state_matrix);
-    void SolveInverseKinematic();
+    void SolveInverseKinematic(const scalar &accuracy, const RoboMath::Vector3 &target, const RoboMath::Vector3 &target_r);;
     void DeltaThetasCout();
     void SolveDirectDynamic();
     void SolveInverseDynamic();
     void CalcPolynomLine(const Angles *angle_start, const Angles *angle_stop, const scalar t, RoboMath::Polynom *result);
     void CalcPolynomCurve(const Angles *angle_0, const Angles *angle_1, const Angles *angle2, const Angles *angle3);
+    void WriteSettingsToFile()
+    {
+        manip_settings = new QSettings("ManipulatorSettigns.ini", QSettings::IniFormat);
+        manip_settings->setValue("denavita-hartenberg", 1);
+        manip_settings->beginWriteArray("denavita-hartenberg");
+        for (int i = 0; i < 6; i++)
+        {
+            manip_settings->setArrayIndex(i);
+            manip_settings->setValue("a", state_matrix->operator()(i, 0));
+            manip_settings->setValue("alpha", state_matrix->operator()(i, 1));
+            manip_settings->setValue("d", state_matrix->operator()(i, 2));
+            manip_settings->setValue("theta", state_matrix->operator()(i, 3));
+        }
+        manip_settings->endArray();
+        manip_settings->setValue("mass array", 1);
+        manip_settings->beginWriteArray("mass array");
+        for (int i = 0; i < 6; i++)
+        {
+            manip_settings->setArrayIndex(i);
+            manip_settings->setValue(QString::number(i), m_mass[i]);;
+        }
+        manip_settings->endArray();
+        manip_settings->setValue("center of mass", 1);
+        manip_settings->beginWriteArray("centers of mass");
+        for (int i = 0; i < 6; i++)
+        {
+            manip_settings->setArrayIndex(i);
+            manip_settings->setValue("0", m_cm[i].at(0));
+            manip_settings->setValue("1", m_cm[i].at(1));
+            manip_settings->setValue("2", m_cm[i].at(2));
+            manip_settings->setValue("3", m_cm[i].at(3));
+        }
+        manip_settings->endArray();
+        manip_settings->setValue("inertions", 1);
+        manip_settings->beginWriteArray("inertions");
+        for (int i = 0; i < 6; i++)
+        {
+            manip_settings->setArrayIndex(i);
+            manip_settings->setValue("0", m_i[i].xx());
+            manip_settings->setValue("1", m_i[i].yy());
+            manip_settings->setValue("2", m_i[i].zz());
+            manip_settings->setValue("3", m_i[i].xy());
+            manip_settings->setValue("4", m_i[i].xz());
+            manip_settings->setValue("5", m_i[i].yz());
+        }
+        manip_settings->endArray();
+        manip_settings->sync();
+    };
+    void LoadSettingsFromFile()
+    {
+        manip_settings = new QSettings("ManipulatorSettigns.ini", QSettings::IniFormat);
+        if (!manip_settings->contains("denavita-hartenberg"))
+            throw std::string("no denavita-hartenberg array in settings file");
+        if (!manip_settings->contains("mass array"))
+            throw std::string("no mass array in settings file");
+        if (!manip_settings->contains("center of mass"))
+            throw std::string("no center of mass array in settings file");
+        if (!manip_settings->contains("inertions"))
+            throw std::string("no inertions array in settings file");
+//        manip_settings->value("joints count", 6);
+        int size = manip_settings->beginReadArray("denavita-hartenberg");
+        for (int i = 0; i < size; i++)
+        {
+            manip_settings->setArrayIndex(i);
+            state_matrix->operator()(i, 0) = manip_settings->value("a").toDouble();
+            state_matrix->operator()(i, 1) = manip_settings->value("alpha").toDouble();
+            state_matrix->operator()(i, 2) = manip_settings->value("d").toDouble();
+            state_matrix->operator()(i, 3) = manip_settings->value("theta").toDouble();
+        }
+        manip_settings->endArray();
+        manip_settings->beginReadArray("mass array");
+        for (int i = 0; i < size; i++)
+        {
+            manip_settings->setArrayIndex(i);
+            m_mass[i] = manip_settings->value("mass").toDouble();
+        }
+        manip_settings->endArray();
+        manip_settings->beginReadArray("centers of mass");
+        for (int i = 0; i < size; i++)
+        {
+            manip_settings->setArrayIndex(i);
+            m_cm[i] = RoboMath::Vector({manip_settings->value("0").toDouble(),
+                              manip_settings->value("1").toDouble(),
+                              manip_settings->value("2").toDouble(),
+                              manip_settings->value("3").toDouble()});
+        }
+        manip_settings->endArray();
+        manip_settings->beginReadArray("inertions");
+        for (int i = 0; i < size; i++)
+        {
+            manip_settings->setArrayIndex(i);
+            m_i[i] = RoboMath::Tensor({manip_settings->value("0").toDouble(),
+                              manip_settings->value("1").toDouble(),
+                              manip_settings->value("2").toDouble(),
+                              manip_settings->value("3").toDouble(),
+                              manip_settings->value("4").toDouble(),
+                              manip_settings->value("5").toDouble()});
+        }
+        manip_settings->endArray();
+    };
+    void LoadManip()
+    {
+        try {
+            LoadSettingsFromFile();
+            dt = 0.01;
+            for (int i = 0; i < number_of_elements; i++)
+            {
+                m_moments.hikm[i] = 0;
+                m_moments.dv[i] = 0;
+                m_moments.p[i] = 0;
+                m_angles.q_p[i] = 1;
+                m_angles.q_pp[i] = 1;
+            }
+            RoboMath::Matrix &A = *state_matrix;
+            for (int i = 0; i < number_of_elements; i++)
+            {
+                m_ji[i] = {{(-m_i[i].xx() + m_i[i].yy() + m_i[i].zz())/2, m_i[i].xy(), m_i[i].xz(), m_mass[i] * m_cm[i](0)},
+                         {m_i[i].xy(), (m_i[i].xx() - m_i[i].yy() + m_i[i].zz())/2,  m_i[i].yz(), m_mass[i] * m_cm[i](1)},
+                         {m_i[i].xz(), m_i[i].yz(), (m_i[i].xx() + m_i[i].yy() - m_i[i].zz())/2,  m_mass[i] * m_cm[i](2)},
+                         {m_mass[i] * m_cm[i](0),  m_mass[i] * m_cm[i](1), m_mass[i] * m_cm[i](2), m_mass[i]}};
+                m_ji[i].MatrixCout("m_ji");
+            }
+            T[0] = {{cos(A(0,3)),         -sin(A(0,3)),           0,       A(0,0)},
+                    {sin(A(0,3)) * cos(0), cos(A(0,3)) * cos(0), -sin(0), -sin(0) * A(0,2)},
+                    {sin(A(0,3)) * sin(0), cos(A(0,3)) * sin(0),  cos(0),  cos(0) * A(0,2)},
+                    {0,                    0,                     0,       1}};
+            for (counter i = 1; i < number_of_elements; i++)
+            {
+                T[i] = {{cos(A(i,3)),                 -sin(A(i,3)),                0,              A(i-1,0)},
+                        {sin(A(i,3)) * cos(A(i-1,1)), cos(A(i,3)) * cos(A(i-1,1)), -sin(A(i-1,1)), -sin(A(i-1,1)) * A(i,2)},
+                        {sin(A(i,3)) * sin(A(i-1,1)), cos(A(i,3)) * sin(A(i-1,1)), cos(A(i-1,1)),  cos(A(i-1,1)) * A(i,2)},
+                        {0,                           0,                           0,              1}};
+            }
+            T0[0] = T[0];
+            T0[1] = T[0] * T[1];
+            T0[2] = T[0] * T[1] * T[2];
+            T0[3] = T[0] * T[1] * T[2] * T[3];
+            T0[4] = T[0] * T[1] * T[2] * T[3] * T[4];
+            T0[5] = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
+
+//            Elem *robo_it = robot;
+//            auto robo_list_it = robo_list.begin();
+//            for (counter i = 0; i < number_of_elements; i++)
+//            {
+//                *robo_it = *robo_list_it;
+//                if (i > 0)
+//                {
+//                    robo_it->SetPositionLocal(Vector3({robo_it->GetPosition().x - (robo_it - 1)->GetPosition().x,
+//                                                  robo_it->GetPosition().y - (robo_it - 1)->GetPosition().y,
+//                                                  robo_it->GetPosition().z - (robo_it - 1)->GetPosition().z}));
+//                }
+//                robo_it->SetRotationAxisLocal(robo_it->GetRotationAxis());
+//                ++robo_it;
+//                ++robo_list_it;
+//            }
+//            effector.SetRotation(Quaternion(Vector3(1, 0, 0), ToRad(90)));
+//            (robot + number_of_elements - 1)->GetRotationAxisLocal();
+//            effector.SetRotationAxis((robot + number_of_elements - 1)->GetRotationAxisLocal());
+//            effector.SetRotationAxisLocal((robot + number_of_elements - 1)->GetRotationAxisLocal());
+//            effector.SetPosition((robot + number_of_elements - 1)->GetPosition());
+//            effector.SetPositionLocal(Vector3(0, 0, 0));
+
+        }
+        catch (string str)
+        {
+            cout << str << endl;
+        }
+    };
     Moments *GetMoments();
     Angles *GetAngles();
     void SimulateManipPolinoms(RoboMath::Polynom *pol, const scalar t);
@@ -124,6 +294,7 @@ private:
     Elem *robot;
     RoboMath::Matrix *jacobian;
     RoboMath::Matrix4x4 T[JOINTS_COUNT];
+    RoboMath::Matrix4x4 T0[JOINTS_COUNT];
     RoboMath::Vector *delta_thetas;
     RoboMath::Vector3 delta_s;
     RoboMath::Vector3 delta_r;
@@ -141,7 +312,7 @@ private:
 
     RoboMath::Matrix *state_matrix;
     RoboMath::Vector *theta_vector;
-
+    QSettings *manip_settings;
     void RoboSettingsInit();
     void CalcUMatrix();
     int number_of_elements;

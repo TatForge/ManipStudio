@@ -146,7 +146,7 @@ namespace RoboMath
         void MakeIdentity();
         void MakeZero();
 //        Matrix &operator *(const Matrix &matrix2) const;
-        Matrix operator *(const Matrix &matrix2) const;
+        Matrix operator*(const Matrix &matrix2) const;
         Vector operator*(const Vector &vector2) const;
         Matrix operator*(const scalar &value) const;
         Matrix operator=(const Matrix &matrix1);

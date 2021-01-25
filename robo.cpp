@@ -1,5 +1,7 @@
 #include "robo.h"
 
+#define CALC_INVERSE_MATRIX
+
 using namespace RoboMath;
 const Matrix4x4 q (0, -1, 0, 0,
                    1,  0, 0, 0,
@@ -60,6 +62,7 @@ Robo::~Robo()
 {
     delete jacobian;
     delete delta_thetas;
+    delete manip_settings;
     delete[] robot;
 }
 
@@ -94,6 +97,17 @@ void Robo::CalculateJacobian()
     }
 #ifdef CALC_COUT
     this->jacobian->MatrixCout();
+#endif
+#ifdef CALC_INVERSE_MATRIX
+    jacobian->MatrixCout("Jacobian");
+    for (int i = 0; i < number_of_elements; i++)
+    {
+        T[i].MatrixCout("T");
+        T0[i].MatrixCout("T0");
+        this->jacobian->SetSubColumn(Vector3(T0[i].a13, T0[i].a23, T0[i].a33) * (Vector3({T0[5].a14, T0[5].a24, T0[5].a34}) - Vector3({T0[i].a14, T0[i].a24, T0[i].a34})), i, 0);
+        this->jacobian->SetSubColumn(Vector3(T0[i].a13, T0[i].a23, T0[i].a33), i, 3);
+    }
+    jacobian->MatrixCout("Jacobian");
 #endif
 }
 
@@ -187,11 +201,11 @@ void Robo::AddDeltaThetas()
     {
         (robot + i)->AddDeltaTheta(delta_thetas->operator()(i));
     }
-
     this->RoboCout();
 #ifdef CALC_COUT
     this->RoboCout();
 #endif
+
 }
 
 void Robo::ComputeJointsPosition()
@@ -236,10 +250,13 @@ void Robo::ComputeJointsPosition()
         }
         elem_n == number_of_elements ? effector.SetRotation(effector_rot) : joint_iter_buff->SetRotationAxis(rot);
     }
-//    cout << " x = " << this->Effector()->GetPosition().x
-//         << " y = " << this->Effector()->GetPosition().y
-//         << " z = " << this->Effector()->GetPosition().z
-    //         << endl;
+    cout << " x = " << this->GetEffectorPosition().x
+         << " y = " << this->GetEffectorPosition().y
+         << " z = " << this->GetEffectorPosition().z
+         << " a1 = " << this->GetEffectorRotationQuat().GetEulerAngles().x
+         << " a2 = " << this->GetEffectorRotationQuat().GetEulerAngles().y
+         << " a3 = " << this->GetEffectorRotationQuat().GetEulerAngles().z
+         << endl;
 }
 
 void Robo::SolveDirectKinematic(const scalar *tet, Matrix *const state_matrix)
@@ -259,6 +276,71 @@ void Robo::SolveDirectKinematic(const scalar *tet, Matrix *const state_matrix)
     }
     Matrix4x4 L =  T[0] * T[1] * T[2] * T[3] * T[4]* T[5];
     cout << "effector position \nx= " << L.a14 << " y = " << L.a24 << " z = " << L.a34 << endl;
+}
+
+void Robo::SolveInverseKinematic(const scalar &accuracy, const Vector3 &target, const Vector3 &target_r) //calc IK from current position to target position
+{
+    bool solved = true;
+    counter ctr(0);
+    CalculateDeltaR(target_r);
+    CalculateDeltaS(target);
+    while (GetDeltaR().Length() + GetDeltaS().Length() > accuracy)
+    {
+        //need add calc for state_matrix view type
+        CalculateJacobian();//calc Jacobian for current configuration
+
+        CalculateDeltaThetas();
+
+        AddDeltaThetas();
+
+        ComputeJointsPosition();
+        CalculateDeltaR(target_r);
+        CalculateDeltaS(target);
+        ctr++;
+        if (ctr > 100)
+        {
+            cout << "Уравнение не сошлось !_!_!_!_!_!_!_!_!_!_!_!_!" << endl;
+            cout << "Цель не достижима _______________" << endl;
+            cout << "Положение эффектора " << endl
+                 << " ang1 = " << ToDeg(GetEffectorRotationQuat().GetEulerAngles().x)
+                 << " ang2 = " << ToDeg(GetEffectorRotationQuat().GetEulerAngles().y)
+                 << " ang3 = " << ToDeg(GetEffectorRotationQuat().GetEulerAngles().z)
+                 << " x = " << GetEffectorPosition().x
+                 << " y = " << GetEffectorPosition().y
+                 << " z = " << GetEffectorPosition().z
+                 << endl ;
+            cout << " Положение цели \n"
+                 << " ang1 = " << ToDeg(target_r.x)
+                 << " ang2 = " << ToDeg(target_r.y)
+                 << " ang3 = " << ToDeg(target_r.z)
+                 << " x = " << target.x
+                 << " y = " << target.y
+                 << " z = " << target.z
+                 << endl;
+            solved = false;
+            break;
+        }
+    }
+    if (solved)
+    {
+        cout << "Уравнение сошлось за " << ctr << " решений" << endl;
+        cout << "Положение эффектора " << endl
+             << " ang1 = " << ToDeg(GetEffectorRotationQuat().GetEulerAngles().x)
+             << " ang2 = " << ToDeg(GetEffectorRotationQuat().GetEulerAngles().y)
+             << " ang3 = " << ToDeg(GetEffectorRotationQuat().GetEulerAngles().z)
+             << " x = " << GetEffectorPosition().x
+             << " y = " << GetEffectorPosition().y
+             << " z = " << GetEffectorPosition().z
+             << endl ;
+        cout << "Положение цели \n"
+             << " ang1 = " << ToDeg(target_r.x)
+             << " ang2 = " << ToDeg(target_r.y)
+             << " ang3 = " << ToDeg(target_r.z)
+             << " x = " << target.x
+             << " y = " << target.y
+             << " z = " << target.z
+             << endl;
+    }
 }
 
 
@@ -297,12 +379,12 @@ void Robo::SolveDirectDynamic()
         }
     }
 
-//    for (int i = 5; i < 6; i++)
-//        for (int j = i; j < 6; j++)
-//        {
-//            std::cout << "U " << i << j << std::endl;
-//            U[i*6 + j].MatrixCout("U");
-//        }
+    //    for (int i = 5; i < 6; i++)
+    //        for (int j = i; j < 6; j++)
+    //        {
+    //            std::cout << "U " << i << j << std::endl;
+    //            U[i*6 + j].MatrixCout("U");
+    //        }
 
     scalar hikm_buff(0);
     Matrix4x4 u_buff;
@@ -372,22 +454,21 @@ void Robo::CalcPolynomCurve(const Robo::Angles *angle0, const Robo::Angles *angl
 {
     for (int i = 0; i < 6; i++)
     {
-        scalar a4 = angle1->q[i];
-        scalar a3 = angle1->q[i];
-        scalar a2 = 2*angle0->q_pp[i] + angle1->q[i];
-        scalar a1 = angle0->q_p[i] + angle1->q[i];
-        scalar a0 = angle1->q[i] + angle1->q[i];
-        scalar b3 = angle2->q[i];
-        scalar b2 = angle2->q[i];
-        scalar b1 = angle2->q[i];
-        scalar b0 = angle1->q[i] + angle2->q[i];
-        scalar c4 = angle3->q[i] + 4 * angle3->q_p[i] + 12 * angle3->q_pp[i];
-        scalar c3 = angle3->q[i] + 3 * angle3->q_p[i] + 6 * angle3->q_pp[i];
-        scalar c2 = angle3->q[i] + 2 * angle3->q_p[i] + 2 * angle3->q_pp[i];
-        scalar c1 = angle3->q[i] + angle3->q_p[i];
-        scalar c0 = angle2->q[i] + angle3->q[i];
-        
-    }  
+//        scalar a4 = angle1->q[i];
+//        scalar a3 = angle1->q[i];
+//        scalar a2 = 2*angle0->q_pp[i] + angle1->q[i];
+//        scalar a1 = angle0->q_p[i] + angle1->q[i];
+//        scalar a0 = angle1->q[i] + angle1->q[i];
+//        scalar b3 = angle2->q[i];
+//        scalar b2 = angle2->q[i];
+//        scalar b1 = angle2->q[i];
+//        scalar b0 = angle1->q[i] + angle2->q[i];
+//        scalar c4 = angle3->q[i] + 4 * angle3->q_p[i] + 12 * angle3->q_pp[i];
+//        scalar c3 = angle3->q[i] + 3 * angle3->q_p[i] + 6 * angle3->q_pp[i];
+//        scalar c2 = angle3->q[i] + 2 * angle3->q_p[i] + 2 * angle3->q_pp[i];
+//        scalar c1 = angle3->q[i] + angle3->q_p[i];
+//        scalar c0 = angle2->q[i] + angle3->q[i];
+    }
 }
 
 Robo::Moments *Robo::GetMoments()

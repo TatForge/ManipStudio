@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QTimer>
 #include "my_math.h"
+#include "robo.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -16,10 +17,10 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-    void PlotData(double value_x, double value_y, double value_z, double t);
-    void PrintResult(double x, double y, double z, double roll, double pitch, double yaw, double t);
+    void PlotCoordinates(double value_x, double value_y, double value_z, double yaw, double pitch, double roll, double t);
+    void PlotSpeeds(Robo::Angles speeds, double t);
+    void PrintResult(double x, double y, double z, double yaw, double pitch, double roll, double t);
 private slots:
-    void on_button_move_clicked();
 //    QTimer timer;
 private:
     Ui::MainWindow *ui;
