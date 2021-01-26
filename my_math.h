@@ -236,28 +236,39 @@ namespace RoboMath
         {
             return a[row * 4 + col];
         }
-        int MalElem()
+        int MaxElem()
         {
-            scalar max_elem;
-            scalar max_col;
-
+            //return maximum element col number
+            scalar max_elem = a[0];
+            int max_col = 0;
+            for (int i = 1; i < 16; i++)
+            {
+                if (!(i == 3 || i == 7 || i >= 11 ))
+                    if (max_elem < a[i])
+                    {
+                        max_elem = a[i];
+                        max_col = i % 4;
+                    }
+            }
+            return max_col;
         }
-//        Quaternion ConvertToQuaternion()
-//        {
-//            RoboMath::Quaternion res;
-//            scalar trace = a11  + a22 + a33 + 1;
-//            if (trace > 0)
-//            {
-//                scalar s = 0.5 / sqrt(trace);
-//                res = Quaternion(
-//                            (a32 - a23) * s,
-//                            (a13 - a31) * s,
-//                            (a21 - a12) * s,
-//                            0.25 / s);
-//            } else {
+        Quaternion ConvertToQuaternion()
+        {
+            RoboMath::Quaternion res;
+            scalar trace = a[0]  + a[5] + a[10] + 1;
+            if (trace > 0)
+            {
+                scalar s = 0.5 / sqrt(trace);
+                res = Quaternion(
+                            (a[9] - a[6]) * s,
+                            (a[2] - a[8]) * s,
+                            (a[4] - a[1]) * s,
+                            0.25 / s);
+            } else {
+//                int max =
 //                if ()
-//            }
-//        }
+            }
+        }
     };
     class MatrixOfMatrix6x6
     {

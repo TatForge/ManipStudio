@@ -51,5 +51,10 @@ void test_my_math::test_matrix4x4()
     QCOMPARE(m(3,3), 16);
     QCOMPARE(m.MultiplyTranspose(n), Matrix4x4({40, 30, 70, 51, 112, 70, 190, 135, 184, 110, 310, 219, 256, 150, 430, 303}));
     QCOMPARE(m.MultiplyTranspose(m), Matrix4x4({30, 70, 110, 150, 70, 174, 278, 382, 110, 278, 446, 614, 150, 382, 614, 846}));
+    QCOMPARE(m.MaxElem(), 2);
+    QCOMPARE(n.MaxElem(), 0);
+    m.MakeIdentity();
+    QCOMPARE(m.MaxElem(), 0);
+
 }
 #endif
