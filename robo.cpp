@@ -3,14 +3,14 @@
 #define CALC_INVERSE_MATRIX
 
 using namespace RoboMath;
-const Matrix4x4 q (0, -1, 0, 0,
-                   1,  0, 0, 0,
-                   0,  0, 0, 0,
-                   0,  0, 0, 0);
-const Matrix4x4 q_sq (-1,   0, 0, 0,
-                       0,  -1, 0, 0,
-                       0,   0, 0, 0,
-                       0,   0, 0, 0);
+const Matrix4x4 q ({0, -1, 0, 0,
+                    1,  0, 0, 0,
+                    0,  0, 0, 0,
+                    0,  0, 0, 0});
+const Matrix4x4 q_sq ({-1,   0, 0, 0,
+                        0,  -1, 0, 0,
+                        0,   0, 0, 0,
+                        0,   0, 0, 0});
 
 Vector gv{0, 0, -g, 0};
 
@@ -105,9 +105,9 @@ void Robo::CalculateJacobian()
     {
         T[i].MatrixCout("T");
         T0[i].MatrixCout("T0");
-        jacobian->SetSubColumn(Vector3(T0[i].a13, T0[i].a23, T0[i].a33) * (Vector3({T0[5].a14, T0[5].a24, T0[5].a34}) - Vector3({T0[i].a14, T0[i].a24, T0[i].a34})), i, 0);
+        jacobian->SetSubColumn(Vector3(T0[i](0,2), T0[i](1,2), T0[i](2,2)) * (Vector3({T0[5](0,3), T0[5](1,3), T0[5](2,3)}) - Vector3({T0[i](0,3), T0[i](1,3), T0[i](2,3)})), i, 0);
 #ifdef POSITION_AND_ROTATION
-        this->jacobian->SetSubColumn(Vector3(T0[i].a13, T0[i].a23, T0[i].a33), i, 3);
+        this->jacobian->SetSubColumn(Vector3(T0[i](0,2), T0[i](1,2), T0[i](2,2)), i, 3);
 #endif
     }
     jacobian->MatrixCout("Jacobian");
@@ -178,9 +178,9 @@ void Robo::CalculateDeltaS(Vector3 target)
     delta_s.y = target.y - this->GetEffector()->GetPosition().y;
     delta_s.z = target.z - this->GetEffector()->GetPosition().z;
 #else
-    delta_s.x = target.x - T0[5].a14;
-    delta_s.y = target.y - T0[5].a24;
-    delta_s.z = target.z - T0[5].a34;
+    delta_s.x = target.x - T0[5](0,3);
+    delta_s.y = target.y - T0[5](1,3);
+    delta_s.z = target.z - T0[5](2,3);
 #endif
 }
 
@@ -286,7 +286,7 @@ void Robo::SolveDirectKinematic(const scalar *tet, Matrix *const state_matrix)
                 {0,                           0,                           0,              1}};
     }
     Matrix4x4 L =  T[0] * T[1] * T[2] * T[3] * T[4]* T[5];
-    cout << "effector position \nx= " << L.a14 << " y = " << L.a24 << " z = " << L.a34 << endl;
+    cout << "effector position \nx= " << L(0,3) << " y = " << L(1,3) << " z = " << L(2,3) << endl;
 }
 
 void Robo::SolveInverseKinematic(const scalar &accuracy, const Vector3 &target, const Vector3 &target_r) //calc IK from current position to target position
@@ -561,9 +561,9 @@ Vector3 Robo::GetEffectorRotation() const
     //Доработать с углами, по положению работает, по углам не понятно пока
     state_matrix->MatrixCout("state matrix");
     T0[5].MatrixCout("T0[5]");
-    double pitch = atan(T0[5].a31/T0[5].a32);
-    double yaw   = atan(T0[5].a13/T0[5].a23);
-    double roll  = atan((sin(pitch) * T0[5].a31 - cos(pitch) * T0[5].a32)/T0[5].a33);
+    double pitch = atan(T0[5].at(2,0)/T0[5].at(2,1));
+    double yaw   = atan(T0[5].at(0,2)/T0[5].at(1,2));
+    double roll  = atan((sin(pitch) * T0[5].at(2,0) - cos(pitch) * T0[5].at(2,1))/T0[5].at(2,2));
     return Vector3(yaw, pitch, roll);
 #endif
 }

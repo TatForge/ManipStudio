@@ -36,10 +36,10 @@ void Emulator::MoveManip(Polynom *polynom_in, scalar moving_time)
     {
         OneIterMove();
     }
-    double pitch = atan(L.a31/L.a32);
-    double yaw   = atan(L.a13/L.a23);
-    double roll  = atan((sin(pitch) * L.a31 - cos(pitch) * L.a32)/L.a33);
-    w.PrintResult(L.a14, L.a24, L.a34, yaw, pitch, roll, t);
+    double pitch = atan(L(2,0)/L(2,1));
+    double yaw   = atan(L(0,2)/L(1,2));
+    double roll  = atan((sin(pitch) * L(2,0) - cos(pitch) * L(2,1))/L(2,2));
+    w.PrintResult(L(0,3), L(1,3), L(2,3), yaw, pitch, roll, t);
     t = 0;
     //        m_thread.start();
     //        m_timer.start();
@@ -93,10 +93,11 @@ void Emulator::OneIterMove()
     }
     UpdateStateMatrix();
     SolveDirectKinematic();
-    double pitch = atan(L.a31/L.a32);
-    double yaw   = atan(L.a13/L.a23);
-    double roll  = atan((sin(pitch) * L.a31 - cos(pitch) * L.a32)/L.a33);
-    w.PlotCoordinates(L.a14, L.a24, L.a34, yaw, pitch, roll, t);
+    double pitch = atan(L(2,0)/L(2,1));
+    double yaw   = atan(L(0,2)/L(1,2));
+    double roll  = atan((sin(pitch) * L(2,0) - cos(pitch) * L(2,1))/L(2,2));
+    w.PrintResult(L(0,3), L(1,3), L(2,3), yaw, pitch, roll, t);
+    w.PlotCoordinates(L(0,3), L(1,3), L(2,3), yaw, pitch, roll, t);
     w.PlotSpeeds(m_emu_angles, t);
     t += m_delta_t;
 }

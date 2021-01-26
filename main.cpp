@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     }
 
     Matrix4x4 L =  T[0] * T[1] * T[2] * T[3] * T[4]* T[5];
-    cout << " x = " << L.a14 << " y = " << L.a24 << " z = " << L.a34 << endl;
+    cout << " x = " << L(0,3) << " y = " << L(1,3) << " z = " << L(2,3) << endl;
 
             //Ixx  Iyy  Izz  Ixy   Ixz
     array<Tensor,6> I;

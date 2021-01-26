@@ -208,12 +208,9 @@ namespace RoboMath
     class Matrix4x4
     {
     public:
-        scalar a11,a12,a13,a14,a21,a22,a23,a24,a31,a32,a33,a34,a41,a42,a43,a44;
+        scalar a[16];
         Matrix4x4();;
-        Matrix4x4(const scalar &a11, const scalar &a12, const scalar &a13, const scalar &a14,
-                  const scalar &a21, const scalar &a22, const scalar &a23, const scalar &a24,
-                  const scalar &a31, const scalar &a32, const scalar &a33, const scalar &a34,
-                  const scalar &a41, const scalar &a42, const scalar &a43, const scalar &a44);
+        Matrix4x4(const initializer_list<scalar> il);
         void operator=(const Matrix &m);
         void operator*=(const scalar &sc);
         Matrix4x4 MultiplyTranspose(const Matrix4x4 &b);
@@ -222,28 +219,45 @@ namespace RoboMath
         void MatrixCout(const char *ch) const;
         void MakeIdentity();
         void MakeNull();
+        bool operator == (const Matrix4x4 &m) const
+        {
+            for (int i = 0; i < 16; i++)
+            {
+                if (a[i] != m.a[i])
+                    return false;
+            }
+            return true;
+        }
+        scalar &operator()(const int &row, const int &col)
+        {
+            return a[row * 4 + col];
+        }
+        scalar at(const int &row, const int &col) const
+        {
+            return a[row * 4 + col];
+        }
         int MalElem()
         {
             scalar max_elem;
             scalar max_col;
 
         }
-        Quaternion ConvertToQuaternion()
-        {
-            RoboMath::Quaternion res;
-            scalar trace = a11  + a22 + a33 + 1;
-            if (trace > 0)
-            {
-                scalar s = 0.5 / sqrt(trace);
-                res = Quaternion(
-                            (a32 - a23) * s,
-                            (a13 - a31) * s,
-                            (a21 - a12) * s,
-                            0.25 / s);
-            } else {
-                if ()
-            }
-        }
+//        Quaternion ConvertToQuaternion()
+//        {
+//            RoboMath::Quaternion res;
+//            scalar trace = a11  + a22 + a33 + 1;
+//            if (trace > 0)
+//            {
+//                scalar s = 0.5 / sqrt(trace);
+//                res = Quaternion(
+//                            (a32 - a23) * s,
+//                            (a13 - a31) * s,
+//                            (a21 - a12) * s,
+//                            0.25 / s);
+//            } else {
+//                if ()
+//            }
+//        }
     };
     class MatrixOfMatrix6x6
     {
@@ -282,7 +296,7 @@ namespace RoboMath
 
     static scalar Trace(const Matrix4x4 &m)
     {
-        return (m.a11 + m.a22 + m.a33 + m.a44);
+        return (m.a[0] + m.a[5] + m.a[10] + m.a[15]);
     }
     static scalar Trace(const Matrix &ma)
     {

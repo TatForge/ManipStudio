@@ -95,22 +95,22 @@ void JustFoo()
     }
     cout << "Duration 1000000 matrix multiplication MY = " << chktmr.duration().count() << " sek" << endl;
     scalar sc1 = 0.26;
-    Matrix4x4 mm1(sc1,sc1,sc1,sc1,
-                  sc1,sc1,sc1,sc1,
-                  sc1,sc1,sc1,sc1,
-                  sc1,sc1,sc1,sc1);
-    Matrix4x4 mm2(0.2,0.2,0.2,0.2,
-                  0.2,0.2,0.2,0.2,
-                  0.2,0.2,0.2,0.2,
-                  0.2,0.2,0.2,0.2);
-    Matrix4x4 mm3(0.3,0.3,0.3,0.3,
-                  0.3,0.3,0.3,0.3,
-                  0.3,0.3,0.3,0.3,
-                  0.3,0.3,0.3,0.3);
-    Matrix4x4 mmr(1,1,1,1,
-                  1,1,1,1,
-                  1,1,1,1,
-                  1,1,1,1);
+    Matrix4x4 mm1({sc1,sc1,sc1,sc1,
+                   sc1,sc1,sc1,sc1,
+                   sc1,sc1,sc1,sc1,
+                   sc1,sc1,sc1,sc1});
+    Matrix4x4 mm2({0.2,0.2,0.2,0.2,
+                   0.2,0.2,0.2,0.2,
+                   0.2,0.2,0.2,0.2,
+                   0.2,0.2,0.2,0.2});
+    Matrix4x4 mm3({0.3,0.3,0.3,0.3,
+                   0.3,0.3,0.3,0.3,
+                   0.3,0.3,0.3,0.3,
+                   0.3,0.3,0.3,0.3});
+    Matrix4x4 mmr({1,1,1,1,
+                   1,1,1,1,
+                   1,1,1,1,
+                   1,1,1,1});
     checkTime chktmr3;
     int ctr11 = 0;
     for (int i = 0; i < 100; i++)

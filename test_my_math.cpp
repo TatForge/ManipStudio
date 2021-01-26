@@ -39,4 +39,15 @@ void test_my_math::test_translation_matrix()
 {
 
 }
+
+void test_my_math::test_matrix4x4()
+{
+    Matrix4x4 m({1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16});
+    Matrix4x4 n({6,5,4,3,1,2,3,4,9,8,7,6,5,8,2,6});
+    QCOMPARE(m*n, Matrix4x4({55,65,39,53,139,157,103,129,223,249,167,205,307,341,231,281}));
+    QCOMPARE(n*m, Matrix4x4({106,124,142,160,90,100,110,120,190,220,250,280,141,162,183,204}));
+    QCOMPARE(m(0,0), 1);
+    QCOMPARE(m(3,3), 16);
+
+}
 #endif
