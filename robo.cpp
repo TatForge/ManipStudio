@@ -85,6 +85,7 @@ void Robo::RoboCout()
 
 void Robo::CalculateJacobian()
 {
+#ifndef CALC_INVERSE_MATRIX
     Vector3 v_eff = (robot + number_of_elements - 1)->GetPosition();
     Elem *current_el = robot + number_of_elements - 1;
     for (counter i = number_of_elements; i > 0; i--)
@@ -98,14 +99,16 @@ void Robo::CalculateJacobian()
 #ifdef CALC_COUT
     this->jacobian->MatrixCout();
 #endif
-#ifdef CALC_INVERSE_MATRIX
+#else
     jacobian->MatrixCout("Jacobian");
     for (int i = 0; i < number_of_elements; i++)
     {
         T[i].MatrixCout("T");
         T0[i].MatrixCout("T0");
-        this->jacobian->SetSubColumn(Vector3(T0[i].a13, T0[i].a23, T0[i].a33) * (Vector3({T0[5].a14, T0[5].a24, T0[5].a34}) - Vector3({T0[i].a14, T0[i].a24, T0[i].a34})), i, 0);
+        jacobian->SetSubColumn(Vector3(T0[i].a13, T0[i].a23, T0[i].a33) * (Vector3({T0[5].a14, T0[5].a24, T0[5].a34}) - Vector3({T0[i].a14, T0[i].a24, T0[i].a34})), i, 0);
+#ifdef POSITION_AND_ROTATION
         this->jacobian->SetSubColumn(Vector3(T0[i].a13, T0[i].a23, T0[i].a33), i, 3);
+#endif
     }
     jacobian->MatrixCout("Jacobian");
 #endif
@@ -170,17 +173,23 @@ void Robo::CalculateCurrentPosition()
 
 void Robo::CalculateDeltaS(Vector3 target)
 {
+#ifndef CALC_INVERSE_MATRIX
     delta_s.x = target.x - this->GetEffector()->GetPosition().x;
     delta_s.y = target.y - this->GetEffector()->GetPosition().y;
     delta_s.z = target.z - this->GetEffector()->GetPosition().z;
+#else
+    delta_s.x = target.x - T0[5].a14;
+    delta_s.y = target.y - T0[5].a24;
+    delta_s.z = target.z - T0[5].a34;
+#endif
 }
 
 void Robo::CalculateDeltaR(Vector3 target_r)
 {
+
     Quaternion end_eff_target_ori;
     Quaternion end_eff_world_ori;
-    auto tt = this->GetEffector()->GetRotationAxis();
-    end_eff_world_ori = this->GetEffectorRotationQuat();
+    end_eff_world_ori.EulerToQuat(GetEffectorRotation());
     end_eff_target_ori.EulerToQuat(target_r);
     end_eff_world_ori.Invert();
     Quaternion deltaQ = end_eff_target_ori * end_eff_world_ori;
@@ -205,11 +214,11 @@ void Robo::AddDeltaThetas()
 #ifdef CALC_COUT
     this->RoboCout();
 #endif
-
 }
 
 void Robo::ComputeJointsPosition()
 {
+#ifndef CALC_INVERSE_MATRIX
     //Расчет положения джоинтов и эффектора (прямая задача кинематики)
     Elem *joint_iter;
     Elem *joint_iter_parent;
@@ -257,6 +266,8 @@ void Robo::ComputeJointsPosition()
          << " a2 = " << this->GetEffectorRotationQuat().GetEulerAngles().y
          << " a3 = " << this->GetEffectorRotationQuat().GetEulerAngles().z
          << endl;
+#endif
+    UpdateTMatrix();
 }
 
 void Robo::SolveDirectKinematic(const scalar *tet, Matrix *const state_matrix)
@@ -291,7 +302,7 @@ void Robo::SolveInverseKinematic(const scalar &accuracy, const Vector3 &target, 
 
         CalculateDeltaThetas();
 
-        AddDeltaThetas();
+//        AddDeltaThetas();
 
         ComputeJointsPosition();
         CalculateDeltaR(target_r);
@@ -471,6 +482,34 @@ void Robo::CalcPolynomCurve(const Robo::Angles *angle0, const Robo::Angles *angl
     }
 }
 
+void Robo::UpdateTMatrix()
+{
+    RoboMath::Matrix &A = *state_matrix;
+    for (int i = 0; i < number_of_elements; i++)
+    {
+        A(i, 3) += delta_thetas->at(i);
+    }
+    delta_thetas->VectorCout("delta_theta");
+    A.MatrixCout("A matrix");
+    T[0] = {{cos(A(0,3)),         -sin(A(0,3)),           0,       A(0,0)},
+            {sin(A(0,3)) * cos(0), cos(A(0,3)) * cos(0), -sin(0), -sin(0) * A(0,2)},
+            {sin(A(0,3)) * sin(0), cos(A(0,3)) * sin(0),  cos(0),  cos(0) * A(0,2)},
+            {0,                    0,                     0,       1}};
+    for (counter i = 1; i < number_of_elements; i++)
+    {
+        T[i] = {{cos(A(i,3)),                 -sin(A(i,3)),                0,              A(i-1,0)},
+                {sin(A(i,3)) * cos(A(i-1,1)), cos(A(i,3)) * cos(A(i-1,1)), -sin(A(i-1,1)), -sin(A(i-1,1)) * A(i,2)},
+                {sin(A(i,3)) * sin(A(i-1,1)), cos(A(i,3)) * sin(A(i-1,1)), cos(A(i-1,1)),  cos(A(i-1,1)) * A(i,2)},
+                {0,                           0,                           0,              1}};
+    }
+    T0[0] = T[0];
+    T0[1] = T[0] * T[1];
+    T0[2] = T[0] * T[1] * T[2];
+    T0[3] = T[0] * T[1] * T[2] * T[3];
+    T0[4] = T[0] * T[1] * T[2] * T[3] * T[4];
+    T0[5] = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
+}
+
 Robo::Moments *Robo::GetMoments()
 {
     return &m_moments;
@@ -487,7 +526,7 @@ void Robo::SimulateManipPolinoms(Polynom *pol, const scalar t)
     for (int i = 0; i < 6; i++)
     {
         q[i] = (pol + i)->elem[5] * pow(t, 5) + (pol + i)->elem[4] * pow(t, 4) + (pol + i)->elem[3] * pow(t, 3) +
-               (pol + i)->elem[2] * pow(t, 2) + (pol + i)->elem[1] * pow(t, 1) + (pol + i)->elem[0];
+                (pol + i)->elem[2] * pow(t, 2) + (pol + i)->elem[1] * pow(t, 1) + (pol + i)->elem[0];
     }
     cout << "manip station " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << " " << q[4] << " " << q[5] << endl;
 }
@@ -516,7 +555,17 @@ Vector3 Robo::GetEffectorPosition() const
 
 Vector3 Robo::GetEffectorRotation() const
 {
+#ifndef CALC_INVERSE_MATRIX
     return effector.GetRotation().GetEulerAngles();
+#else
+    //Доработать с углами, по положению работает, по углам не понятно пока
+    state_matrix->MatrixCout("state matrix");
+    T0[5].MatrixCout("T0[5]");
+    double pitch = atan(T0[5].a31/T0[5].a32);
+    double yaw   = atan(T0[5].a13/T0[5].a23);
+    double roll  = atan((sin(pitch) * T0[5].a31 - cos(pitch) * T0[5].a32)/T0[5].a33);
+    return Vector3(yaw, pitch, roll);
+#endif
 }
 
 Quaternion Robo::GetEffectorRotationQuat() const

@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 //    Robo manipulator(il_elem);
     manipulator.ComputeJointsPosition();
     manipulator.SolveDirectDynamic();
-    manipulator.WriteSettingsToFile();
+//    manipulator.WriteSettingsToFile();
 //    manipulator.SolveInverseDynamic();
 //    manipulator.SolveDirectKinematic(manipulator.get)
     Robo::Moments *res_mom = manipulator.GetMoments();
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 //        Vector3 target(sin(i) * 0.3, cos(i) * 0.2, cos(i) * 0.1);
 //        Vector3 target(0.67, 0.2431, 0.0615);
         Vector3 target(0.30, 0.2431, 0.0615);
-        Vector3 target_r(ToRad(10), ToRad(15), ToRad(90));
+        Vector3 target_r(ToRad(0), ToRad(0), ToRad(90));
 //        Vector3 target_r(sin(i) * ToRad(90), cos(i) * ToRad(80), cos(i) * ToRad(-30));
 //        cout << " x = " << manipulator.GetEffector()->GetPosition().x
 //             << " y = " << manipulator.GetEffector()->GetPosition().y

@@ -9,8 +9,7 @@
 
 //#define dt 0.01
 #define POSITION_AND_ROTATION
-//#define CALC_COUT
-
+#define CALC_COUT
 #define JOINTS_COUNT 6
 
 #ifdef POSITION_AND_ROTATION
@@ -206,6 +205,8 @@ public:
         }
         manip_settings->endArray();
     };
+    void UpdateTMatrix();
+
     void LoadManip()
     {
         try {
@@ -219,7 +220,6 @@ public:
                 m_angles.q_p[i] = 1;
                 m_angles.q_pp[i] = 1;
             }
-            RoboMath::Matrix &A = *state_matrix;
             for (int i = 0; i < number_of_elements; i++)
             {
                 m_ji[i] = {{(-m_i[i].xx() + m_i[i].yy() + m_i[i].zz())/2, m_i[i].xy(), m_i[i].xz(), m_mass[i] * m_cm[i](0)},
@@ -228,23 +228,7 @@ public:
                          {m_mass[i] * m_cm[i](0),  m_mass[i] * m_cm[i](1), m_mass[i] * m_cm[i](2), m_mass[i]}};
                 m_ji[i].MatrixCout("m_ji");
             }
-            T[0] = {{cos(A(0,3)),         -sin(A(0,3)),           0,       A(0,0)},
-                    {sin(A(0,3)) * cos(0), cos(A(0,3)) * cos(0), -sin(0), -sin(0) * A(0,2)},
-                    {sin(A(0,3)) * sin(0), cos(A(0,3)) * sin(0),  cos(0),  cos(0) * A(0,2)},
-                    {0,                    0,                     0,       1}};
-            for (counter i = 1; i < number_of_elements; i++)
-            {
-                T[i] = {{cos(A(i,3)),                 -sin(A(i,3)),                0,              A(i-1,0)},
-                        {sin(A(i,3)) * cos(A(i-1,1)), cos(A(i,3)) * cos(A(i-1,1)), -sin(A(i-1,1)), -sin(A(i-1,1)) * A(i,2)},
-                        {sin(A(i,3)) * sin(A(i-1,1)), cos(A(i,3)) * sin(A(i-1,1)), cos(A(i-1,1)),  cos(A(i-1,1)) * A(i,2)},
-                        {0,                           0,                           0,              1}};
-            }
-            T0[0] = T[0];
-            T0[1] = T[0] * T[1];
-            T0[2] = T[0] * T[1] * T[2];
-            T0[3] = T[0] * T[1] * T[2] * T[3];
-            T0[4] = T[0] * T[1] * T[2] * T[3] * T[4];
-            T0[5] = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
+            void UpdateTMatrix(RoboMath::Vector *delta_thetas);
 
 //            Elem *robo_it = robot;
 //            auto robo_list_it = robo_list.begin();
@@ -277,7 +261,6 @@ public:
     Moments *GetMoments();
     Angles *GetAngles();
     void SimulateManipPolinoms(RoboMath::Polynom *pol, const scalar t);
-
 
     RoboMath::Vector3 GetEffectorPosition() const;
     RoboMath::Vector3 GetEffectorRotation() const;
