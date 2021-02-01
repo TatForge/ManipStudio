@@ -32,9 +32,12 @@ void Emulator::MoveManip(Polynom *polynom_in, scalar moving_time)
 {
     SetPolynomKF(polynom_in);
     t = 0;
+    bool is_last = false;
     while (t <= moving_time)
     {
-        OneIterMove();
+        if (t - moving_time < 10e-4)
+            is_last = true;
+        OneIterMove(is_last);
     }
     double pitch = atan(L(2,0)/L(2,1));
     double yaw   = atan(L(0,2)/L(1,2));
@@ -71,7 +74,7 @@ void Emulator::SolveInverseKinematic()
 
 }
 
-void Emulator::OneIterMove()
+void Emulator::OneIterMove(bool is_last = false)
 {
     scalar v;
     scalar a;
@@ -93,12 +96,12 @@ void Emulator::OneIterMove()
     }
     UpdateStateMatrix();
     SolveDirectKinematic();
-    double pitch = atan(L(2,0)/L(2,1));
-    double yaw   = atan(L(0,2)/L(1,2));
-    double roll  = atan((sin(pitch) * L(2,0) - cos(pitch) * L(2,1))/L(2,2));
-    w.PrintResult(L(0,3), L(1,3), L(2,3), yaw, pitch, roll, t);
-    w.PlotCoordinates(L(0,3), L(1,3), L(2,3), yaw, pitch, roll, t);
-    w.PlotSpeeds(m_emu_angles, t);
+
+    auto angles = L.ConvertToQuaternion().GetEulerAngles();
+    w.PrintResult(L(0,3), L(1,3), L(2,3), angles.z, angles.y, angles.x, t);
+    w.PlotCoordinates(L(0,3), L(1,3), L(2,3), ToDeg(angles.z), ToDeg(angles.y), ToDeg(angles.x), t, is_last);
+    if (is_last)
+        w.PlotSpeeds(m_emu_angles, t, is_last);
     t += m_delta_t;
 }
 

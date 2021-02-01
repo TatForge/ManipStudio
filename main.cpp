@@ -172,86 +172,18 @@ int main(int argc, char *argv[])
 //    Dv.VectorCout("Dv");
 //    p.VectorCout("p");
 
-    checkTime ct;
+    bool solved = true;
+    Vector3 target(0.30, 0.3431, 0.1615);
+    Vector3 target_r(ToRad(50), ToRad(0), ToRad(80));
     int kolvo = 1;
+    checkTime ct;
     for (int i = 0; i < kolvo; i ++)
     {
-        bool solved = true;
-//        Vector3 target(sin(i) * 0.3, cos(i) * 0.2, cos(i) * 0.1);
-//        Vector3 target(0.67, 0.2431, 0.0615);
-        Vector3 target(0.30, 0.2431, 0.0615);
-        Vector3 target_r(ToRad(0), ToRad(0), ToRad(90));
-//        Vector3 target_r(sin(i) * ToRad(90), cos(i) * ToRad(80), cos(i) * ToRad(-30));
-//        cout << " x = " << manipulator.GetEffector()->GetPosition().x
-//             << " y = " << manipulator.GetEffector()->GetPosition().y
-//             << " z = " << manipulator.GetEffector()->GetPosition().z
-//             << endl;
-        manipulator.SolveInverseKinematic(0.001, target, target_r);
-//        manipulator.CalculateDeltaR(target_r);
-//        manipulator.CalculateDeltaS(target);
-//        counter ctr(0);
-//        while(manipulator.GetDeltaR().Length() + manipulator.GetDeltaS().Length() > 10e-5)
-//        {
-//            manipulator.CalculateJacobian();
-//            manipulator.CalculateDeltaThetas();
-//            manipulator.AddDeltaThetas();
-//            manipulator.ComputeJointsPosition();
-//            manipulator.CalculateDeltaR(target_r);
-//            manipulator.CalculateDeltaS(target);
-//            ctr++;
-//            if (ctr > 100)
-//            {
-//                cout << "Уравнение не сошлось !_!_!_!_!_!_!_!_!_!_!_!_!" << endl;
-//                cout << "Цель не достижима _______________" << endl;
-//                cout << "Положение эффектора " << endl
-//                     << " ang1 = " << ToDeg(manipulator.GetEffectorRotationQuat().GetEulerAngles().x)
-//                     << " ang2 = " << ToDeg(manipulator.GetEffectorRotationQuat().GetEulerAngles().y)
-//                     << " ang3 = " << ToDeg(manipulator.GetEffectorRotationQuat().GetEulerAngles().z)
-//                     << " x = " << manipulator.GetEffectorPosition().x
-//                     << " y = " << manipulator.GetEffectorPosition().y
-//                     << " z = " << manipulator.GetEffectorPosition().z
-//                     << endl ;
-//                cout << " Положение цели \n"
-//                     << " ang1 = " << ToDeg(target_r.x)
-//                     << " ang2 = " << ToDeg(target_r.y)
-//                     << " ang3 = " << ToDeg(target_r.z)
-//                     << " x = " << target.x
-//                     << " y = " << target.y
-//                     << " z = " << target.z
-//                     << endl;
-//                solved = false;
-//                break;
-//            }
-//        }
-
-////        auto d = ct.duration().count();
-//        if (solved)
-//        {
-//            cout << "Уравнение сошлось за " << ctr << " решений" << endl;
-//            cout << "Положение эффектора " << endl
-//                 << " ang1 = " << ToDeg(manipulator.GetEffectorRotationQuat().GetEulerAngles().x)
-//                 << " ang2 = " << ToDeg(manipulator.GetEffectorRotationQuat().GetEulerAngles().y)
-//                 << " ang3 = " << ToDeg(manipulator.GetEffectorRotationQuat().GetEulerAngles().z)
-//                 << " x = " << manipulator.GetEffectorPosition().x
-//                 << " y = " << manipulator.GetEffectorPosition().y
-//                 << " z = " << manipulator.GetEffectorPosition().z
-//                 << endl ;
-//            cout << "Положение цели \n"
-//                 << " ang1 = " << ToDeg(target_r.x)
-//                 << " ang2 = " << ToDeg(target_r.y)
-//                 << " ang3 = " << ToDeg(target_r.z)
-//                 << " x = " << target.x
-//                 << " y = " << target.y
-//                 << " z = " << target.z
-//                 << endl;
-//        }
-////        cout << "Время расчета составило " << d << " секунд" << endl << endl;
-////        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+        manipulator.SolveInverseKinematic(0.00001, target, target_r);
     }
-
     cout << "Time of " << kolvo << " calculations " << ct.duration().count() << endl;
     cout << "One iter duration = " << ct.duration().count() / kolvo << endl;
-    cout << "Точность " << manipulator.GetDeltaR().Length() << endl;
+    cout << "Точность " << manipulator.GetDeltaR().Length() + manipulator.GetDeltaS().Length()<< endl;
 
     delete[] T_ptr;
     delete[] Ji_ptr;
@@ -265,9 +197,9 @@ int main(int argc, char *argv[])
         angle_start.q[i] = 0;
         angle_start.q_p[i] = 0;
         angle_start.q_pp[i] = 0;
-        angle_stop.q[i] = manipulator.GetElem(i)->GetTheta();
+        angle_stop.q[i] = manipulator.GetTheta(i);
     }
-    double ti = 4;
+    double ti = 3;
     manipulator.CalcPolynomLine(&angle_start, &angle_stop, ti, pol);
 //    pol[0].elem[3] = 1;
     Emulator emulator(manipulator);

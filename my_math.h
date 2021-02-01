@@ -256,18 +256,38 @@ namespace RoboMath
         {
             RoboMath::Quaternion res;
             scalar trace = a[0]  + a[5] + a[10] + 1;
+            scalar s;
             if (trace > 0)
             {
-                scalar s = 0.5 / sqrt(trace);
-                res = Quaternion(
-                            (a[9] - a[6]) * s,
-                            (a[2] - a[8]) * s,
-                            (a[4] - a[1]) * s,
-                            0.25 / s);
+                s = 0.5 / sqrt(trace);
+                res = Quaternion((a[9] - a[6]) * s,
+                                 (a[2] - a[8]) * s,
+                                 (a[4] - a[1]) * s,
+                                  0.25 / s);
             } else {
-//                int max =
-//                if ()
+                switch (MaxElem()){
+                case 0:
+                    s = sqrt(1.0 + a[0] - a[5] - a[10]) * 2;
+                    res = Quaternion((0.5 / s),
+                                     (a[1] + a[4]) / s,
+                                     (a[2] + a[8]) / s,
+                                     (a[6] + a[9]) / s);
+                case 1:
+                    s = sqrt(1.0 + a[5] - a[0] - a[10]) * 2;
+                    res = Quaternion((a[1] + a[4]) / s,
+                                     (0.5 / s),
+                                     (a[6] + a[9]) / s,
+                                     (a[2] + a[8]) / s);
+                case 2:
+                    s = sqrt(1.0 + a[10] - a[0] - a[5]) * 2;
+                    res = Quaternion((a[2] + a[8]) / s,
+                                     (a[6] + a[9]) / s,
+                                     (0.5 / s),
+                                     (a[1] + a[4]) / s);
+                }
+
             }
+            return res;
         }
     };
     class MatrixOfMatrix6x6

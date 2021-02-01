@@ -26,12 +26,12 @@ class Emulator/* : public QObject*/
 //    Q_OBJECT
 public:
     Emulator();
-    Emulator(const Robo &manip);;
+    Emulator(const Robo &manip);
     ~Emulator();
     void MoveManip(Polynom *polynom_in, scalar moving_time);
     void SolveDirectKinematic();
     void SolveInverseKinematic();
-    void OneIterMove();
+    void OneIterMove(bool is_last);
 
 //public slots:
 //    void OneTick();

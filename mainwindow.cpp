@@ -64,37 +64,50 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::PlotCoordinates(double value_x, double value_y, double value_z, double yaw, double pitch, double roll, double t)
+void MainWindow::PlotCoordinates(double value_x, double value_y, double value_z, double yaw, double pitch, double roll, double t, bool is_last)
 {
     ui->plot_x->graph(0)->addData(t, value_x);
     ui->plot_y->graph(0)->addData(t, value_y);
     ui->plot_z->graph(0)->addData(t, value_z);
-    ui->plot_yaw->graph(0)->addData(t, value_x);
-    ui->plot_pit->graph(0)->addData(t, value_y);
-    ui->plot_rol->graph(0)->addData(t, value_z);
+    ui->plot_yaw->graph(0)->addData(t, yaw);
+    ui->plot_pit->graph(0)->addData(t, pitch);
+    ui->plot_rol->graph(0)->addData(t, roll);
 //    ui->plot_x->graph(1)->setPen(QPen(QColor("red")));
 //    ui->plot_y->graph(1)->setPen(QPen(QColor("red")));
 //    ui->plot_x->graph(1)->setPen(QPen(QColor("red")));
 //    ui->plot_x->graph(1)->addData(t, value_vx);
 //    ui->plot_y->graph(1)->addData(t, value_vy);
 //    ui->plot_z->graph(1)->addData(t, value_vz);
-    ui->plot_x->xAxis->setRange(0, t + 1);
-    ui->plot_y->xAxis->setRange(0, t + 1);
-    ui->plot_z->xAxis->setRange(0, t + 1);
-    ui->plot_yaw->xAxis->setRange(0, t + 1);
-    ui->plot_pit->xAxis->setRange(0, t + 1);
-    ui->plot_rol->xAxis->setRange(0, t + 1);
-//    ui->plot_x->yAxis->set
-    ui->plot_x->replot();
-    ui->plot_y->replot();
-    ui->plot_z->replot();
-    ui->plot_yaw->replot();
-    ui->plot_pit->replot();
-    ui->plot_rol->replot();
-
+//    ui->plot_x->xAxis->setRange(0, t + 1);
+//    ui->plot_y->xAxis->setRange(0, t + 1);
+//    ui->plot_z->xAxis->setRange(0, t + 1);
+//    ui->plot_yaw->xAxis->setRange(0, t + 1);
+//    ui->plot_pit->xAxis->setRange(0, t + 1);
+//    ui->plot_rol->xAxis->setRange(0, t + 1);
+    if (is_last)
+    {
+        ui->plot_x->yAxis->rescale();
+        ui->plot_y->yAxis->rescale();
+        ui->plot_z->yAxis->rescale();
+        ui->plot_yaw->yAxis->rescale();
+        ui->plot_pit->yAxis->rescale();
+        ui->plot_rol->yAxis->rescale();
+        ui->plot_x->xAxis->rescale();
+        ui->plot_y->xAxis->rescale();
+        ui->plot_z->xAxis->rescale();
+        ui->plot_yaw->xAxis->rescale();
+        ui->plot_pit->xAxis->rescale();
+        ui->plot_rol->xAxis->rescale();
+        ui->plot_x->replot();
+        ui->plot_y->replot();
+        ui->plot_z->replot();
+        ui->plot_yaw->replot();
+        ui->plot_pit->replot();
+        ui->plot_rol->replot();
+    }
 }
 
-void MainWindow::PlotSpeeds(Robo::Angles speeds, double t)
+void MainWindow::PlotSpeeds(Robo::Angles speeds, double t, bool is_last)
 {
 //    if (speeds.q_p[1] > ui->plot_rol->yAxis->range().maxRange)
 //        ui->plot_rol->yAxis->setRange(-1.5, speeds.q_p[1] + 1);
@@ -104,7 +117,18 @@ void MainWindow::PlotSpeeds(Robo::Angles speeds, double t)
         ui->plot_speed->graph(i)->addData(t, speeds.q_p[i]);
         ui->plot_accel->graph(i)->addData(t, speeds.q_pp[i]);
     }
-//    ui->plot_rol->replot();
+    if (is_last)
+    {
+        ui->plot_coord->xAxis->rescale();
+        ui->plot_speed->xAxis->rescale();
+        ui->plot_accel->xAxis->rescale();
+        ui->plot_coord->yAxis->rescale();
+        ui->plot_speed->yAxis->rescale();
+        ui->plot_accel->yAxis->rescale();
+        ui->plot_coord->replot();
+        ui->plot_speed->replot();
+        ui->plot_accel->replot();
+    }
 }
 
 void MainWindow::PrintResult(double x, double y, double z, double yaw, double pitch, double roll, double t)

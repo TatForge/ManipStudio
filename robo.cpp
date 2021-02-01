@@ -189,7 +189,7 @@ void Robo::CalculateDeltaR(Vector3 target_r)
 
     Quaternion end_eff_target_ori;
     Quaternion end_eff_world_ori;
-    end_eff_world_ori.EulerToQuat(GetEffectorRotation());
+    end_eff_world_ori = T0[5].ConvertToQuaternion();
     end_eff_target_ori.EulerToQuat(target_r);
     end_eff_world_ori.Invert();
     Quaternion deltaQ = end_eff_target_ori * end_eff_world_ori;
@@ -482,6 +482,108 @@ void Robo::CalcPolynomCurve(const Robo::Angles *angle0, const Robo::Angles *angl
     }
 }
 
+void Robo::WriteSettingsToFile()
+{
+    manip_settings = new QSettings("ManipulatorSettigns.ini", QSettings::IniFormat);
+    manip_settings->setValue("denavita-hartenberg", 1);
+    manip_settings->beginWriteArray("denavita-hartenberg");
+    for (int i = 0; i < 6; i++)
+    {
+        manip_settings->setArrayIndex(i);
+        manip_settings->setValue("a", state_matrix->operator()(i, 0));
+        manip_settings->setValue("alpha", state_matrix->operator()(i, 1));
+        manip_settings->setValue("d", state_matrix->operator()(i, 2));
+        manip_settings->setValue("theta", state_matrix->operator()(i, 3));
+    }
+    manip_settings->endArray();
+    manip_settings->setValue("mass array", 1);
+    manip_settings->beginWriteArray("mass array");
+    for (int i = 0; i < 6; i++)
+    {
+        manip_settings->setArrayIndex(i);
+        manip_settings->setValue(QString::number(i), m_mass[i]);;
+    }
+    manip_settings->endArray();
+    manip_settings->setValue("center of mass", 1);
+    manip_settings->beginWriteArray("centers of mass");
+    for (int i = 0; i < 6; i++)
+    {
+        manip_settings->setArrayIndex(i);
+        manip_settings->setValue("0", m_cm[i].at(0));
+        manip_settings->setValue("1", m_cm[i].at(1));
+        manip_settings->setValue("2", m_cm[i].at(2));
+        manip_settings->setValue("3", m_cm[i].at(3));
+    }
+    manip_settings->endArray();
+    manip_settings->setValue("inertions", 1);
+    manip_settings->beginWriteArray("inertions");
+    for (int i = 0; i < 6; i++)
+    {
+        manip_settings->setArrayIndex(i);
+        manip_settings->setValue("0", m_i[i].xx());
+        manip_settings->setValue("1", m_i[i].yy());
+        manip_settings->setValue("2", m_i[i].zz());
+        manip_settings->setValue("3", m_i[i].xy());
+        manip_settings->setValue("4", m_i[i].xz());
+        manip_settings->setValue("5", m_i[i].yz());
+    }
+    manip_settings->endArray();
+    manip_settings->sync();
+}
+
+void Robo::LoadSettingsFromFile()
+{
+    manip_settings = new QSettings("ManipulatorSettigns.ini", QSettings::IniFormat);
+    if (!manip_settings->contains("denavita-hartenberg"))
+        throw std::string("no denavita-hartenberg array in settings file");
+    if (!manip_settings->contains("mass array"))
+        throw std::string("no mass array in settings file");
+    if (!manip_settings->contains("center of mass"))
+        throw std::string("no center of mass array in settings file");
+    if (!manip_settings->contains("inertions"))
+        throw std::string("no inertions array in settings file");
+    //        manip_settings->value("joints count", 6);
+    int size = manip_settings->beginReadArray("denavita-hartenberg");
+    for (int i = 0; i < size; i++)
+    {
+        manip_settings->setArrayIndex(i);
+        state_matrix->operator()(i, 0) = manip_settings->value("a").toDouble();
+        state_matrix->operator()(i, 1) = manip_settings->value("alpha").toDouble();
+        state_matrix->operator()(i, 2) = manip_settings->value("d").toDouble();
+        state_matrix->operator()(i, 3) = manip_settings->value("theta").toDouble();
+    }
+    manip_settings->endArray();
+    manip_settings->beginReadArray("mass array");
+    for (int i = 0; i < size; i++)
+    {
+        manip_settings->setArrayIndex(i);
+        m_mass[i] = manip_settings->value("mass").toDouble();
+    }
+    manip_settings->endArray();
+    manip_settings->beginReadArray("centers of mass");
+    for (int i = 0; i < size; i++)
+    {
+        manip_settings->setArrayIndex(i);
+        m_cm[i] = RoboMath::Vector({manip_settings->value("0").toDouble(),
+                                    manip_settings->value("1").toDouble(),
+                                    manip_settings->value("2").toDouble(),
+                                    manip_settings->value("3").toDouble()});
+    }
+    manip_settings->endArray();
+    manip_settings->beginReadArray("inertions");
+    for (int i = 0; i < size; i++)
+    {
+        manip_settings->setArrayIndex(i);
+        m_i[i] = RoboMath::Tensor({manip_settings->value("0").toDouble(),
+                                   manip_settings->value("1").toDouble(),
+                                   manip_settings->value("2").toDouble(),
+                                   manip_settings->value("3").toDouble(),
+                                   manip_settings->value("4").toDouble(),
+                                   manip_settings->value("5").toDouble()});
+    }
+    manip_settings->endArray();
+}
+
 void Robo::UpdateTMatrix()
 {
     RoboMath::Matrix &A = *state_matrix;
@@ -510,6 +612,58 @@ void Robo::UpdateTMatrix()
     T0[5] = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
 }
 
+void Robo::LoadManip()
+{
+    try {
+        LoadSettingsFromFile();
+        dt = 0.01;
+        for (int i = 0; i < number_of_elements; i++)
+        {
+            m_moments.hikm[i] = 0;
+            m_moments.dv[i] = 0;
+            m_moments.p[i] = 0;
+            m_angles.q_p[i] = 1;
+            m_angles.q_pp[i] = 1;
+        }
+        for (int i = 0; i < number_of_elements; i++)
+        {
+            m_ji[i] = {{(-m_i[i].xx() + m_i[i].yy() + m_i[i].zz())/2, m_i[i].xy(), m_i[i].xz(), m_mass[i] * m_cm[i](0)},
+                       {m_i[i].xy(), (m_i[i].xx() - m_i[i].yy() + m_i[i].zz())/2,  m_i[i].yz(), m_mass[i] * m_cm[i](1)},
+                       {m_i[i].xz(), m_i[i].yz(), (m_i[i].xx() + m_i[i].yy() - m_i[i].zz())/2,  m_mass[i] * m_cm[i](2)},
+                       {m_mass[i] * m_cm[i](0),  m_mass[i] * m_cm[i](1), m_mass[i] * m_cm[i](2), m_mass[i]}};
+            m_ji[i].MatrixCout("m_ji");
+        }
+        void UpdateTMatrix(RoboMath::Vector *delta_thetas);
+
+        //            Elem *robo_it = robot;
+        //            auto robo_list_it = robo_list.begin();
+        //            for (counter i = 0; i < number_of_elements; i++)
+        //            {
+        //                *robo_it = *robo_list_it;
+        //                if (i > 0)
+        //                {
+        //                    robo_it->SetPositionLocal(Vector3({robo_it->GetPosition().x - (robo_it - 1)->GetPosition().x,
+        //                                                  robo_it->GetPosition().y - (robo_it - 1)->GetPosition().y,
+        //                                                  robo_it->GetPosition().z - (robo_it - 1)->GetPosition().z}));
+        //                }
+        //                robo_it->SetRotationAxisLocal(robo_it->GetRotationAxis());
+        //                ++robo_it;
+        //                ++robo_list_it;
+        //            }
+        //            effector.SetRotation(Quaternion(Vector3(1, 0, 0), ToRad(90)));
+        //            (robot + number_of_elements - 1)->GetRotationAxisLocal();
+        //            effector.SetRotationAxis((robot + number_of_elements - 1)->GetRotationAxisLocal());
+        //            effector.SetRotationAxisLocal((robot + number_of_elements - 1)->GetRotationAxisLocal());
+        //            effector.SetPosition((robot + number_of_elements - 1)->GetPosition());
+        //            effector.SetPositionLocal(Vector3(0, 0, 0));
+
+    }
+    catch (string str)
+    {
+        cout << str << endl;
+    }
+}
+
 Robo::Moments *Robo::GetMoments()
 {
     return &m_moments;
@@ -518,6 +672,11 @@ Robo::Moments *Robo::GetMoments()
 Robo::Angles *Robo::GetAngles()
 {
     return &m_angles;
+}
+
+scalar Robo::GetTheta(const int &i)
+{
+    return state_matrix->at(i, 3);
 }
 
 void Robo::SimulateManipPolinoms(Polynom *pol, const scalar t)
@@ -585,7 +744,7 @@ Vector3 Robo::GetDeltaS() const
 
 const Elem *Robo::GetEffector() const
 {
-//    assert(number_of_elements > 0 && robot && robot != nullptr && "Failed assertion in Robo.Effector()");
+    //    assert(number_of_elements > 0 && robot && robot != nullptr && "Failed assertion in Robo.Effector()");
     return &effector;
 }
 

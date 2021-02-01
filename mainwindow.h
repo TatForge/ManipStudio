@@ -17,8 +17,8 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-    void PlotCoordinates(double value_x, double value_y, double value_z, double yaw, double pitch, double roll, double t);
-    void PlotSpeeds(Robo::Angles speeds, double t);
+    void PlotCoordinates(double value_x, double value_y, double value_z, double yaw, double pitch, double roll, double t, bool is_last = false);
+    void PlotSpeeds(Robo::Angles speeds, double t, bool is_last = false);
     void PrintResult(double x, double y, double z, double yaw, double pitch, double roll, double t);
 private slots:
 //    QTimer timer;
