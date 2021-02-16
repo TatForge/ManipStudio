@@ -7,11 +7,6 @@ Emulator::Emulator()
 
 Emulator::Emulator(const Robo &manip)
 {
-    //        moveToThread(&m_thread);
-
-    //        connect(&m_timer, &QTimer::timeout, this, &Emulator::OneTick);
-    //        connect(&m_thread, &QThread::started, this, &Emulator::startTimer);
-    //        this->moveToThread(&m_thread);
     w.show();
     state_matrix = new Matrix(manip.state_matrix->GetColsCount(), manip.state_matrix->GetRowsCount());
     for (int i = 0; i < JOINTS_COUNT; i++)
@@ -20,7 +15,10 @@ Emulator::Emulator(const Robo &manip)
     }
     *state_matrix = *manip.state_matrix;
     m_emu_angles = manip.m_angles;
-    m_polynom = new Polynom [JOINTS_COUNT];
+    shared_manip = new SharedMem("manipulator", 18);
+    shared_points = new SharedMem("points", sizeof(points_to_visual) / sizeof(float));
+    for (size_t i = 0; i < shared_points->GetSize(); i++)
+        points_to_visual[i] = 0;
 }
 
 Emulator::~Emulator()
@@ -28,24 +26,32 @@ Emulator::~Emulator()
     delete state_matrix;
 }
 
-void Emulator::MoveManip(Polynom *polynom_in, scalar moving_time)
+void Emulator::MoveManip(Polynom polynom_arr[], scalar moving_time, scalar dt)
 {
+    t = 0;
+    bool is_last = false;
+    while (t <= moving_time)
+    {
+        if (moving_time - t < 10e-4)
+            is_last = true;
+        OneIterMove(is_last);
+    }
+}
+
+void Emulator::MoveManip(Polynom polynom_in, int moving_time_millisec)
+{
+    scalar moving_time = moving_time_millisec / 1000.0;
     SetPolynomKF(polynom_in);
     t = 0;
     bool is_last = false;
     while (t <= moving_time)
     {
-        if (t - moving_time < 10e-4)
+        if (moving_time - t < 10e-4)
             is_last = true;
         OneIterMove(is_last);
     }
-    double pitch = atan(L(2,0)/L(2,1));
-    double yaw   = atan(L(0,2)/L(1,2));
-    double roll  = atan((sin(pitch) * L(2,0) - cos(pitch) * L(2,1))/L(2,2));
-    w.PrintResult(L(0,3), L(1,3), L(2,3), yaw, pitch, roll, t);
+    w.PlotSpeeds(m_emu_angles,11);
     t = 0;
-    //        m_thread.start();
-    //        m_timer.start();
 }
 
 void Emulator::SolveDirectKinematic()
@@ -69,34 +75,24 @@ void Emulator::SolveDirectKinematic()
 //    w.PlotData(roll, pitch, yaw, t);
 }
 
-void Emulator::SolveInverseKinematic()
-{
-
-}
-
 void Emulator::OneIterMove(bool is_last = false)
 {
-    scalar v;
-    scalar a;
-    scalar q;
-    //        this_thread::sleep_for(std::chrono::milliseconds(int(m_delta_t * 1000)));
     for (int i = 0; i < JOINTS_COUNT; i++)
     {
-//        m_emu_angles.q[i] = (m_polynom + i)->elem[5] * pow(t, 5) + (m_polynom + i)->elem[4] * pow(t, 4) + (m_polynom + i)->elem[3] * pow(t, 3) +
-//                            (m_polynom + i)->elem[2] * pow(t, 2) + (m_polynom + i)->elem[1] * pow(t, 1) + (m_polynom + i)->elem[0];
-//        v = (m_polynom + i)
-        q = (m_polynom + i)->elem[5] * pow(t, 5) + (m_polynom + i)->elem[4] * pow(t, 4) + (m_polynom + i)->elem[3] * pow(t, 3) +
-            (m_polynom + i)->elem[2] * pow(t, 2) + (m_polynom + i)->elem[1] * t + (m_polynom + i)->elem[0];
-        v = 5 * (m_polynom + i)->elem[5] * pow(t, 4) + 4 * (m_polynom + i)->elem[4] * pow(t, 3) + 3 * (m_polynom + i)->elem[3] * pow(t, 2) +
-            2 * (m_polynom + i)->elem[2] * pow(t, 1) + (m_polynom + i)->elem[1];
-        a = 20 * (m_polynom + i)->elem[5] * pow (t, 3) + 12 * (m_polynom + i)->elem[4] * pow(t, 2) + 6 * (m_polynom + i)->elem[3] * t + 2 * (m_polynom + i)->elem[2];
-        m_emu_angles.q[i]    = q;/*+= v * m_delta_t*/;
-        m_emu_angles.q_p[i]  = v;
-        m_emu_angles.q_pp[i] = a;
+        m_emu_angles.q[i]    = m_polynom.GetAngle(i, t);
+        m_emu_angles.q_p[i]  = m_polynom.GetSpeed(i, t);
+        m_emu_angles.q_pp[i] = m_polynom.GetAcceleration(i, t);
     }
     UpdateStateMatrix();
     SolveDirectKinematic();
-
+    FillManipPositionData();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));///m_delta_t * 1000));
+    SendDataToShared(MANIP, manip_to_visual, sizeof(float) * 18);
+    SendDataToShared(POINTS, points_to_visual, sizeof(float) * shared_points->GetSize() - 4);
+    if (is_last)
+        for (size_t i = 0; i < shared_points->GetSize(); i+=3)
+            if (points_to_visual[i] > 2 || points_to_visual[i + 1] > 2 || points_to_visual[i + 2] > 2)
+                std::cout << "points " << " x = " << points_to_visual[i] << " y = " << points_to_visual[i + 1] << " z = " << points_to_visual[i + 2] << endl;
     auto angles = L.ConvertToQuaternion().GetEulerAngles();
     w.PrintResult(L(0,3), L(1,3), L(2,3), angles.z, angles.y, angles.x, t);
     w.PlotCoordinates(L(0,3), L(1,3), L(2,3), ToDeg(angles.z), ToDeg(angles.y), ToDeg(angles.x), t, is_last);
@@ -105,7 +101,60 @@ void Emulator::OneIterMove(bool is_last = false)
     t += m_delta_t;
 }
 
-void Emulator::SetPolynomKF(Polynom *polynom_in)
+void Emulator::SendDataToShared(SharedMemKey skey, float *data_ptr, size_t size)
+{
+    if (skey == 1)
+    {
+        if (!shared_manip->SendData(data_ptr, size))
+            throw (QString("can't send data to shared memory(shared_manip)"));
+    }
+    if (skey == 2)
+    {
+        if (!shared_points->SendData(data_ptr, size))
+            throw (QString("can't send data to shared memory(shared_points)"));
+    }
+}
+
+void Emulator::FillManipPositionData()
+{
+    RoboMath::Matrix4x4 T_b;
+    T_b.MakeIdentity();
+    for (int i = 0; i < 6; i++)
+    {
+        T_b = T_b * T[i];
+        manip_to_visual[i * 3 + 0] = T_b(0, 3);
+        manip_to_visual[i * 3 + 1] = T_b(1, 3);
+        manip_to_visual[i * 3 + 2] = T_b(2, 3);
+    }
+    auto ll = RANGE_TO_PLOT;
+    auto ii = T_b(0,3);
+    auto i1 = T_b(1,3);
+    auto i12 = T_b(2,3);
+    auto kk = pow(T_b(0,3), 2);
+    kk = pow(T_b(1,3), 2);
+    kk = pow(T_b(2,3), 2);
+    kk = pow(T_b(0,3), 2) + pow(T_b(1,3), 2) + pow(T_b(2,3), 2);
+    ll = sqrt(kk);
+    ll = sqrt(pow(points_to_visual[iter - 3], 2) + pow(points_to_visual[iter - 2], 2) + pow(points_to_visual[iter - 1], 2));
+    ll = sqrt(pow(T_b(0,3), 2) + pow(T_b(1,3), 2) + pow(T_b(2,3), 2));
+    if (iter == 0)
+    {
+        points_to_visual[iter + 0] = T_b(0, 3);
+        points_to_visual[iter + 1] = T_b(1, 3);
+        points_to_visual[iter + 2] = T_b(2, 3);
+        iter += 3;
+    }
+    else if (abs(sqrt(pow(points_to_visual[iter - 3], 2) + pow(points_to_visual[iter - 2], 2) + pow(points_to_visual[iter - 1], 2)) -
+                 sqrt(pow(T_b(0,3), 2) + pow(T_b(1,3), 2) + pow(T_b(2,3), 2))) > RANGE_TO_PLOT)
+    {
+        points_to_visual[iter + 0] = T_b(0, 3);
+        points_to_visual[iter + 1] = T_b(1, 3);
+        points_to_visual[iter + 2] = T_b(2, 3);
+        iter += 3;
+    }
+}
+
+void Emulator::SetPolynomKF(Polynom polynom_in)
 {
     for (int i = 0; i < JOINTS_COUNT; i++)
     {

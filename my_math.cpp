@@ -413,7 +413,6 @@ Vector Matrix::operator*(const Vector &vector2) const
 Matrix Matrix::operator*(const scalar &value) const
 {
     Matrix result(*this);
-    scalar buff = 0;
     for (counter i = 0; i < m_rows; i++)
     {
         for (counter j = 0 ; j < m_cols; j++)
@@ -854,6 +853,11 @@ Vector3 Quaternion::GetAxis() const
 
 long double Quaternion::GetAngle() const
 {
+    if (w < -1)
+        return (2.0 * acosl(-1));
+    if (w < 1)
+        return (2.0 * acosl(1));
+    assert(w >= -1 && w <= 1 && "-1 <= w <= 1 assertion failed");
     return (2.0 * acosl(w));
 }
 
@@ -1020,7 +1024,7 @@ Vector Matrix4x4::MultiplyTranspose(const Vector &v)
     res(1) = a[4]*v.at(0) + a[5]*v.at(1) + a[6]*v.at(2) + a[7]*v.at(3);
     res(2) = a[8]*v.at(0) + a[9]*v.at(1) + a[10]*v.at(2) + a[11]*v.at(3);
     res(3) = a[12]*v.at(0) + a[13]*v.at(1) + a[14]*v.at(2) + a[15]*v.at(3);
-    res.VectorCout("res vector");
+//    res.VectorCout("res vector");
     return res;
 }
 
@@ -1084,4 +1088,77 @@ void Matrix4x4::MakeNull()
     {
         a[i] = 0;
     }
+}
+
+Polynom::Polynom()
+{
+    for (int i = 0; i < 6; i++)
+    {
+        for (int j = 0; j < 6; j++)
+            joint[i].a[j] = 0;
+    }
+}
+
+scalar Polynom::GetAngle(const int &joint_number, const scalar &t) const
+{
+    return  joint[joint_number].a[5] * pow(t, 5) + joint[joint_number].a[4] * pow(t, 4) + joint[joint_number].a[3] * pow(t, 3) +
+            joint[joint_number].a[2] * pow(t, 2) + joint[joint_number].a[1] * t + joint[joint_number].a[0];
+}
+
+scalar Polynom::GetSpeed(const int &joint_number, const scalar &t) const
+{
+    return  5 * joint[joint_number].a[5] * pow(t, 4) + 4 * joint[joint_number].a[4] * pow(t, 3) + 3 * joint[joint_number].a[3] * pow(t, 2) +
+            2 * joint[joint_number].a[2] * pow(t, 1) + joint[joint_number].a[1];
+}
+
+scalar Polynom::GetAcceleration(const int &joint_number, const scalar &t) const
+{
+    return  20 * joint[joint_number].a[5] * pow (t, 3) + 12 * joint[joint_number].a[4] * pow(t, 2) + 6 * joint[joint_number].a[3] * t + 2 * joint[joint_number].a[2];
+}
+
+void Polynom::CalcPolynom(const Angles * const a0, const Angles * const a1, const scalar t_millisec)
+{
+    scalar t = t_millisec / 1000.0;
+    for (int i = 0; i < 6; i++)
+    {
+        joint[i].a[0] =   a0->q[i];
+        joint[i].a[1] =   a0->q_p[i];
+        joint[i].a[2] =   0.5 * a0->q_pp[i];
+        joint[i].a[3] = - 10/pow(t, 3) * a0->q[i] - 6/pow(t, 2) * a0->q_p[i] - 3/(2*t)          * a0->q_pp[i]
+                + 10/pow(t, 3) * a1->q[i] - 4/pow(t, 2) * a1->q_p[i] + 1/(2*t)          * a1->q_pp[i];
+        joint[i].a[4] =   15/pow(t, 4) * a0->q[i] + 8/pow(t, 3) * a0->q_p[i] + 3/(2*pow(t, 2))  * a0->q_pp[i]
+                - 15/pow(t, 4) * a1->q[i] + 7/pow(t, 3) * a1->q_p[i] - 1/pow(t, 2)      * a1->q_pp[i];
+        joint[i].a[5] = - 6 /pow(t, 5) * a0->q[i] - 3/pow(t, 4) * a0->q_p[i] - 1/(2*pow(t, 3))  * a0->q_pp[i]
+                + 6 /pow(t, 5) * a1->q[i] - 3/pow(t, 4) * a1->q_p[i] + 1/(2*pow(t, 3))  * a1->q_pp[i];
+    }
+}
+
+void Polynom::CalcPolynomLine(const Angles * const a0, const Angles * const a1, const int t_millisec)
+{
+    scalar t = t_millisec / 1000.0;
+    for (int i = 0; i < 6; i++)
+    {
+        joint[i].a[0] = a0->q[i];
+        joint[i].a[1] = a0->q_p[i];
+        joint[i].a[2] = 0.5 * a0->q_pp[i];
+        joint[i].a[3] = - 1/pow(t, 3) * a0->q[i] - 1/pow(t, 2) * a0->q_p[i] - 0.5/t * a0->q_pp[i] + 1/pow(t, 3) * a1->q[i];
+    }
+}
+
+void Polynom::Cout(const char *ch) const
+{
+    cout << ch << endl;
+    //            for (int i = 0; i < 6; i++)
+    //            {
+    //                cout << elem[i] << endl;
+    //            }
+    cout << "__________________________" << endl;
+}
+
+scalar CalcDistancePointToLine(Vector3 p, Vector3 *l1, Vector3 *l2)
+{
+    return sqrt(pow((l1->y - p.y) * (l2->z - l1->z) - (l1->z - p.z) * (l2->y - l1->y), 2) +
+                pow((l1->x - p.x) * (l2->z - l1->z) - (l1->z - p.z) * (l2->x - l1->x), 2) +
+                pow((l1->x - p.x) * (l2->y - l1->y) - (l1->y - p.y) * (l2->x - l1->x), 2))/
+            sqrt(pow(l2->x - l1->x, 2) + pow(l2->y - l1->y, 2) + pow(l2->z - l1->z, 2));
 }

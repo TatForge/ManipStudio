@@ -4,6 +4,7 @@ project(MainKinematic LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 include_directories(/home/devel/Projects/SimulatorClient/)
+include_directories(/home/devel/Projects/Visualization/VisualizatorOpenGL/)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,6 +15,8 @@ SET(CMAKE_AUTORCC ON)
 
 find_package(Qt5Test)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
+
+enable_testing(true)
 
 #find_package(GTest REQUIRED)
 
@@ -47,6 +50,7 @@ add_executable(MainKinematic
     cuda_math.h
     emulator.h
     mainwindow.h
+    solver.h
 
     main.cpp
     my_math.cpp
@@ -55,9 +59,9 @@ add_executable(MainKinematic
     some_trash.cpp
     emulator.cpp
     mainwindow.cpp
+    solver.cpp
     ${CUDA_OBJECTS}
 
     mainwindow.ui
 )
-
 target_link_libraries(MainKinematic Qt5::Core Qt5Test cudart Qt5::Widgets#[[QCustomPlot ]] -lqcustomplot#[[${GTest}]])

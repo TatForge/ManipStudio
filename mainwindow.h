@@ -5,6 +5,7 @@
 #include <QTimer>
 #include "my_math.h"
 #include "robo.h"
+//#include "emulator.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -18,10 +19,12 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     void PlotCoordinates(double value_x, double value_y, double value_z, double yaw, double pitch, double roll, double t, bool is_last = false);
-    void PlotSpeeds(Robo::Angles speeds, double t, bool is_last = false);
+    void PlotSpeeds(rm::Angles speeds, double t, bool is_last = false);
     void PrintResult(double x, double y, double z, double yaw, double pitch, double roll, double t);
 private slots:
 //    QTimer timer;
+    void on_pushButton_clicked();
+
 private:
     Ui::MainWindow *ui;
 };

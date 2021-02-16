@@ -107,7 +107,7 @@ void MainWindow::PlotCoordinates(double value_x, double value_y, double value_z,
     }
 }
 
-void MainWindow::PlotSpeeds(Robo::Angles speeds, double t, bool is_last)
+void MainWindow::PlotSpeeds(rm::Angles speeds, double t, bool is_last)
 {
 //    if (speeds.q_p[1] > ui->plot_rol->yAxis->range().maxRange)
 //        ui->plot_rol->yAxis->setRange(-1.5, speeds.q_p[1] + 1);
@@ -141,3 +141,15 @@ void MainWindow::PrintResult(double x, double y, double z, double yaw, double pi
     ui->label_yaw->setText(QString("yaw = ")     + QString::number(ToDeg(yaw)));
 }
 
+
+void MainWindow::on_pushButton_clicked()
+{
+    Robo manipulator;
+    rm::Angles start, stop;
+//    Polynom pol;
+    stop.q[2] = -50;
+    manipulator.LoadManip();
+//    manipulator.CalcPolynomLine(&start, &stop, 3, pol);
+//    Emulator emul(manipulator);
+//    emul.MoveManip(pol, 3);
+}

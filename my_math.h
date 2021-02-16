@@ -15,6 +15,7 @@
 
 #define RAD M_PI/180
 #define DEG 180/M_PI
+#define JOINTS_COUNT 6
 
 #define DOUBLE_SCALAR
 //#define DEBUG_COUT
@@ -41,10 +42,49 @@ namespace RoboMath
     class Vector;
     class Vector3;
     class Matrix;
-    struct Polynom
+
+    struct Angles
     {
-        scalar elem[6]{0,0,0,0,0,0};
+        scalar q_pp[JOINTS_COUNT];
+        scalar q_p[JOINTS_COUNT];
+        scalar q[JOINTS_COUNT];
+        Angles()
+        {
+            for (int i = 0; i < JOINTS_COUNT; i++)
+            {
+                q[i] = 0;
+                q_p[i] = 0;
+                q_pp[i] = 0;
+            }
+        }
     };
+
+    class Polynom
+    {
+    public:
+        struct elem
+        {
+            scalar a[6];
+        };
+        elem joint[6];
+        Polynom();
+        scalar GetAngle(const int &joint_number, const scalar &t) const;
+        scalar GetSpeed(const int &joint_number, const scalar &t) const;
+        scalar GetAcceleration(const int &joint_number, const scalar &t) const;
+        void CalcPolynom(const Angles *const a0, const Angles *const a1, const scalar t);
+        void CalcPolynomLine(const Angles *const a0, const Angles *const a1, const int t_millisec);
+
+        void Cout(const char *ch) const;
+        friend bool CheckForLinear(Polynom &this_pol, Vector3 l1, Vector3 l2, const scalar &t, const scalar &delta_t, const scalar &delta_r);
+    };
+//    struct Point3
+//    {
+//        Point3(scalar &x_in, scalar &y_in, scalar &z_in) :
+//            x(x_in), y(y_in), z(z_in){};
+//        scalar x;
+//        scalar y;
+//        scalar z;
+//    };
 
     class Vector
     {
@@ -341,8 +381,37 @@ namespace RoboMath
         }
         return result;
     }
+    struct StateVector
+    {
+        StateVector(scalar &x_in, scalar &y_in, scalar &z_in, scalar &roll_in, scalar &pitch_in, scalar &yaw_in) :
+            x(x_in), y(y_in), z(z_in), roll(roll_in), pitch(pitch_in), yaw(yaw_in){};
+        StateVector(scalar &&x_in, scalar &&y_in, scalar &&z_in, scalar &&roll_in, scalar &&pitch_in, scalar &&yaw_in) :
+            x(x_in), y(y_in), z(z_in), roll(roll_in), pitch(pitch_in), yaw(yaw_in){};
+        StateVector(scalar x_in, scalar y_in, scalar z_in, Vector3 &a) :
+            x(x_in), y(y_in), z(z_in), roll(a.x), pitch(a.y), yaw(a.z){};
+        StateVector(scalar x_in, scalar y_in, scalar z_in, Vector3 &&a) :
+            x(x_in), y(y_in), z(z_in), roll(a.x), pitch(a.y), yaw(a.z){};
+        StateVector(Vector3 &r, scalar &roll_in, scalar &pitch_in, scalar &yaw_in) :
+            x(r.x), y(r.y), z(r.z), roll(roll_in), pitch(pitch_in), yaw(yaw_in){};
+        StateVector(Vector3 &r, Vector3 &a) :
+            x(r.x), y(r.y), z(r.z), roll(a.x), pitch(a.y), yaw(a.z){};
+        Vector3 GetCoord() const
+        {
+            return Vector3(x, y, z);
+        };
+        Vector3 GetAngles() const
+        {
+            return Vector3(roll, pitch, yaw);
+        }
+        scalar x;
+        scalar y;
+        scalar z;
+        scalar roll;
+        scalar pitch;
+        scalar yaw;
+    };
 }
-
+scalar CalcDistancePointToLine(RoboMath::Vector3 p, RoboMath::Vector3 *l1, RoboMath::Vector3 *l2);
 class checkTime
 {
 public:
