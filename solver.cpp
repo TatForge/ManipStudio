@@ -32,54 +32,72 @@ void Solver::SolveDirectKinematic(const Angles &q, Matrix4x4 TR[])
 
 int Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &target, const Angles &curr_angle, Angles &res_angle)
 {
-    counter ctr(0);
-    Vector3 delta_r;
-    Vector3 delta_s;
-    Matrix jacobian(6,6);
     Quaternion end_eff_target_ori;
     Quaternion end_eff_world_ori;
+    Quaternion deltaQ;
     Matrix4x4 TR[JOINTS_COUNT];
-    Angles d_thet;
+    Vector3 ang_vel;
+    Vector3 delta_r;
+    Vector3 delta_s;
+    Vector3 axis;
+    Matrix jacobian(EFFECTOR_DEGREE_OF_FREEDOM,6);
+    Matrix jacobian_transposed(EFFECTOR_DEGREE_OF_FREEDOM, 6);
+    Matrix U(EFFECTOR_DEGREE_OF_FREEDOM, EFFECTOR_DEGREE_OF_FREEDOM);
+    Matrix aug_matrix(U.GetRowsCount(), U.GetColsCount() + 1);
+    Angles d_thet = curr_angle;
+    Vector delta_t(EFFECTOR_DEGREE_OF_FREEDOM);
+    Vector delta_thetas(JOINTS_COUNT);
+    counter ctr(0);
+    scalar angle(0);
+
     bool solved = false;
     SolveDirectKinematic(curr_angle, TR);
 
     end_eff_world_ori = TR[JOINTS_COUNT - 1].ConvertToQuaternion();
     end_eff_target_ori.EulerToQuat(target.GetAngles());
     end_eff_world_ori.Invert();
-    Quaternion deltaQ = end_eff_target_ori * end_eff_world_ori;
-    scalar angle = deltaQ.GetAngle();
-    Vector3 axis = deltaQ.GetAxis();
+    deltaQ = end_eff_target_ori * end_eff_world_ori;
+    angle = deltaQ.GetAngle();
+    axis = deltaQ.GetAxis();
     if (angle > M_PI)
         angle -= 2.0 * M_PI;
     else if (angle < - M_PI)
         angle += 2.0 * M_PI;
-    Vector3 ang_vel = axis.Normalize() * angle;
+    ang_vel = axis.Normalize() * angle;
     delta_r = ang_vel * 1;
     delta_s.x = target.x - TR[5](0,3);
     delta_s.y = target.y - TR[5](1,3);
     delta_s.z = target.z - TR[5](2,3);
-    while (delta_r.Length() + delta_s.Length() > accuracy)
+    auto kk = delta_s.Length() > accuracy;
+    auto kk1 = delta_r.Length() > accuracy * 100;
+    while ((delta_s.Length() > accuracy) /*|| (delta_r.Length() > 0.1)*/)
     {
 //        cout << "delta_r " << delta_r.Length() << " delta_s " << delta_s.Length() << endl;
+        solved = true;
         for (int i = 0; i < JOINTS_COUNT; i++)
         {
             jacobian.SetSubColumn(Vector3(TR[i](0,2), TR[i](1,2), TR[i](2,2)) * (Vector3({TR[5](0,3), TR[5](1,3), TR[5](2,3)}) - Vector3({TR[i](0,3), TR[i](1,3), TR[i](2,3)})), i, 0);
+#ifdef POSITION_AND_ROTATION
             jacobian.SetSubColumn(Vector3(TR[i](0,2), TR[i](1,2), TR[i](2,2)), i, 3);
+#endif
         }
         //calc Jacobian for current configuration
-        Matrix jacobian_transposed = jacobian;
+        jacobian_transposed = jacobian;
+        jacobian.MatrixCout("jacobian");
         jacobian_transposed.Transpose();
-        Matrix U(6, 6);//EFFECTOR_DEGREE_OF_FREEDOM, EFFECTOR_DEGREE_OF_FREEDOM);
+        jacobian_transposed.MatrixCout("jacobian_tra");
         U = (jacobian) * jacobian_transposed;
         U.AddDiagonal(damping_constant_sq);
-        Matrix aug_matrix(U.GetRowsCount(), U.GetColsCount() + 1);
+        U.MatrixCout("U");
         aug_matrix.SetSubmatrix(U, 0, 0);
         aug_matrix.SetSubColumn(delta_s, aug_matrix.GetColsCount() - 1, 0);
+        aug_matrix.MatrixCout("Matrix aug");
+#ifdef POSITION_AND_ROTATION
         aug_matrix.SetSubColumn(delta_r, aug_matrix.GetColsCount() - 1, 3);
+#endif
         aug_matrix.SolveGauss();
-        Vector delta_t(EFFECTOR_DEGREE_OF_FREEDOM);
         aug_matrix.GetTheRoots(delta_t);
-        Vector delta_thetas = jacobian_transposed * delta_t;
+        delta_thetas = jacobian_transposed * delta_t;
 
         scalar max = delta_thetas.MaxAbs();
         if (max > MaxAngleDls)
@@ -94,14 +112,14 @@ int Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &tar
         end_eff_world_ori = TR[5].ConvertToQuaternion();
         end_eff_target_ori.EulerToQuat(target.GetAngles());
         end_eff_world_ori.Invert();
-        Quaternion deltaQ = end_eff_target_ori * end_eff_world_ori;
-        scalar angle = deltaQ.GetAngle();
-        Vector3 axis = deltaQ.GetAxis();
+        deltaQ = end_eff_target_ori * end_eff_world_ori;
+        angle = deltaQ.GetAngle();
+        axis = deltaQ.GetAxis();
         if (angle > M_PI)
             angle -= 2.0 * M_PI;
         else if (angle < - M_PI)
             angle += 2.0 * M_PI;
-        Vector3 ang_vel = axis.Normalize() * angle;
+        ang_vel = axis.Normalize() * angle;
         delta_r = ang_vel * 1;
         delta_s.x = target.x - TR[5](0,3);
         delta_s.y = target.y - TR[5](1,3);
@@ -118,6 +136,13 @@ int Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &tar
     if (solved)
         for (int i = 0; i < JOINTS_COUNT; i++)
             res_angle.q[i] = d_thet.q[i];
+    Matrix4x4 TRR[JOINTS_COUNT];
+    SolveDirectKinematic(res_angle, TRR);
+    cout << "InverseKinematic result \nx = " << TRR[5](0,3) << " y = " << TRR[5](1,3) << " z = " << TRR[5](2,3)
+         << "\nroll = " << ToDeg(TRR[5].ConvertToQuaternion().GetEulerAngles().x)
+         << " pitch = " << ToDeg(TRR[5].ConvertToQuaternion().GetEulerAngles().y)
+         << " yaw = "   << ToDeg(TRR[5].ConvertToQuaternion().GetEulerAngles().z)
+         << endl;
     return 0;
 }
 
@@ -131,7 +156,7 @@ int Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &e
     scalar yaw(start_point.yaw),   d_yaw(0);
     Angles start_angles;
     Angles new_angle;
-    int dt = 100; //millisec
+    int dt = 50; //millisec
     Matrix4x4 buff[6];
 
     SolveInverseKinematic(ACCURACY, start_point, curr_angles, start_angles);
@@ -149,13 +174,19 @@ int Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &e
         x += d_x; y += d_y; z += d_z;
         rol += d_rol; pit += d_pit; yaw += d_yaw;
         SolveInverseKinematic(ACCURACY, StateVector(x, y, z, rol, pit, yaw), start_angles, new_angle);
-        result[i].CalcPolynom(&start_angles, &new_angle, dt);
+//        SolveDirectKinematic(new_angle, buff);
+//        cout << "Вышли в эту точку \nx = " << buff[5](0,3) << " y = " << buff[5](1,3) << " z = " << buff[5](2,3)
+//             << "\nroll = " << ToDeg(buff[5].ConvertToQuaternion().GetEulerAngles().x)
+//             << " pitch = " << ToDeg(buff[5].ConvertToQuaternion().GetEulerAngles().y)
+//             << " yaw = "   << ToDeg(buff[5].ConvertToQuaternion().GetEulerAngles().z)
+//             << endl;
+        result[i].CalcPolynomLine(&start_angles, &new_angle, dt);
         start_angles = new_angle;
-//        for (int j = 0; j < JOINTS_COUNT; j++)
-//        {
+        for (int j = 0; j < JOINTS_COUNT; j++)
+        {
 //            start_angles.q_p[j] = result[i].GetSpeed(j, i * dt + dt);
 //            start_angles.q_pp[j] = result[i].GetAcceleration(j, i * dt + dt);
-//        }
+        }
         emulator->MoveManip(result[i], dt);
     }
 }

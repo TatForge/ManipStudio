@@ -295,7 +295,7 @@ namespace RoboMath
         Quaternion ConvertToQuaternion()
         {
             RoboMath::Quaternion res;
-            scalar trace = a[0]  + a[5] + a[10] + 1;
+            scalar trace = a[0] + a[5] + a[10] + 1;
             scalar s;
             if (trace > 0)
             {
@@ -305,6 +305,7 @@ namespace RoboMath
                                  (a[4] - a[1]) * s,
                                   0.25 / s);
             } else {
+                auto kk = MaxElem();
                 switch (MaxElem()){
                 case 0:
                     s = sqrt(1.0 + a[0] - a[5] - a[10]) * 2;
@@ -312,21 +313,25 @@ namespace RoboMath
                                      (a[1] + a[4]) / s,
                                      (a[2] + a[8]) / s,
                                      (a[6] + a[9]) / s);
+                    break;
                 case 1:
                     s = sqrt(1.0 + a[5] - a[0] - a[10]) * 2;
                     res = Quaternion((a[1] + a[4]) / s,
                                      (0.5 / s),
                                      (a[6] + a[9]) / s,
                                      (a[2] + a[8]) / s);
+                    break;
                 case 2:
                     s = sqrt(1.0 + a[10] - a[0] - a[5]) * 2;
                     res = Quaternion((a[2] + a[8]) / s,
                                      (a[6] + a[9]) / s,
                                      (0.5 / s),
                                      (a[1] + a[4]) / s);
+                    break;
                 }
 
             }
+            res.Normalize();
             return res;
         }
     };

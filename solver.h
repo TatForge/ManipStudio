@@ -4,7 +4,7 @@
 #include "emulator.h"
 //#include "my_math.h"
 
-#define MAX_KINEMATIC_ITERS 20
+#define MAX_KINEMATIC_ITERS 150
 #define ACCURACY 10e-6
 
 using namespace rm;

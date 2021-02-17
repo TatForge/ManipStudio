@@ -855,9 +855,9 @@ long double Quaternion::GetAngle() const
 {
     if (w < -1)
         return (2.0 * acosl(-1));
-    if (w < 1)
+    if (w > 1)
         return (2.0 * acosl(1));
-    assert(w >= -1 && w <= 1 && "-1 <= w <= 1 assertion failed");
+    assert(w >= -1 && w <= 1 && "-1 < w < 1 assertion failed");
     return (2.0 * acosl(w));
 }
 

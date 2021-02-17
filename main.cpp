@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
         angle_start.q_pp[i] = 0;
         angle_stop.q[i] = manipulator.GetTheta(i);
     }
-    double ti = 3;
+    double ti = 2;
     double dt = 0.1;
 
 //    Vector3 *points_arr = new Vector3 [int(ti / dt)];
@@ -230,8 +230,8 @@ int main(int argc, char *argv[])
     Angles res_an;
 
     solver.SolveDirectKinematic(start_an, TT);
-    StateVector stv(0.3, 0.1341, 0.1515, ToRad(90), ToRad(0), ToRad(0));
-    StateVector tarv(0.3, 0.1341, 0.1515, ToRad(90), ToRad(0), ToRad(0));
+    StateVector stv(0.4, 0.2341, 0.0515, ToRad(180), ToRad(0), ToRad(0));
+    StateVector tarv(-0.4, -0.2341, 0.2515, ToRad(180), ToRad(0), ToRad(0));
 //    StateVector tarv(0.3, -0.2341, 0.1515, ToRad(90), ToRad(+90),   ToRad(+90));
     solver.SolveInverseKinematic(10e-5, stv, start_an, start_an);
     solver.SolveInverseKinematic(10e-5, tarv, start_an, res_an);
@@ -242,12 +242,12 @@ int main(int argc, char *argv[])
 
 //    solver.SolveInverseKinematic(ACCURACY, tarv, start_an, res_an);
 
-    solver.CalcPolynomLine(stv, tarv, angle_start, 3000, 10e-4, result);
+    solver.CalcPolynomLine(stv, tarv, angle_start, 2000, 10e-4, result);
 
 
-    pol.CalcPolynom(&start_an, &res_an, 3000);
-    Emulator emulator(manipulator);
-    emulator.MoveManip(pol, 3000);
+//    pol.CalcPolynom(&start_an, &res_an, 3000);
+//    Emulator emulator(manipulator);
+//    emulator.MoveManip(pol, 3000);
 
 //    manipulator.CalcPolynomLine(&angle_start, &angle_stop, ti, pol);
 //    manipulator.CheckTrajectoryForLinear(pol, Vector3(0.67, 0.2431, 0.0615), target, ti, 0.01, 0.01);
