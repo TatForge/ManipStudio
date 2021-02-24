@@ -1,4 +1,4 @@
-#include "test_my_math.h"
+#include "Tests/test_my_math.h"
 #include "robo.h"
 #include "cuda_math.h"
 #include "emulator.h"
@@ -22,7 +22,7 @@
 
 using namespace RoboMath;
 
-int main(int argc, char *argv[])
+int main1(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
@@ -230,8 +230,11 @@ int main(int argc, char *argv[])
     Angles res_an;
 
     solver.SolveDirectKinematic(start_an, TT);
-    StateVector stv(0.4, 0.2341, 0.0515, ToRad(180), ToRad(0), ToRad(0));
-    StateVector tarv(-0.4, -0.2341, 0.2515, ToRad(180), ToRad(0), ToRad(0));
+    StateVector stv(-0.35, -0.3341, 0.0515, ToRad(180), ToRad(0), ToRad(0));
+    StateVector tarv(0.35, -0.1341, 0.2515, ToRad(180), ToRad(0), ToRad(0));
+    StateVector tarv1(0.35, +0.3341, 0.0515, ToRad(180), ToRad(0), ToRad(0));
+    StateVector tarv2(-0.35, +0.2341, 0.1515, ToRad(180), ToRad(0), ToRad(0));
+    StateVector tarv3(-0.35, -0.3341, 0.0515, ToRad(180), ToRad(0), ToRad(0));
 //    StateVector tarv(0.3, -0.2341, 0.1515, ToRad(90), ToRad(+90),   ToRad(+90));
     solver.SolveInverseKinematic(10e-5, stv, start_an, start_an);
     solver.SolveInverseKinematic(10e-5, tarv, start_an, res_an);
@@ -242,7 +245,10 @@ int main(int argc, char *argv[])
 
 //    solver.SolveInverseKinematic(ACCURACY, tarv, start_an, res_an);
 
-    solver.CalcPolynomLine(stv, tarv, angle_start, 2000, 10e-4, result);
+    solver.CalcPolynomLine(stv, tarv, angle_start,  res_an, 2000, 20, result);
+    solver.CalcPolynomLine(tarv, tarv1, res_an,     res_an, 2000, 20, result);
+    solver.CalcPolynomLine(tarv1, tarv2, res_an,    res_an, 2000, 20, result);
+    solver.CalcPolynomLine(tarv2, tarv3, res_an,    res_an, 2000, 20, result);
 
 
 //    pol.CalcPolynom(&start_an, &res_an, 3000);
@@ -252,7 +258,6 @@ int main(int argc, char *argv[])
 //    manipulator.CalcPolynomLine(&angle_start, &angle_stop, ti, pol);
 //    manipulator.CheckTrajectoryForLinear(pol, Vector3(0.67, 0.2431, 0.0615), target, ti, 0.01, 0.01);
 //    cout << manipulator.CalcDistancePointToLine(Vector3(22,2,3), Vector3(6, 7, 8), Vector3(11, 12, 13)) << endl;
-
 
 
 #ifdef WITH_TESTS

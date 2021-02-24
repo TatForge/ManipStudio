@@ -1,5 +1,7 @@
 #include "emulator.h"
 
+//static Vector3 current_range(0, 0, 0);
+
 Emulator::Emulator()
 {
 
@@ -86,7 +88,7 @@ void Emulator::OneIterMove(bool is_last = false)
     UpdateStateMatrix();
     SolveDirectKinematic();
     FillManipPositionData();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));///m_delta_t * 1000));
+//    std::this_thread::sleep_for(std::chrono::milliseconds(10));///m_delta_t * 1000));
     SendDataToShared(MANIP, manip_to_visual, sizeof(float) * 18);
     SendDataToShared(POINTS, points_to_visual, sizeof(float) * shared_points->GetSize() - 4);
     if (is_last)
@@ -133,10 +135,10 @@ void Emulator::FillManipPositionData()
     auto kk = pow(T_b(0,3), 2);
     kk = pow(T_b(1,3), 2);
     kk = pow(T_b(2,3), 2);
-    kk = pow(T_b(0,3), 2) + pow(T_b(1,3), 2) + pow(T_b(2,3), 2);
-    ll = sqrt(kk);
-    ll = sqrt(pow(points_to_visual[iter - 3], 2) + pow(points_to_visual[iter - 2], 2) + pow(points_to_visual[iter - 1], 2));
-    ll = sqrt(pow(T_b(0,3), 2) + pow(T_b(1,3), 2) + pow(T_b(2,3), 2));
+    kk = sqrt(pow(T_b(0,3), 2) + pow(T_b(1,3), 2) + pow(T_b(2,3), 2));
+//    ll = sqrt(kk);
+    ll = sqrt(pow(points_to_visual[iter - 3] - T_b(0,3) , 2) + pow(points_to_visual[iter - 2] - T_b(1,3), 2) + pow(points_to_visual[iter - 1] - T_b(2,3), 2));
+//    ll = sqrt(pow(T_b(0,3), 2) + pow(T_b(1,3), 2) + pow(T_b(2,3), 2));
     if (iter == 0)
     {
         points_to_visual[iter + 0] = T_b(0, 3);
@@ -144,8 +146,11 @@ void Emulator::FillManipPositionData()
         points_to_visual[iter + 2] = T_b(2, 3);
         iter += 3;
     }
-    else if (abs(sqrt(pow(points_to_visual[iter - 3], 2) + pow(points_to_visual[iter - 2], 2) + pow(points_to_visual[iter - 1], 2)) -
-                 sqrt(pow(T_b(0,3), 2) + pow(T_b(1,3), 2) + pow(T_b(2,3), 2))) > RANGE_TO_PLOT)
+//    else if (abs(sqrt(pow(points_to_visual[iter - 3], 2) + pow(points_to_visual[iter - 2], 2) + pow(points_to_visual[iter - 1], 2)) -
+//                 sqrt(pow(T_b(0,3), 2) + pow(T_b(1,3), 2) + pow(T_b(2,3), 2))) > RANGE_TO_PLOT)
+
+    else if (sqrt(pow(points_to_visual[iter - 3] - T_b(0,3) , 2) + pow(points_to_visual[iter - 2]
+                - T_b(1,3), 2) + pow(points_to_visual[iter - 1] - T_b(2,3), 2)) > RANGE_TO_PLOT)
     {
         points_to_visual[iter + 0] = T_b(0, 3);
         points_to_visual[iter + 1] = T_b(1, 3);

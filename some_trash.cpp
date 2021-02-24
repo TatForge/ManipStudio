@@ -1,7 +1,7 @@
 //#include <eigen3/Eigen/Dense>
 #include <iostream>
 
-#include "test_my_math.h"
+#include "Tests/test_my_math.h"
 #include "robo.h"
 using namespace RoboMath;
 using namespace std;

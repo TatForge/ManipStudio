@@ -10,7 +10,7 @@
 #include <QApplication>
 #include <qcustomplot.h>
 
-#define RANGE_TO_PLOT 0.01 // 25 mm
+#define RANGE_TO_PLOT 0.05 // 25 mm
 
 //#include "QTimer"
 //#include "QThread"

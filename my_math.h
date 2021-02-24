@@ -34,6 +34,8 @@ using namespace std;
 
 inline static scalar ToRad(scalar degrees) {return degrees * RAD;};
 inline static scalar ToDeg(scalar radians) {return radians * DEG;};
+inline static scalar ToSec(scalar milliseconds) {return milliseconds / 1000.0;};
+inline static scalar ToMillisec(scalar seconds) {return floor(seconds * 1000.0 + 0.5);};
 
 namespace RoboMath
 {
@@ -379,7 +381,6 @@ namespace RoboMath
         //only for square matrix
         assert(ma.GetColsCount() == ma.GetRowsCount());
         scalar result(0);
-        counter diag_elem = 0;
         for (int i = 0; i < ma.GetColsCount(); i++)
         {
             result += *(ma.GetDataPtr() + i * ma.GetColsCount() + i);
@@ -388,6 +389,7 @@ namespace RoboMath
     }
     struct StateVector
     {
+        StateVector() : x(0), y(0), z(0), roll(0), pitch(0), yaw(0){};
         StateVector(scalar &x_in, scalar &y_in, scalar &z_in, scalar &roll_in, scalar &pitch_in, scalar &yaw_in) :
             x(x_in), y(y_in), z(z_in), roll(roll_in), pitch(pitch_in), yaw(yaw_in){};
         StateVector(scalar &&x_in, scalar &&y_in, scalar &&z_in, scalar &&roll_in, scalar &&pitch_in, scalar &&yaw_in) :
@@ -416,7 +418,7 @@ namespace RoboMath
         scalar yaw;
     };
 }
-scalar CalcDistancePointToLine(RoboMath::Vector3 p, RoboMath::Vector3 *l1, RoboMath::Vector3 *l2);
+scalar CalcDistancePointToLine(RoboMath::Vector3 p, const RoboMath::Vector3 *l1, const RoboMath::Vector3 *l2);
 class checkTime
 {
 public:

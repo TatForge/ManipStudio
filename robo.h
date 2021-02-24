@@ -21,9 +21,9 @@
 #define DEG 180/M_PI
 
 
-const scalar damping_constant = 0.01;
+const scalar damping_constant = 0.1;
 const scalar damping_constant_sq = damping_constant * damping_constant;
-const scalar MaxAngleDls = ToRad(5.0);
+const scalar MaxAngleDls = ToRad(45.0);
 
 using namespace std;
 namespace rm = RoboMath;

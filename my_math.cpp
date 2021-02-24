@@ -1038,27 +1038,9 @@ Matrix4x4 Matrix4x4::operator*(const Matrix4x4 &b)
             result.a[i * 4 + j] = a[i * 4] * b.a[j] + a[i*4 + 1] * b.a[4 + j] + a[i*4 + 2] * b.a[8 + j]  + a[i*4 + 3] * b.a[12 + j];
         }
     }
-//    result.a[0] = a[0]*b.a[0] + a[1]*b.a[4] + a[2]*b.a[8]  + a[3]*b.a[12];
-//    result.a[1] = a[0]*b.a[1] + a[1]*b.a[5] + a[2]*b.a[9]  + a[3]*b.a[13];
-//    result.a[2] = a[0]*b.a[2] + a[1]*b.a[6] + a[2]*b.a[10] + a[3]*b.a[14];
-//    result.a[3] = a[0]*b.a[3] + a[1]*b.a[7] + a[2]*b.a[11] + a[3]*b.a[15];
-
-//    result.a[5] = a[4]*b.a[0] + a[5]*b.a[4] + a[6]*b.a[8]  + a[7]*b.a[12];
-//    result.a[6] = a[4]*b.a[1] + a[5]*b.a[5] + a[6]*b.a[9] + a[7]*b.a[13];
-//    result.a[7] = a21*b.a13 + a22*b.a23 + a23*b.a33 + a24*b.a43;
-//    result.a[8] = a21*b.a14 + a22*b.a24 + a23*b.a34 + a24*b.a44;
-
-//    result.a31 = a31*b.a11 + a32*b.a21 + a33*b.a31 + a34*b.a41;
-//    result.a32 = a31*b.a12 + a32*b.a22 + a33*b.a32 + a34*b.a42;
-//    result.a33 = a31*b.a13 + a32*b.a23 + a33*b.a33 + a34*b.a43;
-//    result.a34 = a31*b.a14 + a32*b.a24 + a33*b.a34 + a34*b.a44;
-
-//    result.a41 = a41*b.a11 + a42*b.a21 + a43*b.a31 + a44*b.a41;
-//    result.a42 = a41*b.a12 + a42*b.a22 + a43*b.a32 + a44*b.a42;
-//    result.a43 = a41*b.a13 + a42*b.a23 + a43*b.a33 + a44*b.a43;
-//    result.a44 = a41*b.a14 + a42*b.a24 + a43*b.a34 + a44*b.a44;
     return result;
 }
+
 
 void Matrix4x4::MatrixCout(const char *ch) const
 {
@@ -1155,7 +1137,7 @@ void Polynom::Cout(const char *ch) const
     cout << "__________________________" << endl;
 }
 
-scalar CalcDistancePointToLine(Vector3 p, Vector3 *l1, Vector3 *l2)
+scalar CalcDistancePointToLine(Vector3 p, const Vector3 *l1, const Vector3 *l2)
 {
     return sqrt(pow((l1->y - p.y) * (l2->z - l1->z) - (l1->z - p.z) * (l2->y - l1->y), 2) +
                 pow((l1->x - p.x) * (l2->z - l1->z) - (l1->z - p.z) * (l2->x - l1->x), 2) +
