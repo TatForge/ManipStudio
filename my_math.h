@@ -4,38 +4,23 @@
 
 #include <initializer_list>
 #include <vector>
-#include <cmath>
 #include <iostream>
 #include <iomanip>
 #include <memory>
 #include <cstring>
 #include <chrono>
 #include <assert.h>
+#include <constants.h>
 
 
-#define RAD M_PI/180
-#define DEG 180/M_PI
-#define JOINTS_COUNT 6
-
-#define DOUBLE_SCALAR
-//#define DEBUG_COUT
 
 
-#ifdef DOUBLE_SCALAR
-typedef double scalar;
-#else
-typedef float scalar;
-#endif
 
-const scalar g = 9.80665;
+
 
 typedef unsigned short counter;
 using namespace std;
 
-inline static scalar ToRad(scalar degrees) {return degrees * RAD;};
-inline static scalar ToDeg(scalar radians) {return radians * DEG;};
-inline static scalar ToSec(scalar milliseconds) {return milliseconds / 1000.0;};
-inline static scalar ToMillisec(scalar seconds) {return floor(seconds * 1000.0 + 0.5);};
 
 namespace RoboMath
 {

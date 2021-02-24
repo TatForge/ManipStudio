@@ -49,6 +49,7 @@ add_executable(MainKinematic
     emulator.h
     mainwindow.h
     solver.h
+    constants.h
 
     main.cpp
     my_math.cpp

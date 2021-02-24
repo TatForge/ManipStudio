@@ -4,10 +4,7 @@
 #include "emulator.h"
 //#include "my_math.h"
 
-#define DELTA_T_FOR_LINE_CHECK 10 //дельта времени, через которую траектория проверяется на удаленность от прямой ms
-#define DELTA_RANGE 0.0001   //дельта метров, на которые эффектор манипулятора может отклониться от прямой
-#define MAX_KINEMATIC_ITERS 100
-#define ACCURACY 10e-5
+
 
 using namespace rm;
 

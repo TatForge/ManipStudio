@@ -6,24 +6,7 @@
 #include "my_math.h"
 
 
-//#define dt 0.01
-#define POSITION_AND_ROTATION
-//#define CALC_COUT
-#define JOINTS_COUNT 6
 
-#ifdef POSITION_AND_ROTATION
-#define EFFECTOR_DEGREE_OF_FREEDOM 6
-#else
-#define EFFECTOR_DEGREE_OF_FREEDOM 3
-#endif
-
-#define RAD M_PI/180
-#define DEG 180/M_PI
-
-
-const scalar damping_constant = 0.1;
-const scalar damping_constant_sq = damping_constant * damping_constant;
-const scalar MaxAngleDls = ToRad(45.0);
 
 using namespace std;
 namespace rm = RoboMath;
