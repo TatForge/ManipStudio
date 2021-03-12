@@ -388,7 +388,7 @@ void Robo::SolveDirectDynamic()
     {
         for (counter k = i; k < 6; k++)
         {
-            for (counter j = max(i, k); j < 6; j++)
+            for (counter j = RoboMath::max(i, k); j < 6; j++)
             {
                 m_moments.dv[i] += Trace(U[k*6 + j] * m_ji[k].MultiplyTranspose(U[i*6 + j]));
             }

@@ -1,6 +1,5 @@
 #include "test_my_math.h"
-#ifdef WITH_TESTS
-#include "my_math.h"
+#if WITH_QTESTS
 #include "robo.h"
 
 #include <QtTest/QTest>

@@ -18,12 +18,15 @@ struct BoxAABB
 class Solver
 {
 public:
-    Solver(Robo manip);
+    Solver(Robo &manip);
     void SolveDirectKinematic(const Angles &q, Matrix4x4 TR[]);
     int SolveInverseKinematic(const scalar &accuracy, const StateVector &target, const Angles &curr_angle, Angles &res_angle);
-    int CalcPolynomLine(const StateVector &start_point, const StateVector &end_point, const Angles &start_angles, Angles &res_angle, const int &t_millisec, const scalar &dt_millisec, Polynom result[]);
+    int CalcPolynomMaxQPP(const StateVector &start_point, const StateVector &end_point, const Angles &curr_angles, Angles& res_angle, const int &t_millisec, const scalar &dt_millisec, Polynom result[]);
+    int CalcPolynomLine(const StateVector &start_point, const StateVector &end_point, const Angles &start_angles, Angles &res_angle, const int &t_millisec, const ushort &dt_millisec, Polynom result[]);
+//    int CalcPolynomCircle(const StateVector &start_point, const StateVector &end_point,)
     bool CheckTrajectoryForLinear(const Polynom &pol, const Vector3 &l1, const Vector3 &l2, const scalar &t_millisec, const scalar &max_delta);
-    void CheckCollisionAABB(const Matrix4x4 state[]);
+    bool CheckTrajectoryForLinear(const Angles angles[], const Vector3 &l1, const Vector3 &l2, const ushort &dt_millisec, const scalar &max_delta);
+    pair<int, int> CheckCollisionAABB(const Matrix4x4 state[]);
 
 private:
     bool CheckAABB(const BoxAABB &box1, const BoxAABB &box2);

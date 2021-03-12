@@ -148,7 +148,7 @@ size_t Matrix::Size() const
 
 void Matrix::AddDiagonal(const scalar &d)
 {
-    int len = min(m_rows, m_cols);
+    int len = RoboMath::min(m_rows, m_cols);
     scalar *scalarP(data);
     for (counter i  = 0; i < len; i++)
     {
@@ -715,6 +715,11 @@ void Vector3::Clear()
     this->z = 0;
 }
 
+scalar Vector3::Dot(const Vector3 &v) const
+{
+    return (x * v.x + y * v.y + z * v.z);
+}
+
 Vector3 Vector3::Normalize() const
 {
     scalar l = this->Length();
@@ -743,6 +748,11 @@ Vector3 Vector3::operator =(const Vector3 &V)
 Vector3 Vector3::operator -(const Vector3 &V) const
 {
     return Vector3(this->x - V.x, this->y - V.y, this->z - V.z);
+}
+
+Vector3 Vector3::operator-() const
+{
+    return Vector3(-x, -y, -z);
 }
 
 Vector3 Vector3::operator+(const Vector3 &V) const
@@ -1081,20 +1091,23 @@ Polynom::Polynom()
     }
 }
 
-scalar Polynom::GetAngle(const int &joint_number, const scalar &t) const
+scalar Polynom::GetAngle(const int &joint_number, const scalar &t_m) const
 {
+    scalar t = t_m / 1000.0;
     return  joint[joint_number].a[5] * pow(t, 5) + joint[joint_number].a[4] * pow(t, 4) + joint[joint_number].a[3] * pow(t, 3) +
             joint[joint_number].a[2] * pow(t, 2) + joint[joint_number].a[1] * t + joint[joint_number].a[0];
 }
 
-scalar Polynom::GetSpeed(const int &joint_number, const scalar &t) const
+scalar Polynom::GetSpeed(const int &joint_number, const scalar &t_m) const
 {
+    scalar t = t_m / 1000.0;
     return  5 * joint[joint_number].a[5] * pow(t, 4) + 4 * joint[joint_number].a[4] * pow(t, 3) + 3 * joint[joint_number].a[3] * pow(t, 2) +
             2 * joint[joint_number].a[2] * pow(t, 1) + joint[joint_number].a[1];
 }
 
-scalar Polynom::GetAcceleration(const int &joint_number, const scalar &t) const
+scalar Polynom::GetAcceleration(const int &joint_number, const scalar &t_m) const
 {
+    scalar t = t_m / 1000.0;
     return  20 * joint[joint_number].a[5] * pow (t, 3) + 12 * joint[joint_number].a[4] * pow(t, 2) + 6 * joint[joint_number].a[3] * t + 2 * joint[joint_number].a[2];
 }
 
@@ -1143,4 +1156,9 @@ scalar CalcDistancePointToLine(Vector3 p, const Vector3 *l1, const Vector3 *l2)
                 pow((l1->x - p.x) * (l2->z - l1->z) - (l1->z - p.z) * (l2->x - l1->x), 2) +
                 pow((l1->x - p.x) * (l2->y - l1->y) - (l1->y - p.y) * (l2->x - l1->x), 2))/
             sqrt(pow(l2->x - l1->x, 2) + pow(l2->y - l1->y, 2) + pow(l2->z - l1->z, 2));
+}
+
+scalar Distance(const StateVector &v1, const StateVector &v2)
+{
+    return (sqrt(pow(v1.x - v2.x, 2) + pow(v1.y - v2.y, 2) + pow(v1.z - v2.z, 2)));
 }

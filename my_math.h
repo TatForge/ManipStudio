@@ -14,13 +14,8 @@
 
 
 
-
-
-
-
 typedef unsigned short counter;
 using namespace std;
-
 
 namespace RoboMath
 {
@@ -44,6 +39,19 @@ namespace RoboMath
                 q_pp[i] = 0;
             }
         }
+        bool IsNull() const
+        {
+            for (int i = 0; i < JOINTS_COUNT; i++)
+            {
+                if (q[i] != 0)
+                        return false;
+                if (q_p[i] != 0)
+                        return false;
+                if (q_pp[i] != 0)
+                        return false;
+            }
+            return true;
+        }
     };
 
     class Polynom
@@ -55,8 +63,8 @@ namespace RoboMath
         };
         elem joint[6];
         Polynom();
-        scalar GetAngle(const int &joint_number, const scalar &t) const;
-        scalar GetSpeed(const int &joint_number, const scalar &t) const;
+        scalar GetAngle(const int &joint_number, const scalar &t_m) const;
+        scalar GetSpeed(const int &joint_number, const scalar &t_m) const;
         scalar GetAcceleration(const int &joint_number, const scalar &t) const;
         void CalcPolynom(const Angles *const a0, const Angles *const a1, const scalar t);
         void CalcPolynomLine(const Angles *const a0, const Angles *const a1, const int t_millisec);
@@ -126,10 +134,13 @@ namespace RoboMath
         void Rotate(const scalar &theta, const RoboMath::Vector3 &V);
         void Clear();
         scalar  Length()    const {return sqrt(x * x + y * y + z * z);};
+        scalar Dot(const Vector3 &v) const;
+
         Vector3 Normalize() const;
         Vector3 operator= (const Vector &V);
         Vector3 operator= (const Vector3 &V);
         Vector3 operator- (const Vector3 &V) const;
+        Vector3 operator- () const;;
         Vector3 operator+ (const Vector3 &V) const;
         Vector3 operator* (const Vector3 &V) const;
         Vector3 &operator+= (const Vector3 &V);
@@ -402,7 +413,27 @@ namespace RoboMath
         scalar pitch;
         scalar yaw;
     };
+
+    template<typename T> inline static T min(T t1, T t2) {return (t1 < t2 ? t1 : t2);};
+    template<typename T> inline static T max(T t1, T t2) {return (t1 > t2 ? t1 : t2);};
+    template<typename T> inline static T interpolate(T t1, T t2, scalar percent){
+        if (percent == 0)
+            return t1;
+        else
+        {
+            return t1 + (t2 - t1) * percent;
+        }
+    }
+    template<typename T> static bool sign(T t1, T t2)
+    {
+        if ((t1 < 0 && t2 < 0) || (t1 > 0 && t2 > 0))
+            return true;
+        else if ((t1 < 0 && t2 > 0) || (t2 > 0 && t1 < 0))
+            return false;
+        return true;
+    }
 }
+scalar Distance(const RoboMath::StateVector &v1, const RoboMath::StateVector &v2);
 scalar CalcDistancePointToLine(RoboMath::Vector3 p, const RoboMath::Vector3 *l1, const RoboMath::Vector3 *l2);
 class checkTime
 {
@@ -435,11 +466,41 @@ private:
     std::chrono::_V2::system_clock::time_point stop;
     bool checked;
 };
-class AllMath
-{
-    template<typename T> static inline T min(T t1, T t2) {return (t1 < t2 ? t1 : t2);};
-    template<typename T> static inline T max(T t1, T t2) {return (t1 > t2 ? t1 : t2);};
 
+class Mesh
+{
+public:
+    Mesh()
+    {
+        m_points = nullptr;
+        m_size = 0;
+    }
+    Mesh(const RoboMath::Vector3 *points, const size_t size)
+    {
+        m_size = size;
+        try
+        {
+            m_points = new RoboMath::Vector3 [size];
+        }
+        catch (std::bad_alloc & exception)
+        {
+            cout << "!!Can't allocate memory for mesh" << endl;
+        }
+
+        mempcpy(m_points, points, size * sizeof(RoboMath::Vector3));
+    }
+    RoboMath::Vector3* point(unsigned int element) const
+    {
+        return m_points + element;
+    }
+    unsigned int Size() const
+    {
+        return m_size;
+    }
+
+private:
+    RoboMath::Vector3 *m_points;
+    unsigned int m_size;//points count
 };
 
 #endif // MY_MATH_H

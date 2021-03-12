@@ -1,11 +1,10 @@
 #ifndef TEST_MY_MATH_H
 #define TEST_MY_MATH_H
 
-#define WITH_TESTS
+#include "my_math.h"
 
-#ifdef WITH_TESTS
+#if WITH_QTESTS
 #include <QObject>
-
 
 class test_my_math : public QObject
 {

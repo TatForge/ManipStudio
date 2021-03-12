@@ -9,7 +9,9 @@ Emulator::Emulator()
 
 Emulator::Emulator(const Robo &manip)
 {
+//#if !BENCHMARK
     w.show();
+//#endif
     state_matrix = new Matrix(manip.state_matrix->GetColsCount(), manip.state_matrix->GetRowsCount());
     for (int i = 0; i < JOINTS_COUNT; i++)
     {
@@ -28,32 +30,47 @@ Emulator::~Emulator()
     delete state_matrix;
 }
 
-void Emulator::MoveManip(Polynom polynom_arr[], scalar moving_time, scalar dt)
+void Emulator::MoveManipPolynom(Polynom polynom_arr[], scalar moving_time, scalar dt)
 {
-    t = 0;
-    bool is_last = false;
-    while (t <= moving_time)
-    {
-        if (moving_time - t < 10e-4)
-            is_last = true;
-        OneIterMove(is_last);
-    }
+//    t = 0;
+//    bool is_last = false;
+//    while (t <= moving_time)
+//    {
+//        if (moving_time - t < 10e-4)
+//            is_last = true;
+//        OneIterMove(is_last);
+    //    }
 }
 
-void Emulator::MoveManip(Polynom polynom_in, int moving_time_millisec)
+void Emulator::MoveManipLinear(Angles angles[], size_t size, scalar dt_msec, Vector3 accel[])
 {
-    scalar moving_time = moving_time_millisec / 1000.0;
-    SetPolynomKF(polynom_in);
-    t = 0;
+    t_m = 0;
     bool is_last = false;
-    while (t <= moving_time)
+    for (size_t i = 0; i < size; i++)
     {
-        if (moving_time - t < 10e-4)
+        if (angles[i+2].IsNull())
+            is_last = true;
+        OneIterMoveLinear(angles[i], angles[i + 1], dt_msec, is_last, accel);
+        if (is_last)
+            break;
+    }
+    w.PlotSpeeds(m_emu_angles);
+}
+
+void Emulator::MoveManipPolynom(Polynom polynom_in, int moving_time_millisec)
+{
+//    scalar moving_time = moving_time_millisec / 1000.0;
+    SetPolynomKF(polynom_in);
+    t_m = 0;
+    bool is_last = false;
+    while (t_m < moving_time_millisec)
+    {
+        if (t_m == moving_time_millisec - m_delta_t_millisec)
             is_last = true;
         OneIterMove(is_last);
     }
     w.PlotSpeeds(m_emu_angles,11);
-    t = 0;
+    t_m = 0;
 }
 
 void Emulator::SolveDirectKinematic()
@@ -79,11 +96,12 @@ void Emulator::SolveDirectKinematic()
 
 void Emulator::OneIterMove(bool is_last = false)
 {
+    t_m += m_delta_t_millisec;
     for (int i = 0; i < JOINTS_COUNT; i++)
     {
-        m_emu_angles.q[i]    = m_polynom.GetAngle(i, t);
-        m_emu_angles.q_p[i]  = m_polynom.GetSpeed(i, t);
-        m_emu_angles.q_pp[i] = m_polynom.GetAcceleration(i, t);
+        m_emu_angles.q[i]    = m_polynom.GetAngle(i, t_m);
+        m_emu_angles.q_p[i]  = m_polynom.GetSpeed(i, t_m);
+        m_emu_angles.q_pp[i] = m_polynom.GetAcceleration(i, t_m);
     }
     UpdateStateMatrix();
     SolveDirectKinematic();
@@ -91,16 +109,58 @@ void Emulator::OneIterMove(bool is_last = false)
 //    std::this_thread::sleep_for(std::chrono::milliseconds(10));///m_delta_t * 1000));
     SendDataToShared(MANIP, manip_to_visual, sizeof(float) * 18);
     SendDataToShared(POINTS, points_to_visual, sizeof(float) * shared_points->GetSize() - 4);
-    if (is_last)
-        for (size_t i = 0; i < shared_points->GetSize(); i+=3)
-            if (points_to_visual[i] > 2 || points_to_visual[i + 1] > 2 || points_to_visual[i + 2] > 2)
-                std::cout << "points " << " x = " << points_to_visual[i] << " y = " << points_to_visual[i + 1] << " z = " << points_to_visual[i + 2] << endl;
+//    if (is_last)
+//        for (size_t i = 0; i < shared_points->GetSize(); i+=3)
+//            if (points_to_visual[i] > 2 || points_to_visual[i + 1] > 2 || points_to_visual[i + 2] > 2)
+//                std::cout << "points " << " x = " << points_to_visual[i] << " y = " << points_to_visual[i + 1] << " z = " << points_to_visual[i + 2] << endl;
     auto angles = L.ConvertToQuaternion().GetEulerAngles();
-    w.PrintResult(L(0,3), L(1,3), L(2,3), angles.z, angles.y, angles.x, t);
-    w.PlotCoordinates(L(0,3), L(1,3), L(2,3), ToDeg(angles.z), ToDeg(angles.y), ToDeg(angles.x), t, is_last);
+    w.PlotCoordinates(L(0,3), L(1,3), L(2,3), ToDeg(angles.z), ToDeg(angles.y), ToDeg(angles.x), m_delta_t_millisec, is_last);
+    w.PlotSpeeds(m_emu_angles, is_last);
     if (is_last)
-        w.PlotSpeeds(m_emu_angles, t, is_last);
-    t += m_delta_t;
+    {
+        w.PrintResult(L(0,3), L(1,3), L(2,3), angles.z, angles.y, angles.x);
+    }
+}
+
+void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, const int &dt_msec, bool is_last, Vector3 accel[])
+{
+    for( int i = 0; i < dt_msec/m_delta_t_millisec; i++)
+    {
+        this_thread::sleep_for(std::chrono::milliseconds(1));
+        for (int j = 0; j < JOINTS_COUNT; j++)
+        {
+            m_emu_angles.q[j]    = interpolate(angle1.q[j],    angle2.q[j], (scalar(i) / scalar(dt_msec/m_delta_t_millisec)));
+            m_emu_angles.q_p[j]  = interpolate(angle1.q_p[j],  angle2.q_p[j], (scalar(i) / scalar(dt_msec/m_delta_t_millisec)));
+            m_emu_angles.q_pp[j] = interpolate(angle1.q_pp[j], angle2.q_pp[j], (scalar(i) / scalar(dt_msec/m_delta_t_millisec)));
+        }
+        UpdateStateMatrix();
+        SolveDirectKinematic();
+        FillManipPositionData();
+        SendDataToShared(MANIP, manip_to_visual, sizeof(float) * 18);
+        SendDataToShared(POINTS, points_to_visual, sizeof(float) * shared_points->GetSize() - 4);
+        auto angles = L.ConvertToQuaternion().GetEulerAngles();
+        auto ii = Vector3(accel[(t_m)/dt_msec].x, accel[(t_m)/dt_msec].y, accel[(t_m)/dt_msec].z);
+        w.PlotCoordinates(L(0,3), L(1,3), L(2,3), /*ToDeg(angles.z), ToDeg(angles.y), ToDeg(angles.x),*/
+                          accel[(t_m)/dt_msec].x, accel[(t_m)/dt_msec].y, accel[(t_m)/dt_msec].z, m_delta_t_millisec, is_last);
+        w.PlotSpeeds(m_emu_angles, is_last);
+        if (is_last)
+        {
+            w.PrintResult(L(0,3), L(1,3), L(2,3), angles.z, angles.y, angles.x);
+        }
+        t_m += m_delta_t_millisec;
+    }
+
+//    if (is_last)
+//        for (size_t i = 0; i < shared_points->GetSize(); i+=3)
+//            if (points_to_visual[i] > 2 || points_to_visual[i + 1] > 2 || points_to_visual[i + 2] > 2)
+//                std::cout << "points " << " x = " << points_to_visual[i] << " y = " << points_to_visual[i + 1] << " z = " << points_to_visual[i + 2] << endl;
+//    auto angles = L.ConvertToQuaternion().GetEulerAngles();
+//    w.PlotCoordinates(L(0,3), L(1,3), L(2,3), ToDeg(angles.z), ToDeg(angles.y), ToDeg(angles.x), m_delta_t_millisec, is_last);
+//    w.PlotSpeeds(m_emu_angles, m_delta_t_millisec, is_last);
+//    if (is_last)
+//    {
+//        w.PrintResult(L(0,3), L(1,3), L(2,3), angles.z, angles.y, angles.x);
+//    }
 }
 
 void Emulator::SendDataToShared(SharedMemKey skey, float *data_ptr, size_t size)
@@ -128,17 +188,6 @@ void Emulator::FillManipPositionData()
         manip_to_visual[i * 3 + 1] = T_b(1, 3);
         manip_to_visual[i * 3 + 2] = T_b(2, 3);
     }
-    auto ll = RANGE_TO_PLOT;
-    auto ii = T_b(0,3);
-    auto i1 = T_b(1,3);
-    auto i12 = T_b(2,3);
-    auto kk = pow(T_b(0,3), 2);
-    kk = pow(T_b(1,3), 2);
-    kk = pow(T_b(2,3), 2);
-    kk = sqrt(pow(T_b(0,3), 2) + pow(T_b(1,3), 2) + pow(T_b(2,3), 2));
-//    ll = sqrt(kk);
-    ll = sqrt(pow(points_to_visual[iter - 3] - T_b(0,3) , 2) + pow(points_to_visual[iter - 2] - T_b(1,3), 2) + pow(points_to_visual[iter - 1] - T_b(2,3), 2));
-//    ll = sqrt(pow(T_b(0,3), 2) + pow(T_b(1,3), 2) + pow(T_b(2,3), 2));
     if (iter == 0)
     {
         points_to_visual[iter + 0] = T_b(0, 3);
@@ -146,9 +195,6 @@ void Emulator::FillManipPositionData()
         points_to_visual[iter + 2] = T_b(2, 3);
         iter += 3;
     }
-//    else if (abs(sqrt(pow(points_to_visual[iter - 3], 2) + pow(points_to_visual[iter - 2], 2) + pow(points_to_visual[iter - 1], 2)) -
-//                 sqrt(pow(T_b(0,3), 2) + pow(T_b(1,3), 2) + pow(T_b(2,3), 2))) > RANGE_TO_PLOT)
-
     else if (sqrt(pow(points_to_visual[iter - 3] - T_b(0,3) , 2) + pow(points_to_visual[iter - 2]
                 - T_b(1,3), 2) + pow(points_to_visual[iter - 1] - T_b(2,3), 2)) > RANGE_TO_PLOT)
     {

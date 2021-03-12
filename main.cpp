@@ -22,7 +22,8 @@
 
 using namespace RoboMath;
 
-int main1(int argc, char *argv[])
+#if ((!WITH_BENCHMARK) && (!WITH_GTESTS))
+int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
@@ -173,8 +174,8 @@ int main1(int argc, char *argv[])
 //    hikm.VectorCout("hikm");
 //    Dv.VectorCout("Dv");
 //    p.VectorCout("p");
-    Vector3 target(0.47, 0.5431, 0.0615);
-    Vector3 target_r(ToRad(-90), ToRad(0),   ToRad(0));
+    Vector3 target(-0.114, -0.2501, 0.1355);
+    Vector3 target_r(ToRad(180), ToRad(0),   ToRad(0));
     int kolvo = 1;
     checkTime ct;
     for (int i = 0; i < kolvo; i ++)
@@ -204,25 +205,6 @@ int main1(int argc, char *argv[])
     double ti = 2;
     double dt = 0.1;
 
-//    Vector3 *points_arr = new Vector3 [int(ti / dt)];
-//    Vector3 p1 = Vector3(0.67, 0.2431, 0.0615);
-//    Vector3 p2 = target;
-//    scalar delta_x = target.x - p1.x;//сделать проверку для каждой оси
-//    Polynom pol_ar[30];
-//    Angles from_last_iter = angle_start;
-//    for (int i = 1; i < ti / 0.1; i++)
-//    {
-//        scalar x = p1.x + delta_x * (i / (ti * 10));
-//        scalar y = p1.y + (x - p1.x) * (p2.y - p1.y) / (p2.x - p1.x);
-//        scalar z = p1.z + (x - p1.x) * (p2.z - p1.z) / (p2.x - p1.x);
-//        points_arr[i] = Vector3(x, y, z);
-////        cout << "x = " << x << " y = " << y << " z = " << z << endl;
-////        cout << /*вывод параметров полинома <<*/ endl;
-//        manipulator.SolveInverseKinematic(10e-5, Vector3(x,y,z), target_r);
-//        rm::Angles curr_angles = *manipulator.GetAngles();
-//        pol_ar[i].CalcPolynom(&from_last_iter, &curr_angles, 0.1);
-//        from_last_iter = curr_angles;
-//    }
 
     Solver solver(manipulator);
     Matrix4x4 TT[6];
@@ -230,25 +212,35 @@ int main1(int argc, char *argv[])
     Angles res_an;
 
     solver.SolveDirectKinematic(start_an, TT);
-    StateVector stv(-0.35, -0.3341, 0.0515, ToRad(180), ToRad(0), ToRad(0));
-    StateVector tarv(0.35, -0.1341, 0.2515, ToRad(180), ToRad(0), ToRad(0));
-    StateVector tarv1(0.35, +0.3341, 0.0515, ToRad(180), ToRad(0), ToRad(0));
-    StateVector tarv2(-0.35, +0.2341, 0.1515, ToRad(180), ToRad(0), ToRad(0));
-    StateVector tarv3(-0.35, -0.3341, 0.0515, ToRad(180), ToRad(0), ToRad(0));
+    StateVector stv(   0.2, -0.2, 0.115, ToRad(178), ToRad(0), ToRad(0));
+    StateVector tarv(  0.2, 0.4, 0.0, ToRad(178), ToRad(0), ToRad(0));/*
+    StateVector stv(  -0.35, -0.3441, 0.0515, ToRad(178), ToRad(0), ToRad(0));
+    StateVector tarv(  0.35, -0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));*/
+    StateVector tarv1( -0.15, +0.3341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
+//    StateVector tarv2(-0.35, +0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
+//    StateVector tarv3(-0.35, -0.3341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
+//    StateVector tarv4(-0.35, -0.3341, 0.2515, ToRad(178), ToRad(0), ToRad(0));
+//    StateVector tarv5( 0.35, -0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
+//    StateVector tarv6( 0.15, +0.3341, 0.2515, ToRad(178), ToRad(0), ToRad(0));
+//    StateVector tarv7(-0.35, +0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
+//    StateVector tarv8(-0.35, -0.3341, 0.2515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv(0.3, -0.2341, 0.1515, ToRad(90), ToRad(+90),   ToRad(+90));
     solver.SolveInverseKinematic(10e-5, stv, start_an, start_an);
     solver.SolveInverseKinematic(10e-5, tarv, start_an, res_an);
 //    solver.SolveDirectKinematic(res_an, TT);
     solver.SolveDirectKinematic(angle_stop, TT);
-    Polynom result[100];
+    Polynom result[1000];
 
+    solver.CalcPolynomLine(stv, tarv, angle_start,  res_an, 3000, 10, result);
+//    solver.CalcPolynomLine(tarv, tarv1, res_an,     res_an, 3000, 30, result);
+//    solver.CalcPolynomLine(tarv1, tarv2, res_an,    res_an, 3000, 30, result);
+//    solver.CalcPolynomLine(tarv2, tarv3, res_an,    res_an, 3000, 30, result);
+//    solver.CalcPolynomLine(tarv3, tarv4, res_an,    res_an, 3000, 30, result);
+//    solver.CalcPolynomLine(tarv4, tarv5, res_an,    res_an, 3000, 30, result);
+//    solver.CalcPolynomLine(tarv5, tarv6, res_an,    res_an, 3000, 30, result);
+//    solver.CalcPolynomLine(tarv6, tarv7, res_an,    res_an, 3000, 30, result);
+//    solver.CalcPolynomLine(tarv7, tarv8, res_an,    res_an, 3000, 30, result);
 
-//    solver.SolveInverseKinematic(ACCURACY, tarv, start_an, res_an);
-
-    solver.CalcPolynomLine(stv, tarv, angle_start,  res_an, 2000, 20, result);
-    solver.CalcPolynomLine(tarv, tarv1, res_an,     res_an, 2000, 20, result);
-    solver.CalcPolynomLine(tarv1, tarv2, res_an,    res_an, 2000, 20, result);
-    solver.CalcPolynomLine(tarv2, tarv3, res_an,    res_an, 2000, 20, result);
 
 
 //    pol.CalcPolynom(&start_an, &res_an, 3000);
@@ -266,4 +258,4 @@ int main1(int argc, char *argv[])
     cout << "!!!___FINISH___!!!" << endl;
     return app.exec();
 }
-
+#endif

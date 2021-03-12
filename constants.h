@@ -3,8 +3,12 @@
 
 #include <cmath>
 
+//______ALL_PROJECT_CONSTANTS______
+#define WITH_BENCHMARK false
+#define WITH_GTESTS false
+#define WITH_QTESTS false
 //__________________________________
-#define RANGE_TO_PLOT 0.05  // 25 mm
+#define RANGE_TO_PLOT 0.025  // 25 mm
 
 #define RAD M_PI/180
 #define DEG 180/M_PI
@@ -40,14 +44,12 @@ const scalar damping_constant = 0.1;
 const scalar damping_constant_sq = damping_constant * damping_constant;
 const scalar MaxAngleDls = ToRad(45.0);
 //_____________________________
-//______Solver constants_____
-#define DELTA_T_FOR_LINE_CHECK 10 //дельта времени, через которую траектория проверяется на удаленность от прямой ms
-#define DELTA_RANGE 0.0001   //дельта метров, на которые эффектор манипулятора может отклониться от прямой
+//______Solver constants_____          //Включение BENCHMARK отключает показ окна для эмулятора
+#define DELTA_T_FOR_LINE_CHECK 10  //дельта времени, через которую траектория проверяется на удаленность от прямой ms
+#define DELTA_RANGE 0.0001         //дельта метров, на которые эффектор манипулятора может отклониться от прямой
 #define MAX_KINEMATIC_ITERS 100
-#define ACCURACY 10e-5
+#define ACCURACY 10e-7
 //_____________________________
-
-
 
 
 

@@ -38,10 +38,12 @@ public:
     Emulator();
     Emulator(const Robo &manip);
     ~Emulator();
-    void MoveManip(Polynom polynom_in, int moving_time_millisec);
-    void MoveManip(Polynom polynom_arr[], scalar moving_time, scalar dt);
+    void MoveManipPolynom(Polynom polynom_in, int moving_time_millisec);
+    void MoveManipPolynom(Polynom polynom_arr[], scalar moving_time, scalar dt);
+    void MoveManipLinear(Angles angles[], size_t size, scalar dt_msec, Vector3 accel[]);
     void SolveDirectKinematic();
     void OneIterMove(bool is_last);
+    void OneIterMoveLinear(const Angles &angle1, const Angles &angle2, const int &dt_msec, bool is_last, Vector3 accel[]);
     void SendDataToShared(SharedMemKey skey, float *data_ptr, size_t size);
     void FillManipPositionData();
 private:
@@ -55,8 +57,20 @@ private:
     float manip_to_visual[18];
     float points_to_visual[999];
     scalar m_delta_t = 0.001;
-    scalar t = 0;
+    short m_delta_t_millisec = 1;
+    int t_m = 0;
+//#if !BENCHMARK
     MainWindow w;
+//#else
+//    class EmulatorConsoleOut
+//    {
+//    public:
+//        void PlotCoordinates(double value_x, double value_y, double value_z, double yaw, double pitch, double roll, double t, bool is_last = false){};
+//        void PlotSpeeds(rm::Angles speeds, double t, bool is_last = false){};
+//        void PrintResult(double x, double y, double z, double yaw, double pitch, double roll, double t){};
+//    };
+//    EmulatorConsoleOut w;
+//#endif
     void SetPolynomKF(Polynom polynom_in);;
     void UpdateStateMatrix();
 };

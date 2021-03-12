@@ -22,7 +22,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->plot_yaw->graph(0)->setPen(pen);
     ui->plot_pit->graph(0)->setPen(pen);
     ui->plot_rol->graph(0)->setPen(pen);
-
+    m_time = 0;
 
     for (int i = 0; i < 6; i ++)
     {
@@ -64,14 +64,15 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::PlotCoordinates(double value_x, double value_y, double value_z, double yaw, double pitch, double roll, double t, bool is_last)
+void MainWindow::PlotCoordinates(double value_x, double value_y, double value_z, double yaw, double pitch, double roll, double dt, bool is_last)
 {
-    ui->plot_x->graph(0)->addData(t, value_x);
-    ui->plot_y->graph(0)->addData(t, value_y);
-    ui->plot_z->graph(0)->addData(t, value_z);
-    ui->plot_yaw->graph(0)->addData(t, yaw);
-    ui->plot_pit->graph(0)->addData(t, pitch);
-    ui->plot_rol->graph(0)->addData(t, roll);
+    double t = m_time;
+    ui->plot_x->graph(0)->addData(t/1000.0, value_x);
+    ui->plot_y->graph(0)->addData(t/1000.0, value_y);
+    ui->plot_z->graph(0)->addData(t/1000.0, value_z);
+    ui->plot_yaw->graph(0)->addData(t/1000.0, yaw);
+    ui->plot_pit->graph(0)->addData(t/1000.0, pitch);
+    ui->plot_rol->graph(0)->addData(t/1000.0, roll);
 //    ui->plot_x->graph(1)->setPen(QPen(QColor("red")));
 //    ui->plot_y->graph(1)->setPen(QPen(QColor("red")));
 //    ui->plot_x->graph(1)->setPen(QPen(QColor("red")));
@@ -89,15 +90,21 @@ void MainWindow::PlotCoordinates(double value_x, double value_y, double value_z,
         ui->plot_x->yAxis->rescale();
         ui->plot_y->yAxis->rescale();
         ui->plot_z->yAxis->rescale();
+//        ui->plot_yaw->yAxis->setRange(QCPRange(0.01, 0.01));
+//        ui->plot_pit->yAxis->setRange(QCPRange(0.01, 0.01));
+//        ui->plot_rol->yAxis->setRange(QCPRange(0.01, 0.01));
+        ui->plot_yaw->xAxis->setRange(QCPRange(0, t/1000.0 + 0.2));
+        ui->plot_pit->xAxis->setRange(QCPRange(0, t/1000.0 + 0.2));
+        ui->plot_rol->xAxis->setRange(QCPRange(0, t/1000.0 + 0.2));
         ui->plot_yaw->yAxis->rescale();
         ui->plot_pit->yAxis->rescale();
         ui->plot_rol->yAxis->rescale();
+        ui->plot_x->yAxis->rescale();
+        ui->plot_y->yAxis->rescale();
+        ui->plot_z->yAxis->rescale();
         ui->plot_x->xAxis->rescale();
         ui->plot_y->xAxis->rescale();
         ui->plot_z->xAxis->rescale();
-        ui->plot_yaw->xAxis->rescale();
-        ui->plot_pit->xAxis->rescale();
-        ui->plot_rol->xAxis->rescale();
         ui->plot_x->replot();
         ui->plot_y->replot();
         ui->plot_z->replot();
@@ -105,23 +112,26 @@ void MainWindow::PlotCoordinates(double value_x, double value_y, double value_z,
         ui->plot_pit->replot();
         ui->plot_rol->replot();
     }
+    m_time += dt;
 }
 
-void MainWindow::PlotSpeeds(rm::Angles speeds, double t, bool is_last)
+void MainWindow::PlotSpeeds(rm::Angles speeds, bool is_last)
 {
+    double t = m_time;
 //    if (speeds.q_p[1] > ui->plot_rol->yAxis->range().maxRange)
 //        ui->plot_rol->yAxis->setRange(-1.5, speeds.q_p[1] + 1);
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < JOINTS_COUNT; i++)
     {
-        ui->plot_coord->graph(i)->addData(t, speeds.q[i]);
-        ui->plot_speed->graph(i)->addData(t, speeds.q_p[i]);
-        ui->plot_accel->graph(i)->addData(t, speeds.q_pp[i]);
+        ui->plot_coord->graph(i)->addData(t/1000.0, speeds.q[i]);
+        ui->plot_speed->graph(i)->addData(t/1000.0, speeds.q_p[i]);
+        ui->plot_accel->graph(i)->addData(t/1000.0, speeds.q_pp[i]);
     }
     if (is_last)
     {
-        ui->plot_coord->xAxis->rescale();
-        ui->plot_speed->xAxis->rescale();
-        ui->plot_accel->xAxis->rescale();
+        ui->plot_coord->xAxis->setRange(QCPRange(0, t/1000.0 + 0.2));
+        ui->plot_speed->xAxis->setRange(QCPRange(0, t/1000.0 + 0.2));
+        ui->plot_accel->xAxis->setRange(QCPRange(0, t/1000.0 + 0.2));
+
         ui->plot_coord->yAxis->rescale();
         ui->plot_speed->yAxis->rescale();
         ui->plot_accel->yAxis->rescale();
@@ -131,7 +141,7 @@ void MainWindow::PlotSpeeds(rm::Angles speeds, double t, bool is_last)
     }
 }
 
-void MainWindow::PrintResult(double x, double y, double z, double yaw, double pitch, double roll, double t)
+void MainWindow::PrintResult(double x, double y, double z, double yaw, double pitch, double roll)
 {
     ui->label_x->setText(QString("x = ") + QString::number(x));
     ui->label_y->setText(QString("y = ") + QString::number(y));
