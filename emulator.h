@@ -59,6 +59,9 @@ private:
     scalar m_delta_t = 0.001;
     short m_delta_t_millisec = 1;
     int t_m = 0;
+    mutex data_to_shared_mutex;
+    std::thread thread_points;
+    std::thread thread_manip;
 //#if !BENCHMARK
     MainWindow w;
 //#else

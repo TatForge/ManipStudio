@@ -30,7 +30,7 @@ void Solver::SolveDirectKinematic(const Angles &q, Matrix4x4 TR[])
     TR[5] = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
 }
 
-int Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &target, const Angles &curr_angle, Angles &res_angle)
+void Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &target, const Angles &curr_angle, Angles &res_angle)
 {
     Quaternion end_eff_target_ori;
     Quaternion end_eff_world_ori;
@@ -129,9 +129,22 @@ int Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &tar
         if (ctr > MAX_KINEMATIC_ITERS)
         {
             solved = false;
-            cout << "Точка " << "x(" << target.x << ")" << " y(" << target.y << ")" << " z(" << target.z << ")"
-                 << "roll(" << ToDeg(target.roll) << ")" << " pitch(" << ToDeg(target.pitch) << ")" << " yaw(" << ToDeg(target.yaw) << ") " << "недостижима" << endl;
-            return -1;
+//            cout << "Точка x(" << target.x << ") y(" << target.y << ") z(" << target.z
+//                 << ") roll(" << ToDeg(target.roll) << ") pitch(" << ToDeg(target.pitch)
+//                 << ") yaw(" << ToDeg(target.yaw) << ") недостижима" << endl;
+            QString exc_str;
+            std::exception exc;
+            std::string str;
+            str = "Точка недостижима: x(" + to_string(target.x) + ") y(" + to_string(target.y) + ") z(" + to_string(target.z)
+                    + ") roll(" + to_string(ToDeg(target.roll)) + ") pitch(" + to_string(ToDeg(target.pitch)) + ") yaw(" + to_string(ToDeg(target.yaw)) + ")";
+//            exc_str.push_back("x(");  exc_str.push_back(QString::number(target.x));
+//            exc_str.push_back(") y(");      exc_str.push_back(QString::number(target.y));
+//            exc_str.push_back(") z(");      exc_str.push_back(QString::number(target.z));
+//            exc_str.push_back(") roll(");   exc_str.push_back(QString::number(ToDeg(target.roll)));
+//            exc_str.push_back(") pitch(");  exc_str.push_back(QString::number(ToDeg(target.pitch)));
+//            exc_str.push_back(") yaw(");    exc_str.push_back(QString::number(ToDeg(target.yaw))); exc_str.push_back(")");
+            throw str;
+//            return -1;
         }
         //не имеет решения
     }
@@ -145,7 +158,7 @@ int Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &tar
 //         << " pitch = " << ToDeg(TRR[5].ConvertToQuaternion().GetEulerAngles().y)
 //         << " yaw = "   << ToDeg(TRR[5].ConvertToQuaternion().GetEulerAngles().z)
 //         << endl;
-    return 0;
+//    return 0;
 }
 
 int Solver::CalcPolynomMaxQPP(const StateVector &start_point, const StateVector &end_point, const Angles &curr_angles, Angles& res_angle, const int &t_millisec, const scalar &dt_millisec, Polynom result[])
@@ -182,36 +195,49 @@ int Solver::CalcPolynomMaxQPP(const StateVector &start_point, const StateVector 
 }
 int Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &end_point, const Angles &curr_angles, Angles& res_angle, const int &t_millisec, const ushort &dt_millisec, Polynom result[])
 {
-    scalar x(start_point.x), dx(0), vx(0), ax(0);
-    scalar y(start_point.y), dy(0), vy(0), ay(0);
-    scalar z(start_point.z), dz(0), vz(0), az(0);
-    scalar rol(start_point.roll),  d_rol(0);
-    scalar pit(start_point.pitch), d_pit(0);
-    scalar yaw(start_point.yaw),   d_yaw(0);
+    scalar x(start_point.x), vx(0), ax(0);
+    scalar y(start_point.y), vy(0), ay(0);
+    scalar z(start_point.z), vz(0), az(0);
+    scalar rol(start_point.roll);
+    scalar pit(start_point.pitch);
+    scalar yaw(start_point.yaw);
     scalar t(0);
 //    int dt = dt_millisec; //millisec
     scalar dt_s = ToSec(dt_millisec);
     Matrix4x4 buff[6];
+    std::vector<Angles> angles_v;
+    std::vector<Vector3> speed_v;
+    std::vector<Vector3> accel_v;
+    angles_v.reserve(500);
+    speed_v.reserve(500);
+    accel_v.reserve(500);
+
     Angles angles[500];
     Vector3 speed[500];
     Vector3 accel[500];
     //calc max a value
     Angles max_qpp;
-    scalar v_tcp(0.5);
-    scalar a_tcp(1);
+    scalar v_tcp(0.1);
+    scalar a_tcp(0.5);
     scalar v_curr;
     scalar a_curr;
     scalar step(0);
     scalar distance = Distance(end_point, start_point);
     scalar  dist_x_norm = (end_point.x - start_point.x) / distance,
             dist_y_norm = (end_point.y - start_point.y) / distance,
-            dist_z_norm = (end_point.z - start_point.z) / distance;
+            dist_z_norm = (end_point.z - start_point.z) / distance,
+            dist_rol = (end_point.roll - start_point.roll),
+            dist_pit = (end_point.pitch - start_point.pitch),
+            dist_yaw = (end_point.yaw  - start_point.yaw);
+    scalar dist_curr;
 
     auto min_distance = distance;
     scalar t_stop;
     //__________
     SolveInverseKinematic(ACCURACY, start_point, curr_angles, angles[0]);
+    SolveInverseKinematic(ACCURACY, start_point, curr_angles, angles_v[0]);
     SolveDirectKinematic(angles[0], buff);
+    SolveDirectKinematic(angles_v[0], buff);
     int size(0);
     bool is_last(0);
     bool breaking(false);
@@ -225,39 +251,23 @@ int Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &e
                                                                   y + vy * dt_s + ay*dt_s*dt_s/2,
                                                                   z + vz * dt_s + az*dt_s*dt_s/2,
                                                                   rol + 0, pit + 0, yaw + 0));
-        auto distance = Distance(end_point, StateVector(x, y, z, rol, pit, yaw));
-//        if (distance <= min_distance)
-//        if (distance <= step)
-//            is_last = true;
+//        auto distance = Distance(end_point, StateVector(x, y, z, rol, pit, yaw));
         if (!sign(vy + ay * dt_s, vy))
             is_last = true;
         step = sqrt(pow(vx * dt_s, 2) + pow(vy * dt_s, 2) + pow(vz * dt_s, 2));
         auto distance_to_stop = v_curr * t_stop - a_tcp * t_stop * t_stop * 0.5;
         //Режим торможения (если расстояние < Sтормож)
-        if (/*Distance(end_point, StateVector(x, y, z, rol, pit, yaw))*/distance_next_step <= (v_curr * t_stop - a_curr * t_stop * t_stop * 0.5) && !breaking)
-//        if (t > 1)
+        if (distance_next_step <= (v_curr * t_stop - a_curr * t_stop * t_stop * 0.5) && !breaking)
         {
             accel_break = true;
             breaking = true;
         }
         if (breaking)
         {
-            //Проекции вектора ускорения на оси, считаем 1 раз. Если считать на каждом шагу, скорость будет уменьшаться не линейно
-//            if (accel_break)
-            {
-                ax = (2 * (end_point.x - x - vx * t_stop) * (1/t_stop/t_stop));// * abs(dist_x_norm);
-                ay = (2 * (end_point.y - y - vy * t_stop) * (1/t_stop/t_stop));// * abs(dist_y_norm);
-                az = (2 * (end_point.z - z - vz * t_stop) * (1/t_stop/t_stop));// * abs(dist_z_norm);
-                accel_break = false;
-            }
-//            if (Distance(StateVector(x,y,z,rol,pit,yaw), end_point) <= 2 * v_curr * dt_s/* && t_stop <= dt_s * 4*/)
-//            {
-//                is_last = true;
-////                scalar a = Distance(StateVector(x,y,z,rol,pit,yaw), end_point) - v_curr * dt_s * 2 / dt_s / dt_s;
-//                ax = 2 * ((end_point.x - x) - vx * dt_s) / dt_s / dt_s;
-//                ay = 2 * ((end_point.y - y) - vy * dt_s) / dt_s / dt_s;
-//                az = 2 * ((end_point.z - z) - vz * dt_s) / dt_s / dt_s;
-//            }
+            ax = (2 * (end_point.x - x - vx * t_stop) * (1/t_stop/t_stop));// * abs(dist_x_norm);
+            ay = (2 * (end_point.y - y - vy * t_stop) * (1/t_stop/t_stop));// * abs(dist_y_norm);
+            az = (2 * (end_point.z - z - vz * t_stop) * (1/t_stop/t_stop));// * abs(dist_z_norm);
+            accel_break = false;
         }
         else
         {
@@ -270,6 +280,10 @@ int Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &e
             x += vx * dt_s + ax*dt_s*dt_s/2;
             y += vy * dt_s + ay*dt_s*dt_s/2;
             z += vz * dt_s + az*dt_s*dt_s/2;
+            dist_curr = Distance(start_point, StateVector(x,y,z,rol,pit,yaw));
+            rol = start_point.roll  + dist_rol * (dist_curr/distance);
+            pit = start_point.pitch + dist_pit * (dist_curr/distance);
+            yaw = start_point.yaw   + dist_yaw * (dist_curr/distance);
 
             if (abs(vx + ax * dt_s) < abs(v_tcp * dist_x_norm)) // vx На след шаге < требуемой
                 vx += ax * dt_s;
@@ -295,6 +309,9 @@ int Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &e
             vx = 0;
             vy = 0;
             vz = 0;
+            rol = end_point.roll;
+            pit = end_point.pitch;
+            yaw = end_point.yaw;
         }
 
 
@@ -303,11 +320,11 @@ int Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &e
 //        rol += d_rol; pit += d_pit; yaw += d_yaw;
         SolveInverseKinematic(ACCURACY, StateVector(x, y, z, rol, pit, yaw), angles[size], angles[size+1]);
 
-        if (size > 180)
+        if (size > 880)
             break;
         size++;
         t+= dt_s;
-        distance = Distance(end_point, StateVector(x + vx * dt_s + ax*dt_s*dt_s/2, vy * dt_s + ay*dt_s*dt_s/2, vz * dt_s + az*dt_s*dt_s/2, rol + 0, pit + 0, yaw + 0));
+//        distance = Distance(end_point, StateVector(x + vx * dt_s + ax*dt_s*dt_s/2, vy * dt_s + ay*dt_s*dt_s/2, vz * dt_s + az*dt_s*dt_s/2, rol + 0, pit + 0, yaw + 0));
         speed[size].x = vx;
         speed[size].y = vy;
         speed[size].z = vz;
@@ -315,7 +332,6 @@ int Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &e
         accel[size].x = vx;
         accel[size].y = vy;
         accel[size].z = vz;
-
     }
 
 //    int i(0);
@@ -368,13 +384,14 @@ int Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &e
     {
         for (int j = 0; j < JOINTS_COUNT; j++)
         {
-//            angles[i].q_p[j] = (angles[i + 1].q[j] - angles[i].q[j]) / ToSec(dt);//0.5 * (ToSec(dt) * max_qpp.q_pp[j]);//(angles[i + 1].q[j] - angles[i].q[j]) / ToSec(dt);
-//            angles[i].q_p[j] = angles[i + 1].q_p[j] + dt *
-            auto ii = angles[i + 1].q[j] - angles[i].q[j] - angles[i].q_p[j] * dt_s;
-            auto kk = dt_s * dt_s;
+            //Acceleration
             angles[i].q_pp[j] =(angles[i + 1].q[j] - angles[i].q[j] - angles[i].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
-            //ускорение
+            //Speed
             angles[i + 1].q_p[j] = angles[i].q_p[j] + angles[i].q_pp[j] * dt_s;
+
+            angles_v[i].q_pp[j] =(angles_v[i + 1].q[j] - angles_v[i].q[j] - angles_v[i].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
+            //ускорение
+            angles_v[i + 1].q_p[j] = angles_v[i].q_p[j] + angles_v[i].q_pp[j] * dt_s;
         }
     }
 //    for (int i = 1; i < size/*t_millisec / dt*/; i++)
@@ -423,6 +440,7 @@ bool Solver::CheckTrajectoryForLinear(const Angles angles[], const Vector3 &l1, 
         if (distance > max_delta)
         {
             cout <<" ALARM BAD TRAJECTORY, DISTANCE = " << distance << endl;
+            throw QString("cant reach point") + QString::number(distance);
             return false;
         } else
         {

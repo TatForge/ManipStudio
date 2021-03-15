@@ -107,8 +107,12 @@ void Emulator::OneIterMove(bool is_last = false)
     SolveDirectKinematic();
     FillManipPositionData();
 //    std::this_thread::sleep_for(std::chrono::milliseconds(10));///m_delta_t * 1000));
-    SendDataToShared(MANIP, manip_to_visual, sizeof(float) * 18);
-    SendDataToShared(POINTS, points_to_visual, sizeof(float) * shared_points->GetSize() - 4);
+    std::thread tre1(&Emulator::SendDataToShared, this, MANIP, manip_to_visual, sizeof(float) * 18);
+    std::thread tre2(&Emulator::SendDataToShared, this, POINTS, points_to_visual, sizeof(float) * shared_points->GetSize() - 4);
+    tre1.detach();
+    tre2.detach();
+//    SendDataToShared(MANIP, manip_to_visual, sizeof(float) * 18);
+//    SendDataToShared(POINTS, points_to_visual, sizeof(float) * shared_points->GetSize() - 4);
 //    if (is_last)
 //        for (size_t i = 0; i < shared_points->GetSize(); i+=3)
 //            if (points_to_visual[i] > 2 || points_to_visual[i + 1] > 2 || points_to_visual[i + 2] > 2)
@@ -165,6 +169,7 @@ void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, con
 
 void Emulator::SendDataToShared(SharedMemKey skey, float *data_ptr, size_t size)
 {
+    data_to_shared_mutex.lock();
     if (skey == 1)
     {
         if (!shared_manip->SendData(data_ptr, size))
@@ -175,6 +180,7 @@ void Emulator::SendDataToShared(SharedMemKey skey, float *data_ptr, size_t size)
         if (!shared_points->SendData(data_ptr, size))
             throw (QString("can't send data to shared memory(shared_points)"));
     }
+    data_to_shared_mutex.unlock();
 }
 
 void Emulator::FillManipPositionData()

@@ -212,11 +212,11 @@ int main(int argc, char *argv[])
     Angles res_an;
 
     solver.SolveDirectKinematic(start_an, TT);
-    StateVector stv(   0.2, -0.2, 0.115, ToRad(178), ToRad(0), ToRad(0));
-    StateVector tarv(  0.2, 0.4, 0.0, ToRad(178), ToRad(0), ToRad(0));/*
+    StateVector stv(   0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
+    StateVector tarv(  0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));/*
     StateVector stv(  -0.35, -0.3441, 0.0515, ToRad(178), ToRad(0), ToRad(0));
     StateVector tarv(  0.35, -0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));*/
-    StateVector tarv1( -0.15, +0.3341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
+    StateVector tarv1( -0.15, +0.3341, 0.0515, ToRad(178), ToRad(-45), ToRad(0));
 //    StateVector tarv2(-0.35, +0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv3(-0.35, -0.3341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv4(-0.35, -0.3341, 0.2515, ToRad(178), ToRad(0), ToRad(0));
@@ -225,14 +225,25 @@ int main(int argc, char *argv[])
 //    StateVector tarv7(-0.35, +0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv8(-0.35, -0.3341, 0.2515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv(0.3, -0.2341, 0.1515, ToRad(90), ToRad(+90),   ToRad(+90));
-    solver.SolveInverseKinematic(10e-5, stv, start_an, start_an);
-    solver.SolveInverseKinematic(10e-5, tarv, start_an, res_an);
-//    solver.SolveDirectKinematic(res_an, TT);
+
+//    try
+//    {
+//        solver.SolveInverseKinematic(10e-5, stv, start_an, start_an);
+//        solver.SolveInverseKinematic(10e-5, tarv, start_an, res_an);
+//    }
+//    catch (std::string &str)
+//    {
+//        cout << str << endl;
+//    }
     solver.SolveDirectKinematic(angle_stop, TT);
     Polynom result[1000];
 
-    solver.CalcPolynomLine(stv, tarv, angle_start,  res_an, 3000, 10, result);
-//    solver.CalcPolynomLine(tarv, tarv1, res_an,     res_an, 3000, 30, result);
+    try {
+        solver.CalcPolynomLine(stv, tarv, angle_start, res_an, 3000, 10, result);
+        solver.CalcPolynomLine(tarv, tarv1, res_an,     res_an, 3000, 10, result);
+    }  catch (std::string &str) {
+        cout << str << endl;
+    }
 //    solver.CalcPolynomLine(tarv1, tarv2, res_an,    res_an, 3000, 30, result);
 //    solver.CalcPolynomLine(tarv2, tarv3, res_an,    res_an, 3000, 30, result);
 //    solver.CalcPolynomLine(tarv3, tarv4, res_an,    res_an, 3000, 30, result);

@@ -20,8 +20,11 @@ class Solver
 public:
     Solver(Robo &manip);
     void SolveDirectKinematic(const Angles &q, Matrix4x4 TR[]);
-    int SolveInverseKinematic(const scalar &accuracy, const StateVector &target, const Angles &curr_angle, Angles &res_angle);
+    void SolveInverseKinematic(const scalar &accuracy, const StateVector &target, const Angles &curr_angle, Angles &res_angle);
     int CalcPolynomMaxQPP(const StateVector &start_point, const StateVector &end_point, const Angles &curr_angles, Angles& res_angle, const int &t_millisec, const scalar &dt_millisec, Polynom result[]);
+    /*@brief
+     * someSHIT
+     */
     int CalcPolynomLine(const StateVector &start_point, const StateVector &end_point, const Angles &start_angles, Angles &res_angle, const int &t_millisec, const ushort &dt_millisec, Polynom result[]);
 //    int CalcPolynomCircle(const StateVector &start_point, const StateVector &end_point,)
     bool CheckTrajectoryForLinear(const Polynom &pol, const Vector3 &l1, const Vector3 &l2, const scalar &t_millisec, const scalar &max_delta);

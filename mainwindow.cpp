@@ -42,20 +42,20 @@ MainWindow::MainWindow(QWidget *parent)
     ui->plot_accel->yAxis->setLabel("acceleration");
 //    ui->plot_x->addGraph();
     ui->plot_x->yAxis->setRange(-1, 1);
-    ui->plot_x->yAxis->setLabel("x");
+    ui->plot_x->yAxis->setLabel("tcp_x");
 //    ui->plot_y->addGraph();
     ui->plot_y->yAxis->setRange(-1, 1);
-    ui->plot_y->yAxis->setLabel("y");
+    ui->plot_y->yAxis->setLabel("tcp_y");
 //    ui->plot_z->addGraph();
     ui->plot_z->yAxis->setRange(-1, 1);
-    ui->plot_z->yAxis->setLabel("z");
+    ui->plot_z->yAxis->setLabel("tcp_z");
 
     ui->plot_yaw->yAxis->setRange(-1.6, 1.6);
-    ui->plot_yaw->yAxis->setLabel("yaw");
+    ui->plot_yaw->yAxis->setLabel("tcp_vx");
     ui->plot_pit->yAxis->setRange(-1.6, 1.6);
-    ui->plot_pit->yAxis->setLabel("pit");
+    ui->plot_pit->yAxis->setLabel("tcp_vy");
     ui->plot_rol->yAxis->setRange(-1.6, 1.6);
-    ui->plot_rol->yAxis->setLabel("rol");
+    ui->plot_rol->yAxis->setLabel("tcp_vz");
 
 }
 
