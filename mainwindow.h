@@ -1,10 +1,10 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QMainWindow>
-#include <QTimer>
 #include "my_math.h"
 #include "robo.h"
+#include <QMainWindow>
+#include <QTimer>
 //#include "emulator.h"
 
 QT_BEGIN_NAMESPACE

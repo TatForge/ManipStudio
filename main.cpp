@@ -3,6 +3,8 @@
 #include "cuda_math.h"
 #include "emulator.h"
 #include "solver.h"
+#include "meshcollider.h"
+#include "gjkcollision3d.h"
 
 #include <main.h>
 #include <array>
@@ -10,6 +12,8 @@
 #include <string.h>
 #include <thread>
 #include <QSharedMemory>
+#include <stl_reader.h>
+
 
 #ifdef WITH_TESTS
 #include <QtTest/QTest>
@@ -137,17 +141,28 @@ int main(int argc, char *argv[])
 
 
     Robo manipulator(6);
-    manipulator.LoadManip();
+    try{
+        manipulator.LoadManip();
+    } catch (string exc_str)
+    {
+        cout << exc_str << endl;
+    }
 
+//    try{
+//        manipulator.LoadManip();
+//    } catch (string exc_str)
+//    {
+//        cout << exc_str << endl;
+//        initializer_list<Elem> il_elem {Elem(Vector3(0,     0,      0),      unit_z,  ToRad(0)),
+//                                        Elem(Vector3(0,     0,      0.2325), unit_y,  ToRad(0)),
+//                                        Elem(Vector3(0.375, 0,      0.2325), unit_y,  ToRad(0)),
+//                                        Elem(Vector3(0.670, 0.1205, 0.2325), unit_y,  ToRad(0)),
+//                                        Elem(Vector3(0.670, 0.1205, 0.0615), unit_mz, ToRad(0)),
+//                                        Elem(Vector3(0.670, 0.2431, 0.0615), unit_y,  ToRad(0))};
+//        manipulator = Robo(il_elem);
+//        manipulator.WriteSettingsToFile();
+//    }
 
-
-//    initializer_list<Elem> il_elem {Elem(Vector3(0,     0,      0),      unit_z,  ToRad(0)),
-//                                    Elem(Vector3(0,     0,      0.2325), unit_y,  ToRad(0)),
-//                                    Elem(Vector3(0.375, 0,      0.2325), unit_y,  ToRad(0)),
-//                                    Elem(Vector3(0.670, 0.1205, 0.2325), unit_y,  ToRad(0)),
-//                                    Elem(Vector3(0.670, 0.1205, 0.0615), unit_mz, ToRad(0)),
-//                                    Elem(Vector3(0.670, 0.2431, 0.0615), unit_y,  ToRad(0))};
-//    Robo manipulator(il_elem);
     manipulator.ComputeJointsPosition();
     manipulator.SolveDirectDynamic();
 //    manipulator.WriteSettingsToFile();
@@ -191,7 +206,6 @@ int main(int argc, char *argv[])
     delete[] U_ptr;
     delete[] speed_ptr;
 
-
     rm::Angles angle_stop;
     rm::Angles angle_start;
     RoboMath::Polynom pol;
@@ -212,11 +226,11 @@ int main(int argc, char *argv[])
     Angles res_an;
 
     solver.SolveDirectKinematic(start_an, TT);
-    StateVector stv(   0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
-    StateVector tarv(  0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));/*
+    StateVector stv( 0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
+    StateVector tarv(0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));/*
     StateVector stv(  -0.35, -0.3441, 0.0515, ToRad(178), ToRad(0), ToRad(0));
     StateVector tarv(  0.35, -0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));*/
-    StateVector tarv1( -0.15, +0.3341, 0.0515, ToRad(178), ToRad(-45), ToRad(0));
+    StateVector tarv1(-0.15, +0.3341, 0.0515, ToRad(178), ToRad(-45), ToRad(0));
 //    StateVector tarv2(-0.35, +0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv3(-0.35, -0.3341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv4(-0.35, -0.3341, 0.2515, ToRad(178), ToRad(0), ToRad(0));
@@ -235,15 +249,19 @@ int main(int argc, char *argv[])
 //    {
 //        cout << str << endl;
 //    }
-    solver.SolveDirectKinematic(angle_stop, TT);
-    Polynom result[1000];
 
-    try {
-        solver.CalcPolynomLine(stv, tarv, angle_start, res_an, 3000, 10, result);
-        solver.CalcPolynomLine(tarv, tarv1, res_an,     res_an, 3000, 10, result);
-    }  catch (std::string &str) {
-        cout << str << endl;
-    }
+
+//    solver.SolveDirectKinematic(angle_stop, TT);
+//    Polynom result[1000];
+
+//    try {
+//        solver.CalcPolynomLine(stv, tarv, angle_start, res_an, 10, result);
+//        solver.CalcPolynomLine(tarv, tarv1, res_an,     res_an, 10, result);
+//    }  catch (std::string &str) {
+//        cout << str << endl;
+//    }
+
+
 //    solver.CalcPolynomLine(tarv1, tarv2, res_an,    res_an, 3000, 30, result);
 //    solver.CalcPolynomLine(tarv2, tarv3, res_an,    res_an, 3000, 30, result);
 //    solver.CalcPolynomLine(tarv3, tarv4, res_an,    res_an, 3000, 30, result);
@@ -252,8 +270,6 @@ int main(int argc, char *argv[])
 //    solver.CalcPolynomLine(tarv6, tarv7, res_an,    res_an, 3000, 30, result);
 //    solver.CalcPolynomLine(tarv7, tarv8, res_an,    res_an, 3000, 30, result);
 
-
-
 //    pol.CalcPolynom(&start_an, &res_an, 3000);
 //    Emulator emulator(manipulator);
 //    emulator.MoveManip(pol, 3000);
@@ -261,6 +277,41 @@ int main(int argc, char *argv[])
 //    manipulator.CalcPolynomLine(&angle_start, &angle_stop, ti, pol);
 //    manipulator.CheckTrajectoryForLinear(pol, Vector3(0.67, 0.2431, 0.0615), target, ti, 0.01, 0.01);
 //    cout << manipulator.CalcDistancePointToLine(Vector3(22,2,3), Vector3(6, 7, 8), Vector3(11, 12, 13)) << endl;
+
+//#define STL_READER_NO_EXCEPTION
+    stl_reader::StlMesh<float, unsigned int> mesh;
+    try {
+        mesh.read_file("joint2.stl");
+
+        for (size_t itri = 0; itri < mesh.num_tris(); ++itri)
+        {
+            std::cout << "coordinates of triangle" << itri << " : ";
+            for (size_t icorner = 0; icorner < 3; ++icorner)
+            {
+                const float *c = mesh.vrt_coords(mesh.tri_corner_ind(itri, icorner));
+                std::cout << "(" << c[0] << ", " << c[1] << ", " << c[2] << ")";
+            }
+        std::cout << std::endl;
+        const float* n = mesh.tri_normal(itri);
+        std::cout   << "normal of triangle " << itri << ": "
+                    << "(" << n[0] << ", " << n[1] << ", " << n[2] << ")\n";
+        }
+    }  catch (std::exception &e) {
+        std::cout << e.what() << std::endl;
+    }
+    MeshCollider mc_j1, mc_j2, mc_j3, mc_j4, mc_j5, mc_j6;
+    MeshCollider mc_l1, mc_l2, mc_l3, mc_b;
+//    mc_j2.read_stl("joint2.stl");
+    mc_j3.read_stl("STLmodels/joint3.stl");
+    mc_j4.read_stl("STLmodels/joint4.stl");
+    mc_j5.read_stl("STLmodels/joint5.stl");
+    mc_j6.read_stl("STLmodels/joint6.stl");
+    mc_l2.read_stl("STLmodels/link2.stl");
+    mc_l3.read_stl("STLmodels/link3.stl");
+    mc_b.read_stl("STLmodels/base.stl");
+    GJKCollision coll
+
+
 
 
 #ifdef WITH_TESTS

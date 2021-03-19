@@ -4,11 +4,12 @@
 #include "my_math.h"
 #include "robo.h"
 #include "thread"
+#include "mutex"
 #include "mainwindow.h"
 #include "sharedmem.h"
 
 #include <QApplication>
-#include <qcustomplot.h>
+//#include <qcustomplot.h>
 
 
 
@@ -41,9 +42,10 @@ public:
     void MoveManipPolynom(Polynom polynom_in, int moving_time_millisec);
     void MoveManipPolynom(Polynom polynom_arr[], scalar moving_time, scalar dt);
     void MoveManipLinear(Angles angles[], size_t size, scalar dt_msec, Vector3 accel[]);
+    void MoveManipLinear(std::vector<Angles> angles, std::vector<Vector3> accel, scalar dt_msec);
     void SolveDirectKinematic();
     void OneIterMove(bool is_last);
-    void OneIterMoveLinear(const Angles &angle1, const Angles &angle2, const int &dt_msec, bool is_last, Vector3 accel[]);
+    void OneIterMoveLinear(const Angles &angle1, const Angles &angle2, const int &dt_msec, bool is_last, Vector3 accel);
     void SendDataToShared(SharedMemKey skey, float *data_ptr, size_t size);
     void FillManipPositionData();
 private:

@@ -178,13 +178,33 @@ static void BMInverseKinematic(benchmark::State &state)
     Robo manipulator(6);
     manipulator.LoadManip();
     Solver s(manipulator);
-    for (auto _ : state)
+    for (auto e : state)
     {
         s.SolveInverseKinematic(10e-5, targets, angles, angles);
 //        InverseKinematic(targets, angles);
     }
 }
 BENCHMARK(BMInverseKinematic)->Unit(benchmark::kMicrosecond);
+
+static void BMCalcPolynomLine(benchmark::State &state)
+{Angles angles;
+
+    StateVector targets;
+    StateVector stv(   0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
+    StateVector tarv(  0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));
+    Angles start_an;
+    Angles res_an;
+    Polynom result[1000];
+    Robo manipulator(6);
+    manipulator.LoadManip();
+    Solver solver(manipulator);
+    for (auto e : state)
+    {
+        solver.CalcPolynomLine(stv, tarv, start_an, res_an, 10, result);
+    }
+}
+BENCHMARK(BMCalcPolynomLine)->Unit(benchmark::kMicrosecond);
+
 
 //static void BM
 

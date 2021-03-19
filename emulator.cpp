@@ -50,11 +50,25 @@ void Emulator::MoveManipLinear(Angles angles[], size_t size, scalar dt_msec, Vec
     {
         if (angles[i+2].IsNull())
             is_last = true;
-        OneIterMoveLinear(angles[i], angles[i + 1], dt_msec, is_last, accel);
+        OneIterMoveLinear(angles[i], angles[i + 1], dt_msec, is_last, accel[i]);
         if (is_last)
             break;
     }
     w.PlotSpeeds(m_emu_angles);
+}
+
+void Emulator::MoveManipLinear(std::vector<Angles> angles, std::vector<Vector3> accel, scalar dt_msec)
+{
+    t_m = 0;
+    bool is_last = false;
+    for (size_t i = 0; i < angles.size() - 1; i++)
+    {
+        if (i == angles.size() - 2)
+            is_last = true;
+        OneIterMoveLinear(angles[i], angles[i + 1], dt_msec, is_last, accel[i]);
+    }
+    w.PlotSpeeds(m_emu_angles);
+
 }
 
 void Emulator::MoveManipPolynom(Polynom polynom_in, int moving_time_millisec)
@@ -126,11 +140,11 @@ void Emulator::OneIterMove(bool is_last = false)
     }
 }
 
-void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, const int &dt_msec, bool is_last, Vector3 accel[])
+void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, const int &dt_msec, bool is_last, Vector3 accel)
 {
     for( int i = 0; i < dt_msec/m_delta_t_millisec; i++)
     {
-        this_thread::sleep_for(std::chrono::milliseconds(1));
+        this_thread::sleep_for(std::chrono::microseconds(800));
         for (int j = 0; j < JOINTS_COUNT; j++)
         {
             m_emu_angles.q[j]    = interpolate(angle1.q[j],    angle2.q[j], (scalar(i) / scalar(dt_msec/m_delta_t_millisec)));
@@ -143,9 +157,11 @@ void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, con
         SendDataToShared(MANIP, manip_to_visual, sizeof(float) * 18);
         SendDataToShared(POINTS, points_to_visual, sizeof(float) * shared_points->GetSize() - 4);
         auto angles = L.ConvertToQuaternion().GetEulerAngles();
-        auto ii = Vector3(accel[(t_m)/dt_msec].x, accel[(t_m)/dt_msec].y, accel[(t_m)/dt_msec].z);
-        w.PlotCoordinates(L(0,3), L(1,3), L(2,3), /*ToDeg(angles.z), ToDeg(angles.y), ToDeg(angles.x),*/
-                          accel[(t_m)/dt_msec].x, accel[(t_m)/dt_msec].y, accel[(t_m)/dt_msec].z, m_delta_t_millisec, is_last);
+//        auto ii = Vector3(accel[(t_m)/dt_msec].x, accel[(t_m)/dt_msec].y, accel[(t_m)/dt_msec].z);
+//        w.PlotCoordinates(L(0,3), L(1,3), L(2,3), /*ToDeg(angles.z), ToDeg(angles.y), ToDeg(angles.x),*/
+//                          accel[(t_m)/dt_msec].x, accel[(t_m)/dt_msec].y, accel[(t_m)/dt_msec].z, m_delta_t_millisec, is_last);
+        w.PlotCoordinates(L(0,3), L(1,3), L(2,3), accel.x, accel.y, accel.z, m_delta_t_millisec, is_last);
+
         w.PlotSpeeds(m_emu_angles, is_last);
         if (is_last)
         {

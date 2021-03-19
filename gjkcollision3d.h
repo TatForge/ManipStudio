@@ -49,8 +49,6 @@ public:
                 return true;
         }
     }
-
-
 };
 
 #endif // GJKCOLLISION_H

@@ -6,6 +6,7 @@ include(FetchContent)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 include_directories(/home/devel/Projects/SimulatorClient/)
 include_directories(/home/devel/Projects/Visualization/VisualizatorOpenGL/)
+include_directories(./STLmodels/)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -70,7 +71,9 @@ add_executable(MainKinematic
     solver.h
     constants.h
     gjkcollision3d.h
-
+    meshcollider.h
+    stlreader.h
+    stl_reader.h
 
     main.cpp
     my_math.cpp
@@ -83,6 +86,8 @@ add_executable(MainKinematic
     mainwindow.cpp
     solver.cpp
     gjkcollision3d.cpp
+    stlreader.cpp
+    meshcollider.cpp
     ${CUDA_OBJECTS}
 
     mainwindow.ui

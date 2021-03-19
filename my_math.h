@@ -30,28 +30,8 @@ namespace RoboMath
         scalar q_pp[JOINTS_COUNT];
         scalar q_p[JOINTS_COUNT];
         scalar q[JOINTS_COUNT];
-        Angles()
-        {
-            for (int i = 0; i < JOINTS_COUNT; i++)
-            {
-                q[i] = 0;
-                q_p[i] = 0;
-                q_pp[i] = 0;
-            }
-        }
-        bool IsNull() const
-        {
-            for (int i = 0; i < JOINTS_COUNT; i++)
-            {
-                if (q[i] != 0)
-                        return false;
-                if (q_p[i] != 0)
-                        return false;
-                if (q_pp[i] != 0)
-                        return false;
-            }
-            return true;
-        }
+        Angles();
+        bool IsNull() const;
     };
 
     class Polynom
@@ -131,6 +111,7 @@ namespace RoboMath
         Vector3() : x(0), y(0), z(0) {};
         Vector3(const scalar &xn, const scalar &yn, const scalar &zn)
             : x(xn), y(yn), z(zn) {};
+        Vector3(const Vector3 &v) : x(v.x), y(v.y), z(v.y) {};
         void Rotate(const scalar &theta, const RoboMath::Vector3 &V);
         void Clear();
         scalar  Length()    const {return sqrt(x * x + y * y + z * z);};
@@ -159,11 +140,7 @@ namespace RoboMath
         Matrix(const Matrix& source);
         Matrix(Matrix &&source);
         Matrix(const initializer_list<initializer_list<scalar>> &il);
-        ~Matrix()
-        {
-            if(data != nullptr)
-                delete[] data;
-        }
+        ~Matrix();
         scalar &at(const int &row, const int &col) const;
 
         Matrix Multuply(const Matrix &matrix1, const Matrix &matrix2) const;
@@ -198,24 +175,12 @@ namespace RoboMath
         scalar* GetDataPtr() const {return data;};
         void MatrixCout(const char *ch = "Matrix") const;
 
-
     private:
         int m_rows;
         int m_cols;
         scalar *data;
-        void DataNewMemory()
-        {
-            data = new scalar[m_rows*m_cols];
-        }
-        void DataNewMemory(const int &rows, const int &cols)
-        {
-            data = new scalar[rows*cols];
-    #ifdef DEBUG_COUT
-            cout << "Data matrix was initialized with rows = "
-                 << rows << " end cols = " << cols << endl;
-            cout << endl;
-    #endif
-        }
+        void DataNewMemory();
+        void DataNewMemory(const int &rows, const int &cols);
         int index(const int &row, const int &col) const { return row * m_cols + col;}
     };
 
@@ -257,107 +222,17 @@ namespace RoboMath
         void MatrixCout(const char *ch) const;
         void MakeIdentity();
         void MakeNull();
-        bool operator == (const Matrix4x4 &m) const
-        {
-            for (int i = 0; i < 16; i++)
-            {
-                if (a[i] != m.a[i])
-                    return false;
-            }
-            return true;
-        }
-        scalar &operator()(const int &row, const int &col)
-        {
-            return a[row * 4 + col];
-        }
-        scalar at(const int &row, const int &col) const
-        {
-            return a[row * 4 + col];
-        }
-        int MaxElem()
-        {
-            //return maximum element col number
-            scalar max_elem = a[0];
-            int max_col = 0;
-            for (int i = 1; i < 16; i++)
-            {
-                if (!(i == 3 || i == 7 || i >= 11 ))
-                    if (max_elem < a[i])
-                    {
-                        max_elem = a[i];
-                        max_col = i % 4;
-                    }
-            }
-            return max_col;
-        }
-        Quaternion ConvertToQuaternion()
-        {
-            RoboMath::Quaternion res;
-            scalar trace = a[0] + a[5] + a[10] + 1;
-            scalar s;
-            if (trace > 0)
-            {
-                s = 0.5 / sqrt(trace);
-                res = Quaternion((a[9] - a[6]) * s,
-                                 (a[2] - a[8]) * s,
-                                 (a[4] - a[1]) * s,
-                                  0.25 / s);
-            } else {
-                auto kk = MaxElem();
-                switch (MaxElem()){
-                case 0:
-                    s = sqrt(1.0 + a[0] - a[5] - a[10]) * 2;
-                    res = Quaternion((0.5 / s),
-                                     (a[1] + a[4]) / s,
-                                     (a[2] + a[8]) / s,
-                                     (a[6] + a[9]) / s);
-                    break;
-                case 1:
-                    s = sqrt(1.0 + a[5] - a[0] - a[10]) * 2;
-                    res = Quaternion((a[1] + a[4]) / s,
-                                     (0.5 / s),
-                                     (a[6] + a[9]) / s,
-                                     (a[2] + a[8]) / s);
-                    break;
-                case 2:
-                    s = sqrt(1.0 + a[10] - a[0] - a[5]) * 2;
-                    res = Quaternion((a[2] + a[8]) / s,
-                                     (a[6] + a[9]) / s,
-                                     (0.5 / s),
-                                     (a[1] + a[4]) / s);
-                    break;
-                }
-
-            }
-            res.Normalize();
-            return res;
-        }
+        bool operator == (const Matrix4x4 &m) const;
+        scalar &operator()(const int &row, const int &col);
+        scalar at(const int &row, const int &col) const;
+        int MaxElem();
+        Quaternion ConvertToQuaternion();
     };
     class MatrixOfMatrix6x6
     {
     public:
-        MatrixOfMatrix6x6()
-        {
-            rows = 6;
-            cols = 6;
-            for (int i = 0; i < 36; i++)
-            {
-                Matrix *temp = new Matrix(4,4);
-                temp->MakeIdentity();
-                *(data + i) = *temp;
-            }
-//            for (int i = 0 ; i < 36; i++)
-//            {
-//                cout << "Elem number" << (data + i) << endl;
-//                (data + i)->operator()(3,3) = i;
-//                (data + i)->MatrixCout();
-//            }
-//            (data + 15)->MatrixCout();
-        }
-        Matrix& operator()(const int &row, const int &col)
-        {
-            return *(data + row * cols + col);
-        }
+        MatrixOfMatrix6x6();
+        Matrix& operator()(const int &row, const int &col);
     private:
         counter rows, cols;
         Matrix *data = new Matrix[36];
@@ -372,6 +247,7 @@ namespace RoboMath
     {
         return (m.a[0] + m.a[5] + m.a[10] + m.a[15]);
     }
+
     static scalar Trace(const Matrix &ma)
     {
         //only for square matrix
@@ -379,7 +255,7 @@ namespace RoboMath
         scalar result(0);
         for (int i = 0; i < ma.GetColsCount(); i++)
         {
-            result += *(ma.GetDataPtr() + i * ma.GetColsCount() + i);
+          result += *(ma.GetDataPtr() + i * ma.GetColsCount() + i);
         }
         return result;
     }
@@ -398,14 +274,8 @@ namespace RoboMath
             x(r.x), y(r.y), z(r.z), roll(roll_in), pitch(pitch_in), yaw(yaw_in){};
         StateVector(Vector3 &r, Vector3 &a) :
             x(r.x), y(r.y), z(r.z), roll(a.x), pitch(a.y), yaw(a.z){};
-        Vector3 GetCoord() const
-        {
-            return Vector3(x, y, z);
-        };
-        Vector3 GetAngles() const
-        {
-            return Vector3(roll, pitch, yaw);
-        }
+        Vector3 GetCoord() const;;
+        Vector3 GetAngles() const;
         scalar x;
         scalar y;
         scalar z;
@@ -438,27 +308,9 @@ scalar CalcDistancePointToLine(RoboMath::Vector3 p, const RoboMath::Vector3 *l1,
 class checkTime
 {
 public:
-    checkTime()
-    {
-        start = std::chrono::high_resolution_clock::now();
-        checked = false;
-    }
-    ~checkTime()
-    {
-        if (!checked)
-        {
-            stop = std::chrono::high_resolution_clock::now();
-            d = stop - start;
-            cout << "duration = " << d.count() << endl << " microsec";
-        }
-    }
-    std::chrono::duration<double> duration()
-    {
-        stop = std::chrono::high_resolution_clock::now();
-        d = stop - start;
-        checked = true;
-        return d;
-    }
+    checkTime();
+    ~checkTime();
+    std::chrono::duration<double> duration();
 
 private:
     std::chrono::duration<double> d;
@@ -484,7 +336,7 @@ public:
         }
         catch (std::bad_alloc & exception)
         {
-            cout << "!!Can't allocate memory for mesh" << endl;
+            cout << "Can't allocate memory for mesh" << endl;
         }
 
         mempcpy(m_points, points, size * sizeof(RoboMath::Vector3));

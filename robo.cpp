@@ -1,4 +1,5 @@
 #include "robo.h"
+#include <fstream>
 
 #define CALC_INVERSE_MATRIX
 
@@ -390,7 +391,7 @@ void Robo::SolveDirectDynamic()
         {
             for (counter j = RoboMath::max(i, k); j < 6; j++)
             {
-                m_moments.dv[i] += Trace(U[k*6 + j] * m_ji[k].MultiplyTranspose(U[i*6 + j]));
+                m_moments.dv[i] += RoboMath::Trace(U[k*6 + j] * m_ji[k].MultiplyTranspose(U[i*6 + j]));
             }
             m_moments.dv[i] *= m_angles.q_pp[i];
         }
@@ -558,6 +559,11 @@ void Robo::WriteSettingsToFile()
 
 void Robo::LoadSettingsFromFile()
 {
+    std::ifstream settings_file;
+    settings_file.open("ManipulatorSettigns.ini");
+    if (!settings_file.is_open())
+        throw std::string("can't find settings file");
+    settings_file.close();
     manip_settings = new QSettings("ManipulatorSettigns.ini", QSettings::IniFormat);
     if (!manip_settings->contains("denavita-hartenberg"))
         throw std::string("no denavita-hartenberg array in settings file");
@@ -665,56 +671,51 @@ bool Robo::CheckTrajectoryForLinear(const Polynom pol, Vector3 l1, Vector3 l2, c
     return true;
 }
 
-void Robo::LoadManip()
+bool Robo::LoadManip()
 {
-    try {
-        LoadSettingsFromFile();
-        dt = 0.01;
-        for (int i = 0; i < number_of_elements; i++)
-        {
-            m_moments.hikm[i] = 0;
-            m_moments.dv[i] = 0;
-            m_moments.p[i] = 0;
-            m_angles.q_p[i] = 1;
-            m_angles.q_pp[i] = 1;
-        }
-        for (int i = 0; i < number_of_elements; i++)
-        {
-            m_ji[i] = {{(-m_i[i].xx() + m_i[i].yy() + m_i[i].zz())/2, m_i[i].xy(), m_i[i].xz(), m_mass[i] * m_cm[i](0)},
-                       {m_i[i].xy(), (m_i[i].xx() - m_i[i].yy() + m_i[i].zz())/2,  m_i[i].yz(), m_mass[i] * m_cm[i](1)},
-                       {m_i[i].xz(), m_i[i].yz(), (m_i[i].xx() + m_i[i].yy() - m_i[i].zz())/2,  m_mass[i] * m_cm[i](2)},
-                       {m_mass[i] * m_cm[i](0),  m_mass[i] * m_cm[i](1), m_mass[i] * m_cm[i](2), m_mass[i]}};
-//            m_ji[i].MatrixCout("m_ji");
-        }
-        void UpdateTMatrix(RoboMath::Vector *delta_thetas);
-
-        //            Elem *robo_it = robot;
-        //            auto robo_list_it = robo_list.begin();
-        //            for (counter i = 0; i < number_of_elements; i++)
-        //            {
-        //                *robo_it = *robo_list_it;
-        //                if (i > 0)
-        //                {
-        //                    robo_it->SetPositionLocal(Vector3({robo_it->GetPosition().x - (robo_it - 1)->GetPosition().x,
-        //                                                  robo_it->GetPosition().y - (robo_it - 1)->GetPosition().y,
-        //                                                  robo_it->GetPosition().z - (robo_it - 1)->GetPosition().z}));
-        //                }
-        //                robo_it->SetRotationAxisLocal(robo_it->GetRotationAxis());
-        //                ++robo_it;
-        //                ++robo_list_it;
-        //            }
-        //            effector.SetRotation(Quaternion(Vector3(1, 0, 0), ToRad(90)));
-        //            (robot + number_of_elements - 1)->GetRotationAxisLocal();
-        //            effector.SetRotationAxis((robot + number_of_elements - 1)->GetRotationAxisLocal());
-        //            effector.SetRotationAxisLocal((robot + number_of_elements - 1)->GetRotationAxisLocal());
-        //            effector.SetPosition((robot + number_of_elements - 1)->GetPosition());
-        //            effector.SetPositionLocal(Vector3(0, 0, 0));
-
-    }
-    catch (string str)
+    LoadSettingsFromFile();
+    dt = 0.01;
+    for (int i = 0; i < number_of_elements; i++)
     {
-        cout << str << endl;
+        m_moments.hikm[i] = 0;
+        m_moments.dv[i] = 0;
+        m_moments.p[i] = 0;
+        m_angles.q_p[i] = 1;
+        m_angles.q_pp[i] = 1;
     }
+    for (int i = 0; i < number_of_elements; i++)
+    {
+        m_ji[i] = {{(-m_i[i].xx() + m_i[i].yy() + m_i[i].zz())/2, m_i[i].xy(), m_i[i].xz(), m_mass[i] * m_cm[i](0)},
+                   {m_i[i].xy(), (m_i[i].xx() - m_i[i].yy() + m_i[i].zz())/2,  m_i[i].yz(), m_mass[i] * m_cm[i](1)},
+                   {m_i[i].xz(), m_i[i].yz(), (m_i[i].xx() + m_i[i].yy() - m_i[i].zz())/2,  m_mass[i] * m_cm[i](2)},
+                   {m_mass[i] * m_cm[i](0),  m_mass[i] * m_cm[i](1), m_mass[i] * m_cm[i](2), m_mass[i]}};
+//            m_ji[i].MatrixCout("m_ji");
+    }
+    void UpdateTMatrix(RoboMath::Vector *delta_thetas);
+
+    //            Elem *robo_it = robot;
+    //            auto robo_list_it = robo_list.begin();
+    //            for (counter i = 0; i < number_of_elements; i++)
+    //            {
+    //                *robo_it = *robo_list_it;
+    //                if (i > 0)
+    //                {
+    //                    robo_it->SetPositionLocal(Vector3({robo_it->GetPosition().x - (robo_it - 1)->GetPosition().x,
+    //                                                  robo_it->GetPosition().y - (robo_it - 1)->GetPosition().y,
+    //                                                  robo_it->GetPosition().z - (robo_it - 1)->GetPosition().z}));
+    //                }
+    //                robo_it->SetRotationAxisLocal(robo_it->GetRotationAxis());
+    //                ++robo_it;
+    //                ++robo_list_it;
+    //            }
+    //            effector.SetRotation(Quaternion(Vector3(1, 0, 0), ToRad(90)));
+    //            (robot + number_of_elements - 1)->GetRotationAxisLocal();
+    //            effector.SetRotationAxis((robot + number_of_elements - 1)->GetRotationAxisLocal());
+    //            effector.SetRotationAxisLocal((robot + number_of_elements - 1)->GetRotationAxisLocal());
+    //            effector.SetPosition((robot + number_of_elements - 1)->GetPosition());
+    //            effector.SetPositionLocal(Vector3(0, 0, 0));
+
+    return true;
 }
 
 Robo::Moments *Robo::GetMoments()

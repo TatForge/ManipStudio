@@ -91,7 +91,7 @@ public:
 
     bool CheckTrajectoryForLinear(const rm::Polynom pol, rm::Vector3 l1, rm::Vector3 l2, const scalar &t, const scalar &delta_t, const scalar &delta_r);;
 
-    void LoadManip();
+    bool LoadManip();
     Moments *GetMoments();
     rm::Angles *GetAngles();
     scalar GetTheta(const int &i);

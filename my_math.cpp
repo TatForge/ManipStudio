@@ -60,6 +60,12 @@ Matrix::Matrix(const initializer_list<initializer_list<scalar> > &il) : Matrix (
     }
 }
 
+Matrix::~Matrix()
+{
+    if(data != nullptr)
+        delete[] data;
+}
+
 scalar &Matrix::at(const int &row, const int &col) const
 {
     assert(col >= 0 && col <= m_cols);
@@ -529,6 +535,21 @@ void Matrix::MatrixCout(const char *ch) const
 //#endif
 }
 
+void Matrix::DataNewMemory()
+{
+    data = new scalar[m_rows*m_cols];
+}
+
+void Matrix::DataNewMemory(const int &rows, const int &cols)
+{
+    data = new scalar[rows*cols];
+#ifdef DEBUG_COUT
+    cout << "Data matrix was initialized with rows = "
+                 << rows << " end cols = " << cols << endl;
+    cout << endl;
+#endif
+}
+
 
 
 Vector::Vector()
@@ -937,19 +958,18 @@ Tensor::Tensor(const initializer_list<scalar> &il)
     }
 }
 
-scalar Trace(const Matrix &ma)
-{
-    //only for square matrix
-    assert(ma.GetColsCount() == ma.GetRowsCount());
-    //        Vector v(ma.GetColsCount());
-    scalar result(0);
-    counter diag_elem = 0;
-    for (int i = 0; i < ma.GetColsCount(); i++)
-    {
-        result += *(ma.GetDataPtr() + i * ma.GetColsCount() + i);
-    }
-    return result;
-}
+//scalar Trace(const Matrix &ma)
+//{
+//    //only for square matrix
+//    assert(ma.GetColsCount() == ma.GetRowsCount());
+//    //        Vector v(ma.GetColsCount());
+//    scalar result(0);
+//    for (int i = 0; i < ma.GetColsCount(); i++)
+//    {
+//        result += *(ma.GetDataPtr() + i * ma.GetColsCount() + i);
+//    }
+//    return result;
+//}
 
 Matrix4x4::Matrix4x4()
 {
@@ -1082,6 +1102,86 @@ void Matrix4x4::MakeNull()
     }
 }
 
+bool Matrix4x4::operator ==(const Matrix4x4 &m) const
+{
+    for (int i = 0; i < 16; i++)
+    {
+        if (a[i] != m.a[i])
+            return false;
+    }
+    return true;
+}
+
+scalar &Matrix4x4::operator()(const int &row, const int &col)
+{
+    return a[row * 4 + col];
+}
+
+scalar Matrix4x4::at(const int &row, const int &col) const
+{
+    return a[row * 4 + col];
+}
+
+int Matrix4x4::MaxElem()
+{
+    //return maximum element col number
+    scalar max_elem = a[0];
+    int max_col = 0;
+    for (int i = 1; i < 16; i++)
+    {
+        if (!(i == 3 || i == 7 || i >= 11 ))
+            if (max_elem < a[i])
+            {
+                max_elem = a[i];
+                max_col = i % 4;
+            }
+    }
+    return max_col;
+}
+
+Quaternion Matrix4x4::ConvertToQuaternion()
+{
+    RoboMath::Quaternion res;
+    scalar trace = a[0] + a[5] + a[10] + 1;
+    scalar s;
+    if (trace > 0)
+    {
+        s = 0.5 / sqrt(trace);
+        res = Quaternion((a[9] - a[6]) * s,
+                (a[2] - a[8]) * s,
+                (a[4] - a[1]) * s,
+                0.25 / s);
+    } else {
+        auto kk = MaxElem();
+        switch (MaxElem()){
+        case 0:
+            s = sqrt(1.0 + a[0] - a[5] - a[10]) * 2;
+            res = Quaternion((0.5 / s),
+                             (a[1] + a[4]) / s,
+                    (a[2] + a[8]) / s,
+                    (a[6] + a[9]) / s);
+            break;
+        case 1:
+            s = sqrt(1.0 + a[5] - a[0] - a[10]) * 2;
+            res = Quaternion((a[1] + a[4]) / s,
+                    (0.5 / s),
+                    (a[6] + a[9]) / s,
+                    (a[2] + a[8]) / s);
+            break;
+        case 2:
+            s = sqrt(1.0 + a[10] - a[0] - a[5]) * 2;
+            res = Quaternion((a[2] + a[8]) / s,
+                    (a[6] + a[9]) / s,
+                    (0.5 / s),
+                    (a[1] + a[4]) / s);
+            break;
+        }
+
+    }
+    res.Normalize();
+    return res;
+}
+
 Polynom::Polynom()
 {
     for (int i = 0; i < 6; i++)
@@ -1162,3 +1262,84 @@ scalar Distance(const StateVector &v1, const StateVector &v2)
 {
     return (sqrt(pow(v1.x - v2.x, 2) + pow(v1.y - v2.y, 2) + pow(v1.z - v2.z, 2)));
 }
+
+MatrixOfMatrix6x6::MatrixOfMatrix6x6()
+{
+    rows = 6;
+    cols = 6;
+    for (int i = 0; i < 36; i++)
+    {
+        Matrix *temp = new Matrix(4,4);
+        temp->MakeIdentity();
+        *(data + i) = *temp;
+    }
+}
+
+Matrix &MatrixOfMatrix6x6::operator()(const int &row, const int &col)
+{
+    return *(data + row * cols + col);
+}
+
+//scalar Trace(const Matrix4x4 &m)
+//{
+//    return (m.a[0] + m.a[5] + m.a[10] + m.a[15]);
+//}
+
+Vector3 StateVector::GetCoord() const
+{
+    return Vector3(x, y, z);
+}
+
+Vector3 StateVector::GetAngles() const
+{
+    return Vector3(roll, pitch, yaw);
+}
+
+checkTime::checkTime()
+{
+    start = std::chrono::high_resolution_clock::now();
+    checked = false;
+}
+
+checkTime::~checkTime()
+{
+    if (!checked)
+    {
+        stop = std::chrono::high_resolution_clock::now();
+        d = stop - start;
+        cout << "duration = " << d.count() << " microsec" << endl;
+    }
+}
+
+std::chrono::duration<double> checkTime::duration()
+{
+    stop = std::chrono::high_resolution_clock::now();
+    d = stop - start;
+    checked = true;
+    return d;
+}
+
+Angles::Angles()
+{
+    for (int i = 0; i < JOINTS_COUNT; i++)
+    {
+        q[i] = 0;
+        q_p[i] = 0;
+        q_pp[i] = 0;
+    }
+}
+
+bool Angles::IsNull() const
+{
+    for (int i = 0; i < JOINTS_COUNT; i++)
+    {
+        if (q[i] != 0)
+            return false;
+        if (q_p[i] != 0)
+            return false;
+        if (q_pp[i] != 0)
+            return false;
+    }
+    return true;
+}
+
