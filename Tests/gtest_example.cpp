@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "my_math.h"
+#include "meshcollider.h"
 
 #if WITH_GTESTS
 using namespace RoboMath;
@@ -43,6 +44,37 @@ TEST(Matrix, All)
     m.MakeIdentity();
     EXPECT_EQ(m.MaxElem(), 0);
 }
+TEST(Collision, All)
+{
+    MeshCollider mc1;
+    MeshCollider mc2;
+
+    EXPECT_EQ(mc1.ReadStl("Tests/models/cube2m.stl"), true);
+    EXPECT_EQ(mc2.ReadStl("Tests/models/cube2m.stl"), true);
+    EXPECT_EQ(mc1.CheckCollision(mc2), true);
+    mc2.MoveMesh(Quaternion(0, 0, 0, 1), Vector3(1,1,0));
+    EXPECT_EQ(mc1.CheckCollision(mc2), true);
+    mc2.MoveMesh(Quaternion(0, 0, 0, 1), Vector3(1,1,0));
+    EXPECT_EQ(mc1.CheckCollision(mc2), true);
+    mc2.MoveMesh(Quaternion(0, 0, 0, 1), Vector3(0.1,0.1,0));
+    EXPECT_EQ(mc1.CheckCollision(mc2), false);
+    mc2.MoveMesh(Quaternion(0, 0, 0, 1), Vector3(-2.1,-2.1,0));
+    EXPECT_EQ(mc1.CheckCollision(mc2), true);
+    mc2.MoveMesh(Quaternion(0, 0, 0, 1), Vector3(-2.0,-2.0,0));
+    EXPECT_EQ(mc1.CheckCollision(mc2), true);
+    mc2.MoveMesh(Quaternion(0, 0, 0, 1), Vector3(-0.1,-0.1,0));
+    EXPECT_EQ(mc1.CheckCollision(mc2), false);
+    mc2.MoveMesh(Quaternion(0, 0, 0, 1), Vector3(-11.1,-11.1,0));
+    EXPECT_EQ(mc1.CheckCollision(mc2), false);
+    //move to zero position
+    mc2.MoveMesh(Quaternion(0, 0, 0, 1), Vector3(11.2,11.2,0));
+    EXPECT_EQ(mc1.CheckCollision(mc2), true);
+    //rotate
+    mc2.MoveMesh(Quaternion(0.0, 0, 0.707, 0.707), Vector3(2, 2, 0));
+    EXPECT_EQ(mc1.CheckCollision(mc2), false);
+}
+
+
 
 int main(int argc, char *argv[])
 {

@@ -797,6 +797,13 @@ Vector3 &Vector3::operator*(const scalar &value)
     return *this;
 }
 
+bool Vector3::operator <(Vector3 &v)
+{
+    return ((x < v.x) ||
+            ((x == v.x) && (y < v.y)) ||
+            ((x == v.x) && (y == v.y) && (z < v.z)));
+}
+
 Vector3 Vector3::operator*(const Vector3 &V) const
 {
     Vector3 result;
@@ -926,16 +933,17 @@ void Quaternion::Normalize()
     z /= l;
 }
 
-Vector3 Quaternion::RotateVector(const Vector3 &v)
+Vector3 Quaternion::RotateVector(const Vector3 &v) const
 {
     if (x == 0 && y == 0 && z == 0)
         return v;
     Vector3 v_t = v.Normalize();
     scalar l = v.Length();
-    this->Normalize();
-    auto t = *this * v_t;
-    this->Invert();
-    t = t * (*this);
+    Quaternion buff = *this;
+    buff.Normalize();
+    auto t = buff * v_t;
+    buff.Invert();
+    t = t * buff;
     v_t.x = t.x;
     v_t.y = t.y;
     v_t.z = t.z;
@@ -1122,7 +1130,7 @@ scalar Matrix4x4::at(const int &row, const int &col) const
     return a[row * 4 + col];
 }
 
-int Matrix4x4::MaxElem()
+int Matrix4x4::MaxElem() const
 {
     //return maximum element col number
     scalar max_elem = a[0];
@@ -1139,7 +1147,7 @@ int Matrix4x4::MaxElem()
     return max_col;
 }
 
-Quaternion Matrix4x4::ConvertToQuaternion()
+Quaternion Matrix4x4::ConvertToQuaternion() const
 {
     RoboMath::Quaternion res;
     scalar trace = a[0] + a[5] + a[10] + 1;
@@ -1152,7 +1160,6 @@ Quaternion Matrix4x4::ConvertToQuaternion()
                 (a[4] - a[1]) * s,
                 0.25 / s);
     } else {
-        auto kk = MaxElem();
         switch (MaxElem()){
         case 0:
             s = sqrt(1.0 + a[0] - a[5] - a[10]) * 2;
@@ -1180,6 +1187,11 @@ Quaternion Matrix4x4::ConvertToQuaternion()
     }
     res.Normalize();
     return res;
+}
+
+Vector3 Matrix4x4::ConvertToVector3() const
+{
+    return Vector3(a[3],a[7],a[11]);
 }
 
 Polynom::Polynom()

@@ -4,7 +4,7 @@
 #include "emulator.h"
 #include "solver.h"
 #include "meshcollider.h"
-#include "gjkcollision3d.h"
+//#include "gjkcollision3d.h"
 
 #include <main.h>
 #include <array>
@@ -227,12 +227,13 @@ int main(int argc, char *argv[])
 
     solver.SolveDirectKinematic(start_an, TT);
     StateVector stv( 0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
-    StateVector tarv(0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));/*
-    StateVector stv(  -0.35, -0.3441, 0.0515, ToRad(178), ToRad(0), ToRad(0));
-    StateVector tarv(  0.35, -0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));*/
-    StateVector tarv1(-0.15, +0.3341, 0.0515, ToRad(178), ToRad(-45), ToRad(0));
-//    StateVector tarv2(-0.35, +0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
-//    StateVector tarv3(-0.35, -0.3341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
+//    StateVector tarv(0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));
+    StateVector tarv(0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));
+//    StateVector stv(  -0.35, -0.3441, 0.0515, ToRad(178), ToRad(0), ToRad(0));
+//    StateVector tarv(  0.35, -0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
+    StateVector tarv1(-0.15, +0.241, 0.0515, ToRad(178), ToRad(-45), ToRad(0));
+    StateVector tarv2(-0.35, +0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
+    StateVector tarv3(-0.35, -0.3341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv4(-0.35, -0.3341, 0.2515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv5( 0.35, -0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv6( 0.15, +0.3341, 0.2515, ToRad(178), ToRad(0), ToRad(0));
@@ -250,18 +251,30 @@ int main(int argc, char *argv[])
 //        cout << str << endl;
 //    }
 
+    MeshCollider cube;
+    MeshCollider cube2;
+    cube.ReadStl("STLmodels/cube2m.stl");
+    cube2.ReadStl("STLmodels/cube2m.stl");
+    cube2.MoveMesh(Quaternion(0.707, 0, 0, 0.707), Vector3(2, 2, 0));
+//    cube2.MoveMesh(Quaternion(0, 0, 0, 1), Vector3(1.9, 1.9, 0));
+    if (cube.CheckCollision(cube2))
+        cout << "ALARM!" << endl;
+
+
 
 //    solver.SolveDirectKinematic(angle_stop, TT);
-//    Polynom result[1000];
+    Polynom result[1000];
 
-//    try {
-//        solver.CalcPolynomLine(stv, tarv, angle_start, res_an, 10, result);
-//        solver.CalcPolynomLine(tarv, tarv1, res_an,     res_an, 10, result);
-//    }  catch (std::string &str) {
-//        cout << str << endl;
-//    }
+    try {
+        solver.CalcPolynomLine(stv, tarv, angle_start, res_an, 10, result);
+        solver.CalcPolynomLine(tarv, tarv1, res_an,     res_an, 10, result);
+        solver.CalcPolynomLine(tarv1, tarv2, res_an,    res_an, 10, result);
+    }  catch (std::string &str) {
+        cout << str << endl;
+    }
 
 
+//    solver.CalcPolynomLine(tarv2, tarv3, res_an,    res_an, 10, result);
 //    solver.CalcPolynomLine(tarv1, tarv2, res_an,    res_an, 3000, 30, result);
 //    solver.CalcPolynomLine(tarv2, tarv3, res_an,    res_an, 3000, 30, result);
 //    solver.CalcPolynomLine(tarv3, tarv4, res_an,    res_an, 3000, 30, result);
@@ -301,17 +314,18 @@ int main(int argc, char *argv[])
     }
     MeshCollider mc_j1, mc_j2, mc_j3, mc_j4, mc_j5, mc_j6;
     MeshCollider mc_l1, mc_l2, mc_l3, mc_b;
-//    mc_j2.read_stl("joint2.stl");
-    mc_j3.read_stl("STLmodels/joint3.stl");
-    mc_j4.read_stl("STLmodels/joint4.stl");
-    mc_j5.read_stl("STLmodels/joint5.stl");
-    mc_j6.read_stl("STLmodels/joint6.stl");
-    mc_l2.read_stl("STLmodels/link2.stl");
-    mc_l3.read_stl("STLmodels/link3.stl");
-    mc_b.read_stl("STLmodels/base.stl");
-    GJKCollision coll
+    mc_j2.ReadStl("STLmodels/joint2.stl");
+    mc_j2.MoveMesh(Quaternion(0, 0, 0.383, 0.924), Vector3(0, 0, 1));
+//    mc_j3.read_stl("STLmodels/joint3.stl");
+//    mc_j4.read_stl("STLmodels/joint4.stl");
+//    mc_j5.read_stl("STLmodels/joint5.stl");
+//    mc_j6.read_stl("STLmodels/joint6.stl");
+//    mc_l2.read_stl("STLmodels/link2.stl");
+//    mc_l3.read_stl("STLmodels/link3.stl");
+//    mc_b.read_stl("STLmodels/base.stl");
+//    GJ
 
-
+//    mc_j2.MoveMesh();
 
 
 #ifdef WITH_TESTS

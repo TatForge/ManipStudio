@@ -100,23 +100,26 @@ bool GJKCollision::Triangle(Simplex &simplex, Vector3 &direction)
     return false;
 }
 
-RoboMath::Vector3 GJKCollision::GetFarthestPoint(const Mesh &object, const RoboMath::Vector3 &direction)
+RoboMath::Vector3 GJKCollision::GetFarthestPoint(const MeshCollider &object, const RoboMath::Vector3 &direction)
 {
     short farthest_point_index(0);
-    float max_dist = object.point(0)->Dot(direction);
+    float max_dist = object.point(0).Dot(direction);
     for (size_t i = 1; i < object.Size(); i++)
     {
-        if (object.point(i)->Dot(direction) > max_dist)
+        if (object.point(i).Dot(direction) > max_dist)
         {
-            max_dist = object.point(i)->Dot(direction);
+            max_dist = object.point(i).Dot(direction);
             farthest_point_index = i;
         }
     }
-    return *object.point(farthest_point_index);
+    return object.point(farthest_point_index);
 }
 
-Vector3 GJKCollision::Support(const Mesh &object1, const Mesh &object2, const Vector3 &direction)
+Vector3 GJKCollision::Support(const MeshCollider &object1, const MeshCollider &object2, const Vector3 &direction)
 {
+//    auto k = GetFarthestPoint(object1, direction);
+//    auto l = GetFarthestPoint(object2, -direction);
+//    auto kl = k - l;
     return GetFarthestPoint(object1, direction) - GetFarthestPoint(object2, -direction);
 }
 

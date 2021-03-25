@@ -111,7 +111,7 @@ namespace RoboMath
         Vector3() : x(0), y(0), z(0) {};
         Vector3(const scalar &xn, const scalar &yn, const scalar &zn)
             : x(xn), y(yn), z(zn) {};
-        Vector3(const Vector3 &v) : x(v.x), y(v.y), z(v.y) {};
+        Vector3(const Vector3 &v) : x(v.x), y(v.y), z(v.z) {};
         void Rotate(const scalar &theta, const RoboMath::Vector3 &V);
         void Clear();
         scalar  Length()    const {return sqrt(x * x + y * y + z * z);};
@@ -126,6 +126,11 @@ namespace RoboMath
         Vector3 operator* (const Vector3 &V) const;
         Vector3 &operator+= (const Vector3 &V);
         Vector3 &operator* (const scalar &value);
+        bool operator< (Vector3 &v);
+        bool operator!= (Vector3 &v)
+        {
+            return (x != v.x) || (y != v.y) || (z != v.z);
+        }
     public:
         scalar x;
         scalar y;
@@ -201,7 +206,7 @@ namespace RoboMath
         Quaternion operator* (const Vector3 &v) const;
         void Scale(const scalar &s);
         void Normalize();
-        Vector3 RotateVector(const Vector3 &v);
+        Vector3 RotateVector(const Vector3 &v) const;
     private:
         scalar x;
         scalar y;
@@ -225,8 +230,9 @@ namespace RoboMath
         bool operator == (const Matrix4x4 &m) const;
         scalar &operator()(const int &row, const int &col);
         scalar at(const int &row, const int &col) const;
-        int MaxElem();
-        Quaternion ConvertToQuaternion();
+        int MaxElem() const;
+        Quaternion ConvertToQuaternion() const;
+        Vector3 ConvertToVector3() const;
     };
     class MatrixOfMatrix6x6
     {
@@ -319,40 +325,40 @@ private:
     bool checked;
 };
 
-class Mesh
-{
-public:
-    Mesh()
-    {
-        m_points = nullptr;
-        m_size = 0;
-    }
-    Mesh(const RoboMath::Vector3 *points, const size_t size)
-    {
-        m_size = size;
-        try
-        {
-            m_points = new RoboMath::Vector3 [size];
-        }
-        catch (std::bad_alloc & exception)
-        {
-            cout << "Can't allocate memory for mesh" << endl;
-        }
+//class Mesh
+//{
+//public:
+//    Mesh()
+//    {
+//        m_points = nullptr;
+//        m_size = 0;
+//    }
+//    Mesh(const RoboMath::Vector3 *points, const size_t size)
+//    {
+//        m_size = size;
+//        try
+//        {
+//            m_points = new RoboMath::Vector3 [size];
+//        }
+//        catch (std::bad_alloc & exception)
+//        {
+//            cout << "Can't allocate memory for mesh" << endl;
+//        }
 
-        mempcpy(m_points, points, size * sizeof(RoboMath::Vector3));
-    }
-    RoboMath::Vector3* point(unsigned int element) const
-    {
-        return m_points + element;
-    }
-    unsigned int Size() const
-    {
-        return m_size;
-    }
+//        mempcpy(m_points, points, size * sizeof(RoboMath::Vector3));
+//    }
+//    RoboMath::Vector3* point(unsigned int element) const
+//    {
+//        return m_points + element;
+//    }
+//    unsigned int Size() const
+//    {
+//        return m_size;
+//    }
 
-private:
-    RoboMath::Vector3 *m_points;
-    unsigned int m_size;//points count
-};
+//private:
+//    RoboMath::Vector3 *m_points;
+//    unsigned int m_size;//points count
+//};
 
 #endif // MY_MATH_H

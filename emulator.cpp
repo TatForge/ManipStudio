@@ -21,8 +21,25 @@ Emulator::Emulator(const Robo &manip)
     m_emu_angles = manip.m_angles;
     shared_manip = new SharedMem("manipulator", 18);
     shared_points = new SharedMem("points", sizeof(points_to_visual) / sizeof(float));
+    shared_meshes = new SharedMem("meshes", sizeof(meshes_to_visual) / sizeof(float));
     for (size_t i = 0; i < shared_points->GetSize(); i++)
         points_to_visual[i] = 0;
+#ifdef VREMENNO_DLYA_VISUALKI
+    meshes.resize(8);
+    try {
+        meshes[0].ReadStl("STLmodels/base.stl");
+        meshes[1].ReadStl("STLmodels/joint2.stl");
+        meshes[2].ReadStl("STLmodels/link2.stl");
+        meshes[3].ReadStl("STLmodels/joint3.stl");
+        meshes[4].ReadStl("STLmodels/link3.stl");
+        meshes[5].ReadStl("STLmodels/joint4.stl");
+        meshes[6].ReadStl("STLmodels/joint5.stl");
+        meshes[7].ReadStl("STLmodels/joint6.stl");
+        meshes_buff = meshes;
+    }  catch (std::string &exc) {
+        cout << exc << endl;
+    }
+#endif
 }
 
 Emulator::~Emulator()
@@ -42,7 +59,7 @@ void Emulator::MoveManipPolynom(Polynom polynom_arr[], scalar moving_time, scala
     //    }
 }
 
-void Emulator::MoveManipLinear(Angles angles[], size_t size, scalar dt_msec, Vector3 accel[])
+void Emulator::MoveManipLinear(const Angles angles[], size_t size, scalar dt_msec, const Vector3 accel[])
 {
     t_m = 0;
     bool is_last = false;
@@ -121,10 +138,10 @@ void Emulator::OneIterMove(bool is_last = false)
     SolveDirectKinematic();
     FillManipPositionData();
 //    std::this_thread::sleep_for(std::chrono::milliseconds(10));///m_delta_t * 1000));
-    std::thread tre1(&Emulator::SendDataToShared, this, MANIP, manip_to_visual, sizeof(float) * 18);
-    std::thread tre2(&Emulator::SendDataToShared, this, POINTS, points_to_visual, sizeof(float) * shared_points->GetSize() - 4);
-    tre1.detach();
-    tre2.detach();
+//    std::thread tre1(&Emulator::SendDataToShared, this, MANIP, manip_to_visual, sizeof(float) * 18);
+//    std::thread tre2(&Emulator::SendDataToShared, this, POINTS, points_to_visual, sizeof(float) * shared_points->GetSize() - 4);
+//    tre1.detach();
+//    tre2.detach();
 //    SendDataToShared(MANIP, manip_to_visual, sizeof(float) * 18);
 //    SendDataToShared(POINTS, points_to_visual, sizeof(float) * shared_points->GetSize() - 4);
 //    if (is_last)
@@ -154,8 +171,12 @@ void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, con
         UpdateStateMatrix();
         SolveDirectKinematic();
         FillManipPositionData();
+#ifdef VREMENNO_DLYA_VISUALKI
+        MoveThatShit();
+#endif
         SendDataToShared(MANIP, manip_to_visual, sizeof(float) * 18);
         SendDataToShared(POINTS, points_to_visual, sizeof(float) * shared_points->GetSize() - 4);
+        SendDataToShared(MESHES, meshes_to_visual, sizeof(float) * shared_meshes->GetSize() - 4);
         auto angles = L.ConvertToQuaternion().GetEulerAngles();
 //        auto ii = Vector3(accel[(t_m)/dt_msec].x, accel[(t_m)/dt_msec].y, accel[(t_m)/dt_msec].z);
 //        w.PlotCoordinates(L(0,3), L(1,3), L(2,3), /*ToDeg(angles.z), ToDeg(angles.y), ToDeg(angles.x),*/
@@ -186,6 +207,21 @@ void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, con
 void Emulator::SendDataToShared(SharedMemKey skey, float *data_ptr, size_t size)
 {
     data_to_shared_mutex.lock();
+    switch (skey)
+    {
+    case 1:
+        if (!shared_manip->SendData(data_ptr, size))
+            throw (QString("can't send data to shared memory(shared_manip)"));
+        break;
+    case 2:
+        if (!shared_points->SendData(data_ptr, size))
+            throw (QString("can't send data to shared memory(shared_points)"));
+        break;
+    case 3:
+        if (!shared_meshes->SendData(data_ptr, size))
+            throw (QString("can't send data to shared memory(shared_meshes)"));
+        break;
+    }/*
     if (skey == 1)
     {
         if (!shared_manip->SendData(data_ptr, size))
@@ -195,7 +231,7 @@ void Emulator::SendDataToShared(SharedMemKey skey, float *data_ptr, size_t size)
     {
         if (!shared_points->SendData(data_ptr, size))
             throw (QString("can't send data to shared memory(shared_points)"));
-    }
+    }*/
     data_to_shared_mutex.unlock();
 }
 
