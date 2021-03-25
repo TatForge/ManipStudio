@@ -292,30 +292,30 @@ int main(int argc, char *argv[])
 //    cout << manipulator.CalcDistancePointToLine(Vector3(22,2,3), Vector3(6, 7, 8), Vector3(11, 12, 13)) << endl;
 
 //#define STL_READER_NO_EXCEPTION
-    stl_reader::StlMesh<float, unsigned int> mesh;
-    try {
-        mesh.read_file("joint2.stl");
+//    stl_reader::StlMesh<float, unsigned int> mesh;
+//    try {
+//        mesh.read_file("joint2.stl");
 
-        for (size_t itri = 0; itri < mesh.num_tris(); ++itri)
-        {
-            std::cout << "coordinates of triangle" << itri << " : ";
-            for (size_t icorner = 0; icorner < 3; ++icorner)
-            {
-                const float *c = mesh.vrt_coords(mesh.tri_corner_ind(itri, icorner));
-                std::cout << "(" << c[0] << ", " << c[1] << ", " << c[2] << ")";
-            }
-        std::cout << std::endl;
-        const float* n = mesh.tri_normal(itri);
-        std::cout   << "normal of triangle " << itri << ": "
-                    << "(" << n[0] << ", " << n[1] << ", " << n[2] << ")\n";
-        }
-    }  catch (std::exception &e) {
-        std::cout << e.what() << std::endl;
-    }
-    MeshCollider mc_j1, mc_j2, mc_j3, mc_j4, mc_j5, mc_j6;
-    MeshCollider mc_l1, mc_l2, mc_l3, mc_b;
-    mc_j2.ReadStl("STLmodels/joint2.stl");
-    mc_j2.MoveMesh(Quaternion(0, 0, 0.383, 0.924), Vector3(0, 0, 1));
+//        for (size_t itri = 0; itri < mesh.num_tris(); ++itri)
+//        {
+//            std::cout << "coordinates of triangle" << itri << " : ";
+//            for (size_t icorner = 0; icorner < 3; ++icorner)
+//            {
+//                const float *c = mesh.vrt_coords(mesh.tri_corner_ind(itri, icorner));
+//                std::cout << "(" << c[0] << ", " << c[1] << ", " << c[2] << ")";
+//            }
+//        std::cout << std::endl;
+//        const float* n = mesh.tri_normal(itri);
+//        std::cout   << "normal of triangle " << itri << ": "
+//                    << "(" << n[0] << ", " << n[1] << ", " << n[2] << ")\n";
+//        }
+//    }  catch (std::exception &e) {
+//        std::cout << e.what() << std::endl;
+//    }
+//    MeshCollider mc_j1, mc_j2, mc_j3, mc_j4, mc_j5, mc_j6;
+//    MeshCollider mc_l1, mc_l2, mc_l3, mc_b;
+//    mc_j2.ReadStl("STLmodels/joint2.stl");
+//    mc_j2.MoveMesh(Quaternion(0, 0, 0.383, 0.924), Vector3(0, 0, 1));
 //    mc_j3.read_stl("STLmodels/joint3.stl");
 //    mc_j4.read_stl("STLmodels/joint4.stl");
 //    mc_j5.read_stl("STLmodels/joint5.stl");

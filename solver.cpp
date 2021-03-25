@@ -209,7 +209,7 @@ return 0;
 }
 void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &end_point, const Angles &curr_angles, Angles& res_angle, const ushort &dt_millisec, Polynom result[])
 {
-//#define VECTOR
+#define VECTOR
     scalar x(start_point.x), vx(0), ax(0);
     scalar y(start_point.y), vy(0), ay(0);
     scalar z(start_point.z), vz(0), az(0);
@@ -381,7 +381,11 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
                         {
                             cout << "HOLY SHIT! COLLISION! Between " << i << " and " << j << " elements" << endl;
                             //show collision in visual
+#ifdef VECTOR
+                            emulator->OneIterMoveLinear(angles_v[i], angles_v[i + 1],  dt_millisec, false, accel_v[i]);
+#else
                             emulator->OneIterMoveLinear(angles[i], angles[i + 1],  dt_millisec, false, accel[i]);
+#endif
                         }
                 }
             }
@@ -497,13 +501,13 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
 #if !WITH_BENCHMARK
 #ifdef VECTOR
     emulator->MoveManipLinear(angles_v, accel_v, dt_millisec);
+    res_angle = angles_v.back();
 #else
     Angles *agl = new Angles[1000];
     emulator->MoveManipLinear(angles/*agl*/, std::size(angles), dt_millisec, accel);
+    res_angle = angles[t_millisec / dt_millisec];
 #endif
 #endif
-
-//    res_angle = angles[t_millisec / dt_millisec];
 }
 
 bool Solver::CheckTrajectoryForLinear(const Angles angles, const Vector3 &l1, const Vector3 &l2, const scalar &max_delta)
