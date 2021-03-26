@@ -856,6 +856,7 @@ void Quaternion::EulerToQuat(const Vector3 &angles)
     y = cos3 * sin2 * cos1 + sin3 * cos2 * sin1;
     z = cos3 * cos2 * sin1 - sin3 * sin2 * cos1;
     w = cos3 * cos2 * cos1 + sin3 * sin2 * sin1;
+    Normalize();
 }
 
 Vector3 Quaternion::GetEulerAngles() const

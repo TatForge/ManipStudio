@@ -4,7 +4,7 @@
 Solver::Solver(Robo &manip)
 {
     manip_config = new Matrix(*manip.state_matrix);
-    meshes.resize(8);
+    meshes.resize(9);
     try {
         meshes[0].ReadStl("STLmodels/base.stl");
         meshes[1].ReadStl("STLmodels/joint2.stl");
@@ -14,6 +14,8 @@ Solver::Solver(Robo &manip)
         meshes[5].ReadStl("STLmodels/joint4.stl");
         meshes[6].ReadStl("STLmodels/joint5.stl");
         meshes[7].ReadStl("STLmodels/joint6.stl");
+        meshes[8].ReadStl("STLmodels/cube0.5m.stl");
+        meshes[8].MoveMesh(Quaternion(0, 0, 0, 1), Vector3(SMESH + 0.05, SMESH - 0.05, 0));
         meshes_buff = meshes;
     }  catch (std::string &exc) {
         cout << exc << endl;
@@ -334,7 +336,6 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
         }
 
 
-        auto p = sqrt(pow(vy * dt_s + ay*dt_s*dt_s/2, 2));
         //сделать аналогично для углов
 //        rol += d_rol; pit += d_pit; yaw += d_yaw;
 #ifdef VECTOR
@@ -345,7 +346,7 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
             speed_v.resize(2 * (size + 1));
         }
         SolveInverseKinematic(ACCURACY, StateVector(x, y, z, rol, pit, yaw), angles_v[size], angles_v[size+1]);
-        SolveDirectKinematic(angles_v[0], buff);
+        SolveDirectKinematic(angles_v[size + 1], buff);
 #else
         SolveInverseKinematic(ACCURACY, StateVector(x, y, z, rol, pit, yaw), angles[size], angles[size+1]);
         SolveDirectKinematic(angles[size + 1], buff);
@@ -360,8 +361,6 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
         accel_v[size].x = vx;
         accel_v[size].y = vy;
         accel_v[size].z = vz;
-        if (angles_v[size].q[0] == 0)
-            auto kk = 123;
 #else
         speed[size].x = vx;
         speed[size].y = vy;
@@ -370,28 +369,32 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
         accel[size].y = vy;
         accel[size].z = vz;
 #endif
+#if WITH_COLLISIONS
         //Mesh calculations
         {
             if (MoveMeshes(buff))
             {
-                for (uint i = 0; i < meshes_buff.size(); i++)
+                for (uint i = 0; i < 8/*meshes_buff.size()*/; i++)
                 {
-                    for (uint j = RoboMath::max(uint(3), i + 3); j < meshes_buff.size(); j++)
-                        if (meshes_buff[i].CheckCollision(meshes_buff[j]))
+//                    for (uint j = RoboMath::max(uint(3), i + 3); j < 8; j++)
+                        if (/*meshes_buff[i].CheckCollision(meshes_buff[j]) || */meshes_buff[i].CheckCollision(meshes_buff[8]))
                         {
-                            cout << "HOLY SHIT! COLLISION! Between " << i << " and " << j << " elements" << endl;
+//                            cout << "HOLY SHIT! COLLISION! Between " << i << " and " << j << " elements" << endl;
                             //show collision in visual
 #ifdef VECTOR
-                            emulator->OneIterMoveLinear(angles_v[i], angles_v[i + 1],  dt_millisec, false, accel_v[i]);
+                            emulator->OneIterMoveLinear(angles_v[size], angles_v[size + 1],  dt_millisec, false, accel_v[i]);
 #else
-                            emulator->OneIterMoveLinear(angles[i], angles[i + 1],  dt_millisec, false, accel[i]);
+                            emulator->OneIterMoveLinear(angles[size], angles[size + 1],  dt_millisec, false, accel[i]);
 #endif
+
+                            throw("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + "cube"  /*to_string(cube)*/ + " elements");
                         }
                 }
             }
             else
                 cout << "Can't calculate all mesh points for this configuration" << endl;
         }
+#endif
         size++;
         t+= dt_s;
     }

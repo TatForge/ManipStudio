@@ -3,6 +3,7 @@
 #include "robo.h"
 #include "emulator.h"
 #include "meshcollider.h"
+
 //#include "gjkcollision3d.h"
 //#include "my_math.h"
 
@@ -28,7 +29,7 @@ public:
 //    int CalcPolynomCircle(const StateVector &start_point, const StateVector &end_point,)
     bool CheckTrajectoryForLinear(const Polynom &pol, const Vector3 &l1, const Vector3 &l2, const scalar &t_millisec, const scalar &max_delta);
     bool CheckTrajectoryForLinear(const Angles angles, const Vector3 &l1, const Vector3 &l2, const scalar &max_delta);
-    bool /*tuple<vector<Vector3>, vector<Quaternion>> */MoveMeshes(const Matrix4x4 TR[])
+    bool MoveMeshes(const Matrix4x4 TR[])
     {
         std::vector<Vector3>v_move;
         std::vector<Quaternion> quat_move;

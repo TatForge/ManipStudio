@@ -55,7 +55,7 @@ bool MeshCollider::ReadStl(const string &filename)
         mesh_file.read(ch_triangle_numbers, 4);
         vertex_numbers = 3 * *((unsigned int*) ch_triangle_numbers);
         m_size = vertex_numbers;
-        cout << "number of triangles = " << vertex_numbers << endl;
+//        cout << "number of triangles = " << vertex_numbers << endl;
 
         try {
             m_mesh.resize(vertex_numbers);
@@ -64,7 +64,7 @@ bool MeshCollider::ReadStl(const string &filename)
         }
         if (vertex_numbers > 200)
         {
-            cout << " number of vertexes more than 200" << endl;
+//            cout << " number of vertexes more than 200" << endl;
         }
     }
     for (uint i = 0; i < m_size; i += 3)
@@ -281,7 +281,7 @@ Simplex &Simplex::operator =(std::initializer_list<Vector3> input)
 
 void Simplex::PushFront(const Vector3 &point)
 {
-    for (unsigned short i = RoboMath::min(size, ushort(4)); i > 0; i--)
+    for (unsigned short i = RoboMath::min(size, ushort(3)); i > 0; i--)
     {
         points[i] = points[i - 1];
     }

@@ -228,10 +228,11 @@ int main(int argc, char *argv[])
     solver.SolveDirectKinematic(start_an, TT);
     StateVector stv( 0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
 //    StateVector tarv(0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));
-    StateVector tarv(0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));
+    StateVector tarv(0.1, 0.241, 0.05, ToRad(179), ToRad(45), ToRad(0));
+    StateVector tarv1(0.3, 0.241, 0.05, ToRad(179), ToRad(45), ToRad(0));
 //    StateVector stv(  -0.35, -0.3441, 0.0515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv(  0.35, -0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
-    StateVector tarv1(-0.15, +0.241, 0.0515, ToRad(178), ToRad(-45), ToRad(0));
+//    StateVector tarv1(-0.15, +0.241, 0.0515, ToRad(178), ToRad(-45), ToRad(0));
     StateVector tarv2(-0.35, +0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
     StateVector tarv3(-0.35, -0.3341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv4(-0.35, -0.3341, 0.2515, ToRad(178), ToRad(0), ToRad(0));

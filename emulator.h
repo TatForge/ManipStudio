@@ -97,7 +97,7 @@ public:
         meshes_buff[7].MoveMesh(quat_move[5], v_move[5]);
         uint counter(0);
 
-        for (uint i = 0; i < 8; i++)
+        for (uint i = 0; i < meshes_buff.size(); i++)
         {
             for (uint j = 0; j < meshes_buff[i].Size(); j++)
             {

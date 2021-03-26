@@ -4,9 +4,11 @@
 #include <cmath>
 
 //______ALL_PROJECT_CONSTANTS______
-#define WITH_BENCHMARK false
+#define WITH_BENCHMARK true
 #define WITH_GTESTS false
 #define WITH_QTESTS false
+#define WITH_COLLISIONS true
+#define SMESH +2.58
 //__________________________________
 #define RANGE_TO_PLOT 0.025  // 25 mm
 

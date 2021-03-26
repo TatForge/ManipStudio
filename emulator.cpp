@@ -25,7 +25,7 @@ Emulator::Emulator(const Robo &manip)
     for (size_t i = 0; i < shared_points->GetSize(); i++)
         points_to_visual[i] = 0;
 #ifdef VREMENNO_DLYA_VISUALKI
-    meshes.resize(8);
+    meshes.resize(9);
     try {
         meshes[0].ReadStl("STLmodels/base.stl");
         meshes[1].ReadStl("STLmodels/joint2.stl");
@@ -35,6 +35,8 @@ Emulator::Emulator(const Robo &manip)
         meshes[5].ReadStl("STLmodels/joint4.stl");
         meshes[6].ReadStl("STLmodels/joint5.stl");
         meshes[7].ReadStl("STLmodels/joint6.stl");
+        meshes[8].ReadStl("STLmodels/cube0.5m.stl");
+        meshes[8].MoveMesh(Quaternion(0, 0, 0, 1), Vector3(SMESH + 0.05, SMESH - 0.05, 0));
         meshes_buff = meshes;
     }  catch (std::string &exc) {
         cout << exc << endl;

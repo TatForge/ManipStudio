@@ -60,12 +60,11 @@ CUDA_COMPILE(CUDA_OBJECTS ${CUDA_FILES})
 
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
+#Main target
 add_executable(MainKinematic
     main.h
     my_math.h
     robo.h
-    Tests/test_my_math.h
-    Benchmarks/benchmarks.h
     cuda_math.h
     emulator.h
     mainwindow.h
@@ -75,13 +74,13 @@ add_executable(MainKinematic
     meshcollider.h
     stlreader.h
     stl_reader.h
+    Tests
+    Tests/test_my_math.h
+    Benchmarks/benchmarks.h
 
     main.cpp
     my_math.cpp
     robo.cpp
-    Tests/test_my_math.cpp
-    Tests/gtest_example.cpp
-    Benchmarks/benchmarks.cpp
     some_trash.cpp
     emulator.cpp
     mainwindow.cpp
@@ -90,10 +89,26 @@ add_executable(MainKinematic
     stlreader.cpp
     meshcollider.cpp
     ${CUDA_OBJECTS}
+    Tests/test_my_math.cpp
+    Tests/gtest_example.cpp
+    Benchmarks/benchmarks.cpp
 
     mainwindow.ui
 )
 target_link_libraries(MainKinematic Qt5::Core Qt5Test cudart Qt5::Widgets -lqcustomplot benchmark::benchmark benchmark::benchmark_main GTest::gtest)
+#Test target
+#add_executable(
+#    Tests
+##    ${CMAKE_CURRENT_SOURCE_DIR}/
+#    Tests/test_my_math.h
+#    Benchmarks/benchmarks.h
+
+#    Tests/test_my_math.cpp
+#    Tests/gtest_example.cpp
+#    Benchmarks/benchmarks.cpp
+#    )
+#target_include_directories(Tests )
+
 
 
 #add_executable(UnitTests Tests/gtest_example.cpp)

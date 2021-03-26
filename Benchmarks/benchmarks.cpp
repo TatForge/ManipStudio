@@ -176,12 +176,15 @@ static void BMInverseKinematic(benchmark::State &state)
     targets.z = 0.0515;
     targets.roll = ToRad(180);
     Robo manipulator(6);
-    manipulator.LoadManip();
-    Solver s(manipulator);
-    for (auto e : state)
-    {
-        s.SolveInverseKinematic(10e-5, targets, angles, angles);
-//        InverseKinematic(targets, angles);
+    try {
+        manipulator.LoadManip();
+        Solver s(manipulator);
+        for (auto e : state)
+        {
+            s.SolveInverseKinematic(10e-5, targets, angles, angles);
+        }
+    }  catch (std::string &exception) {
+        cout << exception << endl;
     }
 }
 BENCHMARK(BMInverseKinematic)->Unit(benchmark::kMicrosecond);
@@ -190,8 +193,8 @@ static void BMCalcPolynomLine(benchmark::State &state)
 {
     Angles angles;
     StateVector targets;
-    StateVector stv(   0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
-    StateVector tarv(  0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));
+    StateVector stv( 0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
+    StateVector tarv(0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));
     Angles start_an;
     Angles res_an;
     Polynom result[1000];
@@ -211,7 +214,7 @@ static void BMCollisionDetection(benchmark::State &state)
 //    Robo manipulator(6);
 //    manipulator.LoadManip();
 //    Solver solver(manipulator);
-//    solver.
+//    MeshCollider
 }
 
 //static void BM
