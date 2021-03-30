@@ -6,8 +6,8 @@ include(FetchContent)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 include_directories(/home/devel/Projects/SimulatorClient/)
 include_directories(/home/devel/Projects/Visualization/VisualizatorOpenGL/)
-include_directories(../MainKinematic/Tests/models/)
-include_directories(./STLmodels/)
+include_directories(${CMAKE_SOURCE_DIR}/Tests/models/)
+include_directories(${CMAKE_SOURCE_DIR}/STLmodels/)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,6 +22,7 @@ find_package(benchmark REQUIRED)
 find_package(CUDA REQUIRED)
 find_package(GTest REQUIRED)
 enable_testing(true)
+
 
 #FetchContent_Declare(
 #    gtest
@@ -96,6 +97,14 @@ add_executable(MainKinematic
     mainwindow.ui
 )
 target_link_libraries(MainKinematic Qt5::Core Qt5Test cudart Qt5::Widgets -lqcustomplot benchmark::benchmark benchmark::benchmark_main GTest::gtest)
+
+
+#target_compile_options(MainKinematic PRIVATE -Wall -Wextra -Werror)
+
+add_custom_command(TARGET MainKinematic POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
+                   ${CMAKE_SOURCE_DIR}/ManipulatorSettigns.ini $<TARGET_FILE_DIR:MainKinematic>/)
+add_custom_command(TARGET MainKinematic POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory
+                  ${CMAKE_SOURCE_DIR}/STLmodels/ $<TARGET_FILE_DIR:MainKinematic>/STLmodels)
 #Test target
 #add_executable(
 #    Tests

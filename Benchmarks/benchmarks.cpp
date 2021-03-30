@@ -189,6 +189,17 @@ static void BMInverseKinematic(benchmark::State &state)
 }
 BENCHMARK(BMInverseKinematic)->Unit(benchmark::kMicrosecond);
 
+static void BMForwardDinamic(benchmark::State &state)
+{
+ Robo manip(6);
+ manip.LoadManip();
+ for (auto _ : state)
+ {
+     manip.SolveForwardDynamic();
+ }
+}
+BENCHMARK(BMForwardDinamic)->Unit(benchmark::kMicrosecond);
+
 static void BMCalcPolynomLine(benchmark::State &state)
 {
     Angles angles;
@@ -203,19 +214,34 @@ static void BMCalcPolynomLine(benchmark::State &state)
     Solver solver(manipulator);
     for (auto e : state)
     {
-        solver.CalcPolynomLine(stv, tarv, start_an, res_an, 10, result);
+        try {
+            solver.CalcPolynomLine(stv, tarv, 1, 0.5,  start_an, res_an, 10, result);
+        }  catch (std::runtime_error &exc_str) {
+            cout << exc_str.what() << endl;
+        }
     }
 }
 BENCHMARK(BMCalcPolynomLine)->Unit(benchmark::kMicrosecond);
 
-
-static void BMCollisionDetection(benchmark::State &state)
-{
+//static void BMCollisionDetection(benchmark::State &state)
+//{
+//#define WITH_COLLISIONS
+//    Angles angles;
+//    StateVector targets;
+//    StateVector stv( 0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
+//    StateVector tarv(0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));
+//    Angles start_an;
+//    Angles res_an;
+//    Polynom result[1000];
 //    Robo manipulator(6);
 //    manipulator.LoadManip();
 //    Solver solver(manipulator);
-//    MeshCollider
-}
+//    for (auto _ : state)
+//    {
+//        solver.CalcPolynomLine(stv, tarv, start_an, res_an, 10, result);
+//    }
+//}
+//BENCHMARK(BMCollisionDetection)->Unit(benchmark::kMicrosecond);
 
 //static void BM
 

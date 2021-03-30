@@ -4,10 +4,10 @@
 #include <cmath>
 
 //______ALL_PROJECT_CONSTANTS______
-#define WITH_BENCHMARK true
-#define WITH_GTESTS false
-#define WITH_QTESTS false
-#define WITH_COLLISIONS true
+#define WITH_BENCHMARK  false
+#define WITH_GTESTS     false
+#define WITH_QTESTS     false
+#define WITH_COLLISIONS false
 #define SMESH +2.58
 //__________________________________
 #define RANGE_TO_PLOT 0.025  // 25 mm
@@ -26,11 +26,11 @@ typedef double scalar;
 typedef float scalar;
 #endif
 const scalar g = 9.80665;
-inline static scalar ToRad(scalar degrees) {return degrees * RAD;};
-inline static scalar ToDeg(scalar radians) {return radians * DEG;};
-inline static scalar ToSec(scalar milliseconds) {return milliseconds / 1000.0;};
-inline static scalar ToMillisec(scalar seconds) {return floor(seconds * 1000.0 + 0.5);};
-//_____________________
+inline scalar ToRad(scalar degrees) {return degrees * RAD;}
+inline scalar ToDeg(scalar radians) {return radians * DEG;}
+inline scalar ToSec(scalar milliseconds) {return milliseconds / 1000.0;}
+inline scalar ToMillisec(scalar seconds) {return floor(seconds * 1000.0 + 0.5);}
+//_____________________________
 
 //______Robo___constants_______
 #define POSITION_AND_ROTATION
@@ -51,6 +51,7 @@ const scalar MaxAngleDls = ToRad(45.0);
 #define DELTA_RANGE 0.0001         //дельта метров, на которые эффектор манипулятора может отклониться от прямой
 #define MAX_KINEMATIC_ITERS 100
 #define ACCURACY 10e-7
+
 //_____________________________
 
 

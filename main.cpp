@@ -21,6 +21,9 @@
 
 #include <QApplication>
 
+#include <QString>
+QString a11 = QString::number(123);
+
 //#include "commandworker.h"
 
 
@@ -65,7 +68,7 @@ int main(int argc, char *argv[])
 //        T[i].MatrixCout("T");
     }
 
-    Matrix4x4 L =  T[0] * T[1] * T[2] * T[3] * T[4]* T[5];
+//    Matrix4x4 L =  T[0] * T[1] * T[2] * T[3] * T[4]* T[5];
 //    cout << " x = " << L(0,3) << " y = " << L(1,3) << " z = " << L(2,3) << endl;
 
             //Ixx  Iyy  Izz  Ixy   Ixz
@@ -90,7 +93,7 @@ int main(int argc, char *argv[])
     Uji.MakeIdentity();
     MatrixOfMatrix6x6 U;
     Vector res_hikm(6,0);
-    scalar hikm_buff;
+//    scalar hikm_buff;
     array<Matrix, 6> Ji;
     Vector Dv(6, 0);
     Vector p(6,0);
@@ -164,12 +167,12 @@ int main(int argc, char *argv[])
 //    }
 
     manipulator.ComputeJointsPosition();
-    manipulator.SolveDirectDynamic();
+    manipulator.SolveForwardDynamic();
 //    manipulator.WriteSettingsToFile();
 //    manipulator.SolveInverseDynamic();
 //    manipulator.SolveDirectKinematic(manipulator.get)
-    Robo::Moments *res_mom = manipulator.GetMoments();
-    rm::Angles *res_ang = manipulator.GetAngles();
+//    Robo::Moments *res_mom = manipulator.GetMoments();
+//    rm::Angles *res_ang = manipulator.GetAngles();
     for (int i = 0; i < 6; i++)
     {
 //        cout << "tao " << setw(10) << res_mom->tao[i]
@@ -216,9 +219,6 @@ int main(int argc, char *argv[])
         angle_start.q_pp[i] = 0;
         angle_stop.q[i] = manipulator.GetTheta(i);
     }
-    double ti = 2;
-    double dt = 0.1;
-
 
     Solver solver(manipulator);
     Matrix4x4 TT[6];
@@ -229,13 +229,13 @@ int main(int argc, char *argv[])
     StateVector stv( 0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
 //    StateVector tarv(0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));
     StateVector tarv(0.1, 0.241, 0.05, ToRad(179), ToRad(45), ToRad(0));
-    StateVector tarv1(0.3, 0.241, 0.05, ToRad(179), ToRad(45), ToRad(0));
+    StateVector tarv1(-0.2, 0.241, 0.05, ToRad(179), ToRad(45), ToRad(0));
 //    StateVector stv(  -0.35, -0.3441, 0.0515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv(  0.35, -0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv1(-0.15, +0.241, 0.0515, ToRad(178), ToRad(-45), ToRad(0));
-    StateVector tarv2(-0.35, +0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
-    StateVector tarv3(-0.35, -0.3341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
-//    StateVector tarv4(-0.35, -0.3341, 0.2515, ToRad(178), ToRad(0), ToRad(0));
+    StateVector tarv2(-0.65, +0.1341, -0.05, ToRad(178), ToRad(0), ToRad(0));
+    StateVector tarv3(-0.45, -0.3341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
+    StateVector tarv4(-0.84, -0.0341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv5( 0.35, -0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv6( 0.15, +0.3341, 0.2515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv7(-0.35, +0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
@@ -265,11 +265,14 @@ int main(int argc, char *argv[])
 
 //    solver.SolveDirectKinematic(angle_stop, TT);
     Polynom result[1000];
-
+    scalar v_tcp(1);
+    scalar a_tcp(0.5);
     try {
-        solver.CalcPolynomLine(stv, tarv, angle_start, res_an, 10, result);
-        solver.CalcPolynomLine(tarv, tarv1, res_an,     res_an, 10, result);
-        solver.CalcPolynomLine(tarv1, tarv2, res_an,    res_an, 10, result);
+//        solver.CalcPolynomLine(stv,   tarv,  v_tcp, a_tcp, angle_start, res_an, 10, result);
+//        solver.CalcPolynomLine(tarv,  tarv1, v_tcp, a_tcp, res_an,      res_an, 10, result);
+//        solver.CalcPolynomLine(tarv1, tarv2, v_tcp, a_tcp, res_an,      res_an, 10, result);
+//        solver.CalcPolynomLine(tarv2, tarv3, v_tcp, a_tcp, res_an,      res_an, 10, result);
+        solver.CalcPolynomLine(tarv3, tarv4, v_tcp, a_tcp, res_an,      res_an, 10, result);
     }  catch (std::string &str) {
         cout << str << endl;
     }

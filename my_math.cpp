@@ -554,51 +554,58 @@ void Matrix::DataNewMemory(const int &rows, const int &cols)
 
 Vector::Vector()
 {
-    length = 0;
-    data = nullptr;
+    m_length = 0;
+    m_data = nullptr;
 }
 
 Vector::Vector(int size)
 {
-    length = size;
-    dataNewMemory(length);
+    m_length = size;
+    dataNewMemory(m_length);
 }
 
 Vector::Vector(int size, scalar value)
 {
-    length = size;
-    dataNewMemory(length);
+    m_length = size;
+    dataNewMemory(m_length);
     for (counter i = 0; i < size; i++)
-        *(data + i) = value;
+        *(m_data + i) = value;
 }
 
 Vector::Vector(const initializer_list<scalar> il)
 {
-    length = il.size();
-    dataNewMemory(length);
+    m_length = il.size();
+    dataNewMemory(m_length);
     initializer_list<scalar>::iterator it = il.begin();
-    for (counter i = 0; i < length; i++)
+    for (counter i = 0; i < m_length; i++)
     {
-        *(data + i) = *it++;
+        *(m_data + i) = *it++;
     }
+}
+
+Vector::Vector(const Vector &v)
+{
+    dataNewMemory(v.m_length);
+    m_length = v.m_length;
+    memcpy(m_data, v.m_data, sizeof(scalar) * m_length);
 }
 
 Vector::~Vector()
 {
-    if (data != nullptr)
+    if (m_data != nullptr)
     {
-        delete[] data;
+        delete[] m_data;
     }
 }
 
 scalar Vector::MaxAbs()
 {
     scalar result (0.0);
-    for (counter i = 0; i < this->length; i++)
+    for (counter i = 0; i < this->m_length; i++)
     {
-        if (abs(*(this->data + i)) > result)
+        if (abs(*(this->m_data + i)) > result)
         {
-            result = abs(*(this->data + i));
+            result = abs(*(this->m_data + i));
         }
     }
     return result;
@@ -606,18 +613,18 @@ scalar Vector::MaxAbs()
 
 scalar &Vector::operator()(const counter &number)
 {
-    assert(number >= 0 && number <= length);
-    return *(data + number);
+    assert(number >= 0 && number <= m_length);
+    return *(m_data + number);
 }
 
 scalar &Vector::at(const counter &number)
 {
-    return *(data + number);
+    return *(m_data + number);
 }
 
 scalar Vector::at(const counter &number) const
 {
-    return *(data + number);
+    return *(m_data + number);
 }
 
 Vector &Vector::operator=(const Vector &v)
@@ -625,58 +632,52 @@ Vector &Vector::operator=(const Vector &v)
 
     if (this == &v)
         return *this;
-    if (data != nullptr)
-        delete[] data;
-    length = v.length;
-    dataNewMemory(length);
+    if (m_data != nullptr)
+        delete[] m_data;
+    m_length = v.m_length;
+    dataNewMemory(m_length);
 //    for (counter i = 0; i < length; i++)
 //    {
 //        *(data + i) = *(V.GetDataPtr() + i);
 //    }
-    memcpy(data, v.data, sizeof(scalar) * length);
+    memcpy(m_data, v.m_data, sizeof(scalar) * m_length);
     return *this;
 }
 
 Vector &Vector::operator=(const double &value)
 {
-    for (int i = 0; i < this->length; i++)
+    for (int i = 0; i < this->m_length; i++)
     {
-        *(this->data + i) = value;
+        *(this->m_data + i) = value;
     }
     return *this;
 }
 
-Vector Vector::operator*(const Vector &v)
-{
-    return Vector{
-
-    };
-}
 
 scalar Vector::MultiplyTranspose(const Vector &v)
 {
     //Умножение строки на столбец
     scalar result(0);
     for (int i = 0; i < v.GetLength(); i++)
-        result += *(data + i) * (*(v.data + i));
+        result += *(m_data + i) * (*(v.m_data + i));
     return result;
 }
 
 void Vector::operator*=(const scalar &value)
 {
-    for (counter i = 0; i < length; i++)
+    for (counter i = 0; i < m_length; i++)
     {
-        *(data + i) *= value;
+        *(m_data + i) *= value;
     }
 }
 
 bool Vector::operator==(const Vector &v) const
 {
-    assert(length == v.length);
+    assert(m_length == v.m_length);
     //Сравнение векторов с точностью до 6 знака
-    for (counter i = 0; i < v.length; i++)
+    for (counter i = 0; i < v.m_length; i++)
     {
-        if (!(round(*(data + i)*100000)/100000 == round(*(v.data + i) * 100000)/100000))
+        if (!(round(*(m_data + i)*100000)/100000 == round(*(v.m_data + i) * 100000)/100000))
             return false;
     }
     return true;
@@ -685,11 +686,11 @@ bool Vector::operator==(const Vector &v) const
 
 Vector Vector::operator-(const Vector &v)
 {
-    assert(this->length == v.length && "The operator '-' has different vector lengths");
-    Vector result(this->length);
-    *(result.data + 0) = (*(v.data + 0) - *(this->data + 0));
-    *(result.data + 1) = (*(v.data + 1) - *(this->data + 1));
-    *(result.data + 2) = (*(v.data + 2) - *(this->data + 2));
+    assert(this->m_length == v.m_length && "The operator '-' has different vector lengths");
+    Vector result(this->m_length);
+    *(result.m_data + 0) = (*(v.m_data + 0) - *(this->m_data + 0));
+    *(result.m_data + 1) = (*(v.m_data + 1) - *(this->m_data + 1));
+    *(result.m_data + 2) = (*(v.m_data + 2) - *(this->m_data + 2));
     return result;
 
 }
@@ -697,9 +698,9 @@ Vector Vector::operator-(const Vector &v)
 void Vector::VectorCout(const char *ch) const
 {
     cout << ch << endl;
-    for (counter i = 0; i < length; i++)
+    for (counter i = 0; i < m_length; i++)
     {
-        cout << setw(8) << *(data + i) << "  ";
+        cout << setw(8) << *(m_data + i) << "  ";
     }
     cout << endl << endl;
 
@@ -707,7 +708,7 @@ void Vector::VectorCout(const char *ch) const
 
 void Vector::dataNewMemory(const int &length)
 {
-    data = new scalar [length];
+    m_data = new scalar [length];
 }
 
 void Vector3::Rotate(const scalar &theta, const Vector3 &V)
@@ -902,11 +903,13 @@ long double Quaternion::GetAngle() const
 
 Quaternion Quaternion::operator*(const Quaternion &q) const
 {
-    scalar ww = w * q.w - x * q.x - y * q.y - z * q.z;
-    scalar xx = w * q.x + x * q.w + y * q.z - z * q.y;
-    scalar yy = w * q.y - x * q.z + y * q.w + z * q.x;
-    scalar zz = w * q.z + x * q.y - y * q.x + z * q.w;
-    return Quaternion(xx, yy, zz, ww);
+    Quaternion res;
+    res.w = w * q.w - x * q.x - y * q.y - z * q.z;
+    res.x = w * q.x + x * q.w + y * q.z - z * q.y;
+    res.y = w * q.y - x * q.z + y * q.w + z * q.x;
+    res.z = w * q.z + x * q.y - y * q.x + z * q.w;
+    res.Normalize();
+    return res;
 }
 
 Quaternion Quaternion::operator*(const Vector3 &v) const
@@ -1356,3 +1359,19 @@ bool Angles::IsNull() const
     return true;
 }
 
+
+scalar Trace(const Matrix4x4 &m)
+{
+    return (m.a[0] + m.a[5] + m.a[10] + m.a[15]);
+}
+
+scalar Trace(const Matrix &ma)
+{
+    assert(ma.GetColsCount() == ma.GetRowsCount());
+    scalar result(0);
+    for (int i = 0; i < ma.GetColsCount(); i++)
+    {
+        result += *(ma.GetDataPtr() + i * ma.GetColsCount() + i);
+    }
+    return result;
+}

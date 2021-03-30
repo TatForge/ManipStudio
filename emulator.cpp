@@ -11,6 +11,7 @@ Emulator::Emulator(const Robo &manip)
 {
 //#if !BENCHMARK
     w.show();
+    moments_window.show();
 //#endif
     state_matrix = new Matrix(manip.state_matrix->GetColsCount(), manip.state_matrix->GetRowsCount());
     for (int i = 0; i < JOINTS_COUNT; i++)
@@ -48,19 +49,6 @@ Emulator::~Emulator()
 {
     delete state_matrix;
 }
-
-void Emulator::MoveManipPolynom(Polynom polynom_arr[], scalar moving_time, scalar dt)
-{
-//    t = 0;
-//    bool is_last = false;
-//    while (t <= moving_time)
-//    {
-//        if (moving_time - t < 10e-4)
-//            is_last = true;
-//        OneIterMove(is_last);
-    //    }
-}
-
 void Emulator::MoveManipLinear(const Angles angles[], size_t size, scalar dt_msec, const Vector3 accel[])
 {
     t_m = 0;
@@ -262,6 +250,61 @@ void Emulator::FillManipPositionData()
         points_to_visual[iter + 1] = T_b(1, 3);
         points_to_visual[iter + 2] = T_b(2, 3);
         iter += 3;
+    }
+}
+
+void Emulator::MoveThatShit()
+{
+    for (uint i = 0; i < 999; i++)
+    {
+        meshes_to_visual[i] = 0;
+    }
+    Matrix4x4 TR[6];
+    TR[0] = T[0];
+    TR[1] = T[0] * T[1];
+    TR[2] = T[0] * T[1] * T[2];
+    TR[3] = T[0] * T[1] * T[2] * T[3];
+    TR[4] = T[0] * T[1] * T[2] * T[3] * T[4];
+    TR[5] = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
+    std::vector<Vector3>v_move;
+    std::vector<Quaternion> quat_move;
+    v_move.push_back(Vector3(0, 0, 0));
+    v_move.push_back(TR[0].ConvertToVector3());
+    v_move.push_back(TR[1].ConvertToVector3());
+    v_move.push_back(TR[2].ConvertToVector3());
+    v_move.push_back(TR[3].ConvertToVector3());
+    v_move.push_back(TR[4].ConvertToVector3());
+    v_move.push_back(TR[5].ConvertToVector3());
+
+    quat_move.push_back(TR[0].ConvertToQuaternion());
+    quat_move.push_back(TR[1].ConvertToQuaternion());
+    quat_move.push_back(TR[2].ConvertToQuaternion());
+    quat_move.push_back(TR[3].ConvertToQuaternion());
+    quat_move.push_back(TR[4].ConvertToQuaternion());
+    quat_move.push_back(TR[5].ConvertToQuaternion());
+
+    //пересчет точек тут же
+    meshes_buff = meshes;
+
+    meshes_buff[0].MoveMesh(quat_move[0], Vector3(0, 0, 0));
+    meshes_buff[1].MoveMesh(quat_move[0], v_move[1]);
+    meshes_buff[2].MoveMesh(quat_move[1], v_move[2]);
+    meshes_buff[3].MoveMesh(quat_move[2], v_move[3]);
+    meshes_buff[4].MoveMesh(quat_move[2], v_move[3]);
+    meshes_buff[5].MoveMesh(quat_move[3], v_move[4]);
+    meshes_buff[6].MoveMesh(quat_move[4], v_move[4]);
+    meshes_buff[7].MoveMesh(quat_move[5], v_move[5]);
+    uint counter(0);
+
+    for (uint i = 0; i < meshes_buff.size(); i++)
+    {
+        for (uint j = 0; j < meshes_buff[i].Size(); j++)
+        {
+            meshes_to_visual[counter + 0] = meshes_buff[i].point(j).x;
+            meshes_to_visual[counter + 1] = meshes_buff[i].point(j).y;
+            meshes_to_visual[counter + 2] = meshes_buff[i].point(j).z;
+            counter+= 3;
+        }
     }
 }
 

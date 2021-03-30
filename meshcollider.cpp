@@ -281,7 +281,7 @@ Simplex &Simplex::operator =(std::initializer_list<Vector3> input)
 
 void Simplex::PushFront(const Vector3 &point)
 {
-    for (unsigned short i = RoboMath::min(size, ushort(3)); i > 0; i--)
+    for (ushort i = RoboMath::min(size, ushort(3)); i > 0; i--)
     {
         points[i] = points[i - 1];
     }

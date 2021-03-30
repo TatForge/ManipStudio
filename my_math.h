@@ -68,11 +68,12 @@ namespace RoboMath
         Vector(int size);
         Vector(int size, scalar value);
         Vector(const initializer_list<scalar> il);
+        Vector(const Vector &v);
         ~Vector();
 
-        int GetLength() const {return length;};
+        int GetLength() const {return m_length;};
         scalar MaxAbs();
-        scalar* GetDataPtr() const {return data;};
+        scalar* GetDataPtr() const {return m_data;};
         scalar& operator()(const counter &number);
         scalar& at(const counter &number);
         scalar at(const counter &number) const;
@@ -85,8 +86,8 @@ namespace RoboMath
         Vector  operator-(const Vector &v);
         void VectorCout(const char *ch) const;
     protected:
-        int length;
-        scalar *data;
+        int m_length;
+        scalar *m_data;
         void dataNewMemory(const int &length);
     };
     class Tensor
@@ -121,7 +122,7 @@ namespace RoboMath
         Vector3 operator= (const Vector &V);
         Vector3 operator= (const Vector3 &V);
         Vector3 operator- (const Vector3 &V) const;
-        Vector3 operator- () const;;
+        Vector3 operator- () const;
         Vector3 operator+ (const Vector3 &V) const;
         Vector3 operator* (const Vector3 &V) const;
         Vector3 &operator+= (const Vector3 &V);
@@ -217,7 +218,7 @@ namespace RoboMath
     {
     public:
         scalar a[16];
-        Matrix4x4();;
+        Matrix4x4();
         Matrix4x4(const initializer_list<scalar> il);
         void operator=(const Matrix &m);
         void operator*=(const scalar &sc);
@@ -249,22 +250,7 @@ namespace RoboMath
     const Vector3 unit_z(0.0, 0.0, 1.0);
     const Vector3 unit_mz(0.0, 0.0, -1.0);
 
-    static scalar Trace(const Matrix4x4 &m)
-    {
-        return (m.a[0] + m.a[5] + m.a[10] + m.a[15]);
-    }
 
-    static scalar Trace(const Matrix &ma)
-    {
-        //only for square matrix
-        assert(ma.GetColsCount() == ma.GetRowsCount());
-        scalar result(0);
-        for (int i = 0; i < ma.GetColsCount(); i++)
-        {
-          result += *(ma.GetDataPtr() + i * ma.GetColsCount() + i);
-        }
-        return result;
-    }
     struct StateVector
     {
         StateVector() : x(0), y(0), z(0), roll(0), pitch(0), yaw(0){};
@@ -280,7 +266,7 @@ namespace RoboMath
             x(r.x), y(r.y), z(r.z), roll(roll_in), pitch(pitch_in), yaw(yaw_in){};
         StateVector(Vector3 &r, Vector3 &a) :
             x(r.x), y(r.y), z(r.z), roll(a.x), pitch(a.y), yaw(a.z){};
-        Vector3 GetCoord() const;;
+        Vector3 GetCoord() const;
         Vector3 GetAngles() const;
         scalar x;
         scalar y;
@@ -290,8 +276,8 @@ namespace RoboMath
         scalar yaw;
     };
 
-    template<typename T> inline static T min(T t1, T t2) {return (t1 < t2 ? t1 : t2);};
-    template<typename T> inline static T max(T t1, T t2) {return (t1 > t2 ? t1 : t2);};
+    template<typename T> inline static T min(T t1, T t2) {return (t1 < t2 ? t1 : t2);}
+    template<typename T> inline static T max(T t1, T t2) {return (t1 > t2 ? t1 : t2);}
     template<typename T> inline static T interpolate(T t1, T t2, scalar percent){
         if (percent == 0)
             return t1;
@@ -308,7 +294,19 @@ namespace RoboMath
             return false;
         return true;
     }
+    const Matrix4x4 q ({0, -1, 0, 0,
+                        1,  0, 0, 0,
+                        0,  0, 0, 0,
+                        0,  0, 0, 0});
+    const Matrix4x4 q_sq ({-1,   0, 0, 0,
+                            0,  -1, 0, 0,
+                            0,   0, 0, 0,
+                            0,   0, 0, 0});
 }
+scalar Trace(const RoboMath::Matrix4x4 &m);
+
+scalar Trace(const RoboMath::Matrix &ma);
+
 scalar Distance(const RoboMath::StateVector &v1, const RoboMath::StateVector &v2);
 scalar CalcDistancePointToLine(RoboMath::Vector3 p, const RoboMath::Vector3 *l1, const RoboMath::Vector3 *l2);
 class checkTime

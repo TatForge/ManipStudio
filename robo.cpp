@@ -4,14 +4,7 @@
 #define CALC_INVERSE_MATRIX
 
 using namespace RoboMath;
-const Matrix4x4 q ({0, -1, 0, 0,
-                    1,  0, 0, 0,
-                    0,  0, 0, 0,
-                    0,  0, 0, 0});
-const Matrix4x4 q_sq ({-1,   0, 0, 0,
-                        0,  -1, 0, 0,
-                        0,   0, 0, 0,
-                        0,   0, 0, 0});
+
 
 Vector gv{0, 0, -g, 0};
 
@@ -275,7 +268,7 @@ void Robo::ComputeJointsPosition()
     UpdateTMatrix();
 }
 
-StateVector Robo::SolveDirectKinematic(const Angles &a, Matrix *const state_matrix)
+StateVector Robo::SolveForwardKinematic(const Angles &a, Matrix *const state_matrix)
 {
     RoboMath::Matrix4x4 T[JOINTS_COUNT];
     Matrix &A = *state_matrix;
@@ -370,10 +363,11 @@ void Robo::DeltaThetasCout()
     }
 }
 
-void Robo::SolveDirectDynamic()
+void Robo::SolveForwardDynamic()
 {
     CalcUMatrix();
     int ctr(0);
+    scalar buff(0);
     for (counter i = 0; i < 6; i++)
     {
         for (counter j = i; j < 6; j++)
@@ -384,6 +378,7 @@ void Robo::SolveDirectDynamic()
         }
         ctr++;
     }
+
     //Расчет D для i-го элемента манипулятора
     for (counter i = 0; i < 6; i++)
     {
@@ -391,9 +386,10 @@ void Robo::SolveDirectDynamic()
         {
             for (counter j = RoboMath::max(i, k); j < 6; j++)
             {
-                m_moments.dv[i] += RoboMath::Trace(U[k*6 + j] * m_ji[k].MultiplyTranspose(U[i*6 + j]));
+                buff += Trace(U[k*6 + j] * m_ji[k].MultiplyTranspose(U[i*6 + j]));
             }
-            m_moments.dv[i] *= m_angles.q_pp[i];
+            buff *= m_angles.q_pp[k];
+            m_moments.dv[i] += buff;
         }
     }
 
@@ -654,7 +650,7 @@ bool Robo::CheckTrajectoryForLinear(const Polynom pol, Vector3 l1, Vector3 l2, c
             //                pol.joint[i].Cout("pol");
             a.q[i] = pol.GetAngle(i, cur_t);
         }
-        rm::StateVector v = SolveDirectKinematic(a, state_matrix);
+        rm::StateVector v = SolveForwardKinematic(a, state_matrix);
         auto distance = CalcDistancePointToLine(v.GetCoord(), &l1, &l2);
         if (distance > delta_r)
         {

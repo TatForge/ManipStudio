@@ -63,6 +63,16 @@ public:
         scalar p[JOINTS_COUNT];
         scalar hikm[JOINTS_COUNT];
         scalar dv[JOINTS_COUNT];
+        void MakeNull()
+        {
+            for (uint i = 0; i < JOINTS_COUNT; i++)
+            {
+                tao[i]  = 0;
+                p[i]    = 0;
+                hikm[i] = 0;
+                dv[i]   = 0;
+            }
+        }
     };
 
     Robo();
@@ -77,19 +87,19 @@ public:
     void CalculateDeltaR(rm::Vector3 target_r);
     void AddDeltaThetas();
     void ComputeJointsPosition();
-    rm::StateVector SolveDirectKinematic(const rm::Angles &a, rm::Matrix * const state_matrix);
-    void SolveInverseKinematic(const scalar &accuracy, const rm::Vector3 &target, const rm::Vector3 &target_r);;
+    rm::StateVector SolveForwardKinematic(const rm::Angles &a, rm::Matrix * const state_matrix);
+    void SolveInverseKinematic(const scalar &accuracy, const rm::Vector3 &target, const rm::Vector3 &target_r);
     void DeltaThetasCout();
-    void SolveDirectDynamic();
+    void SolveForwardDynamic();
     void SolveInverseDynamic();
     void CalcPolynom(const rm::Angles *angle_start, const rm::Angles *angle_stop, const scalar t, RoboMath::Polynom &result);
     void CalcPolynomLine(const rm::Angles *angle_start, const rm::Angles *angle_stop, const scalar t, RoboMath::Polynom &result);
     void CalcPolynomCurve(const rm::Angles *angle_0, const rm::Angles *angle_1, const rm::Angles *angle2, const rm::Angles *angle3);
-    void WriteSettingsToFile();;
-    void LoadSettingsFromFile();;
+    void WriteSettingsToFile();
+    void LoadSettingsFromFile();
     void UpdateTMatrix();
 
-    bool CheckTrajectoryForLinear(const rm::Polynom pol, rm::Vector3 l1, rm::Vector3 l2, const scalar &t, const scalar &delta_t, const scalar &delta_r);;
+    bool CheckTrajectoryForLinear(const rm::Polynom pol, rm::Vector3 l1, rm::Vector3 l2, const scalar &t, const scalar &delta_t, const scalar &delta_r);
 
     bool LoadManip();
     Moments *GetMoments();

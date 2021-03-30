@@ -4,24 +4,52 @@
 Solver::Solver(Robo &manip)
 {
     manip_config = new Matrix(*manip.state_matrix);
-    meshes.resize(9);
+    m_meshes.resize(9);
+    m_mass.resize(6);
     try {
-        meshes[0].ReadStl("STLmodels/base.stl");
-        meshes[1].ReadStl("STLmodels/joint2.stl");
-        meshes[2].ReadStl("STLmodels/link3.stl");
-        meshes[3].ReadStl("STLmodels/joint3.stl");
-        meshes[4].ReadStl("STLmodels/link3.stl");
-        meshes[5].ReadStl("STLmodels/joint4.stl");
-        meshes[6].ReadStl("STLmodels/joint5.stl");
-        meshes[7].ReadStl("STLmodels/joint6.stl");
-        meshes[8].ReadStl("STLmodels/cube0.5m.stl");
-        meshes[8].MoveMesh(Quaternion(0, 0, 0, 1), Vector3(SMESH + 0.05, SMESH - 0.05, 0));
-        meshes_buff = meshes;
+        m_meshes[0].ReadStl("STLmodels/base.stl");
+        m_meshes[1].ReadStl("STLmodels/joint2.stl");
+        m_meshes[2].ReadStl("STLmodels/link3.stl");
+        m_meshes[3].ReadStl("STLmodels/joint3.stl");
+        m_meshes[4].ReadStl("STLmodels/link3.stl");
+        m_meshes[5].ReadStl("STLmodels/joint4.stl");
+        m_meshes[6].ReadStl("STLmodels/joint5.stl");
+        m_meshes[7].ReadStl("STLmodels/joint6.stl");
+        m_meshes[8].ReadStl("STLmodels/cube0.5m.stl");
+        m_meshes[8].MoveMesh(Quaternion(0, 0, 0, 1), Vector3(SMESH + 0.05, SMESH - 0.05, 0));
+        m_meshes_buff = m_meshes;
     }  catch (std::string &exc) {
         cout << exc << endl;
     }
+    m_inertion[0] = {0.000588, 0.000587, 0.000929, -1.299e-8, 2.44e-8, 1.79e-6};
+    m_inertion[1] = {0.000928, 0.001512, 0.000937, 1.86e-5,  1.55e-10, 5.34e-12};
+    m_inertion[2] = {0.001759, 0.000747, 0.001913, 2.32e-8,  6.37e-9,  1.68e-6};
+    m_inertion[3] = {0.000198, 0.000479, 0.002059, 3.16e-11, 5.59e-10, 1.59e-7};
+    m_inertion[4] = {9.826e-5, 0.000128, 0.000114, -2.74e-9, 4.41e-9,  5.82e-7};
+    m_inertion[5] = {5.529e-5, 5.359e-5, 8.415e-5, 1.99e-10, 2.53e-9,  1.85e-7};
+    m_mass[0] = 0.5982;
+    m_mass[1] = 1.1495;
+    m_mass[2] = 0.6399;
+    m_mass[3] = 0.3551;
+    m_mass[4] = 0.1747;
+    m_mass[5] = 5.1667;
+    m_cm[0] = Vector({0, 0, 0, 1});
+    m_cm[1] = Vector({0, 0, 0, 1});
+    m_cm[2] = Vector({0, 0, 0, 1});
+    m_cm[3] = Vector({0, 0, 0, 1});
+    m_cm[4] = Vector({0, 0, 0, 1});
+    m_cm[5] = Vector({0, 0, 0, 1});
+    for (int i = 0; i < JOINTS_COUNT; i++)
+    {
+        m_ji[i] = {{(-m_inertion[i].xx() + m_inertion[i].yy() + m_inertion[i].zz())/2, m_inertion[i].xy(), m_inertion[i].xz(), m_mass[i] * m_cm[i](0)},
+                   {m_inertion[i].xy(), (m_inertion[i].xx() - m_inertion[i].yy() + m_inertion[i].zz())/2,  m_inertion[i].yz(), m_mass[i] * m_cm[i](1)},
+                   {m_inertion[i].xz(), m_inertion[i].yz(), (m_inertion[i].xx() + m_inertion[i].yy() - m_inertion[i].zz())/2,  m_mass[i] * m_cm[i](2)},
+                   {m_mass[i] * m_cm[i](0),  m_mass[i] * m_cm[i](1), m_mass[i] * m_cm[i](2), m_mass[i]}};
+//            m_ji[i].MatrixCout("m_ji");
+    }
+
 #if !WITH_BENCHMARK
-    emulator = new Emulator(manip);
+    m_emulator = new Emulator(manip);
 #endif
 }
 void Solver::SolveDirectKinematic(const Angles &q, Matrix4x4 TR[])
@@ -177,8 +205,8 @@ void Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &ta
 //    return 0;
 }
 
-int Solver::CalcPolynomMaxQPP(const StateVector &start_point, const StateVector &end_point, const Angles &curr_angles, Angles& res_angle, const int &t_millisec, const scalar &dt_millisec, Polynom result[])
-{
+//int Solver::CalcPolynomMaxQPP(const StateVector &start_point, const StateVector &end_point, const Angles &curr_angles, Angles& res_angle, const int &t_millisec, const scalar &dt_millisec, Polynom result[])
+//{
 //    scalar x(start_point.x), dx(0), vx(0), ax(0);
 //    scalar y(start_point.y), dy(0), vy(0), ay(0);
 //    scalar z(start_point.z), dz(0), vz(0), az(0);
@@ -207,9 +235,9 @@ int Solver::CalcPolynomMaxQPP(const StateVector &start_point, const StateVector 
 //    dx = (end_point.x - start_point.x) / (t_millisec / dt);
 //    dy = (end_point.y - start_point.y) / (t_millisec / dt);
 //    dz = (end_point.z - start_point.z) / (t_millisec / dt);
-return 0;
-}
-void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &end_point, const Angles &curr_angles, Angles& res_angle, const ushort &dt_millisec, Polynom result[])
+//return 0;
+//}
+void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &curr_angles, Angles& res_angle, const ushort &dt_millisec, Polynom result[])
 {
 #define VECTOR
     scalar x(start_point.x), vx(0), ax(0);
@@ -235,8 +263,6 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
 #endif
     //calc max a value
     Angles max_qpp;
-    scalar v_tcp(0.1);
-    scalar a_tcp(0.5);
     scalar v_curr;
     scalar a_curr;
     scalar step(0);
@@ -262,7 +288,6 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
     unsigned int size(0);
     bool is_last(0);
     bool breaking(false);
-    bool accel_break(false);
     while (Distance(end_point, StateVector(x, y, z, rol, pit, yaw)) > 10e-5 && !is_last)
     {
         v_curr = sqrt(vx*vx + vy*vy + vz*vz);
@@ -276,11 +301,10 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
         if (!sign(vy + ay * dt_s, vy))
             is_last = true;
         step = sqrt(pow(vx * dt_s, 2) + pow(vy * dt_s, 2) + pow(vz * dt_s, 2));
-        auto distance_to_stop = v_curr * t_stop - a_tcp * t_stop * t_stop * 0.5;
+//        auto distance_to_stop = v_curr * t_stop - a_tcp * t_stop * t_stop * 0.5;
         //Режим торможения (если расстояние < Sтормож)
         if (distance_next_step <= (v_curr * t_stop - a_curr * t_stop * t_stop * 0.5) && !breaking)
         {
-            accel_break = true;
             breaking = true;
         }
         if (breaking)
@@ -288,7 +312,6 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
             ax = (2 * (end_point.x - x - vx * t_stop) * (1/t_stop/t_stop));// * abs(dist_x_norm);
             ay = (2 * (end_point.y - y - vy * t_stop) * (1/t_stop/t_stop));// * abs(dist_y_norm);
             az = (2 * (end_point.z - z - vz * t_stop) * (1/t_stop/t_stop));// * abs(dist_z_norm);
-            accel_break = false;
         }
         else
         {
@@ -381,13 +404,15 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
                         {
 //                            cout << "HOLY SHIT! COLLISION! Between " << i << " and " << j << " elements" << endl;
                             //show collision in visual
+#if !WITH_BENCHMARK
 #ifdef VECTOR
                             emulator->OneIterMoveLinear(angles_v[size], angles_v[size + 1],  dt_millisec, false, accel_v[i]);
 #else
                             emulator->OneIterMoveLinear(angles[size], angles[size + 1],  dt_millisec, false, accel[i]);
 #endif
+#endif
 
-                            throw("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + "cube"  /*to_string(cube)*/ + " elements");
+                            throw std::runtime_error("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + "cube"  /*to_string(cube)*/ + " elements");
                         }
                 }
             }
@@ -449,12 +474,12 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
 //        rol += d_rol; pit += d_pit; yaw += d_yaw;
 //        SolveInverseKinematic(ACCURACY, StateVector(x, y, z, rol, pit, yaw), angles[i], angles[i+1]);
 //    }
-    for (uint i = 0; i < size/*t_millisec / dt*/; i++)
+    for (uint i = 0; i < size - 1/*t_millisec / dt*/; i++)
     {
         for (uint j = 0; j < JOINTS_COUNT; j++)
         {
 #ifdef VECTOR
-            angles_v[i].q_pp[j] =(angles_v[i + 1].q[j] - angles_v[i].q[j] - angles_v[i].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
+            angles_v[i].q_pp[j] = (angles_v[i + 1].q[j] - angles_v[i].q[j] - angles_v[i].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
             angles_v[i + 1].q_p[j] = angles_v[i].q_p[j] + angles_v[i].q_pp[j] * dt_s;
 #else
             //Acceleration
@@ -463,9 +488,14 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
             angles[i + 1].q_p[j] = angles[i].q_p[j] + angles[i].q_pp[j] * dt_s;
 
 #endif
-
-
         }
+        SolveForwardDynamic(angles_v[i]);
+        m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec);
+    }
+    for (int j = 0; j < JOINTS_COUNT; j++)
+    {
+        angles_v[size].q_pp[j] = (angles_v[size].q[j] - angles_v[size - 1].q[j] - angles_v[size - 1].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
+        angles_v[size].q_p[j] = 0;
     }
 //    for (int i = 1; i < size/*t_millisec / dt*/; i++)
 //    {
@@ -490,6 +520,7 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
 
 #endif
 
+
         //___________________________________________________
 //        SolveDirectKinematic(angles[i + 1], buff);
 //        if (CheckCollisionAABB(buff))
@@ -497,13 +528,15 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
 //        if (CheckAABB(BoxAABB(0, 0, 0, 1, 1, 1), BoxAABB(-0.1, -0.1, -0.1, 0.1, 0.1, 0.1)))
 //            cout << "ALAAAAAAAAAAAAARM" << endl;
     }
+
+    m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec,true);
 //    for (int i = 0; i < size/*t_millisec / dt*/; i++)
 //    angles_v.shrink_to_fit();
 //    accel_v.shrink_to_fit();
 //    auto kk = angles_v.size();
 #if !WITH_BENCHMARK
 #ifdef VECTOR
-    emulator->MoveManipLinear(angles_v, accel_v, dt_millisec);
+    m_emulator->MoveManipLinear(angles_v, accel_v, dt_millisec);
     res_angle = angles_v.back();
 #else
     Angles *agl = new Angles[1000];
@@ -529,6 +562,39 @@ bool Solver::CheckTrajectoryForLinear(const Angles angles, const Vector3 &l1, co
     return true;
 }
 
+bool Solver::MoveMeshes(const Matrix4x4 TR[])
+{
+    std::vector<Vector3>v_move;
+    std::vector<Quaternion> quat_move;
+    v_move.push_back(Vector3(0, 0, 0));
+    v_move.push_back(TR[0].ConvertToVector3());
+    v_move.push_back(TR[1].ConvertToVector3());
+    v_move.push_back(TR[2].ConvertToVector3());
+    v_move.push_back(TR[3].ConvertToVector3());
+    v_move.push_back(TR[4].ConvertToVector3());
+    v_move.push_back(TR[5].ConvertToVector3());
+
+    quat_move.push_back(TR[0].ConvertToQuaternion());
+    quat_move.push_back(TR[1].ConvertToQuaternion());
+    quat_move.push_back(TR[2].ConvertToQuaternion());
+    quat_move.push_back(TR[3].ConvertToQuaternion());
+    quat_move.push_back(TR[4].ConvertToQuaternion());
+    quat_move.push_back(TR[5].ConvertToQuaternion());
+
+    //пересчет точек тут же
+    m_meshes_buff = m_meshes;
+
+    m_meshes_buff[0].MoveMesh(quat_move[0], Vector3(0, 0, 0));
+    m_meshes_buff[1].MoveMesh(quat_move[0], v_move[1]);
+    m_meshes_buff[2].MoveMesh(quat_move[1], v_move[2]);
+    m_meshes_buff[3].MoveMesh(quat_move[2], v_move[3]);
+    m_meshes_buff[4].MoveMesh(quat_move[2], v_move[3]);
+    m_meshes_buff[5].MoveMesh(quat_move[3], v_move[4]);
+    m_meshes_buff[6].MoveMesh(quat_move[4], v_move[4]);
+    m_meshes_buff[7].MoveMesh(quat_move[5], v_move[5]);
+    return true;
+}
+
 //void Solver::MoveMeshes(const Quaternion qtr[], const Vector3 v[])
 //{
 //    meshes_buff = meshes;
@@ -548,7 +614,7 @@ pair<int,int> Solver::CheckCollisionAABB(const Matrix4x4 state[])
         for (ushort j = i + 2; j < JOINTS_COUNT - 2; j++)
         {
             collision = CheckAABB(BoxAABB(state[i].at(0,3), state[i].at(1,3), state[i].at(2,3), state[i + 1].at(0,3), state[i + 1].at(1,3), state[i + 1].at(2,3)),
-                                  BoxAABB(state[j].at(0,3), state[j].at(1,3), state[j].at(2,3), state[j + 1].at(0,3), state[j + 1].at(1,3), state[j + 1].at(2,3)));
+                    BoxAABB(state[j].at(0,3), state[j].at(1,3), state[j].at(2,3), state[j + 1].at(0,3), state[j + 1].at(1,3), state[j + 1].at(2,3)));
             if (collision)
             {
                 cout << "ALARM!!! COLLISION!!! Between " << i << " and " << j << endl;
