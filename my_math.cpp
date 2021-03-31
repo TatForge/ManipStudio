@@ -985,7 +985,7 @@ Tensor::Tensor(const initializer_list<scalar> &il)
 
 Matrix4x4::Matrix4x4()
 {
-    MakeNull();
+//    MakeNull();
 }
 
 Matrix4x4::Matrix4x4(const initializer_list<scalar> il)
@@ -1036,25 +1036,6 @@ Matrix4x4 Matrix4x4::MultiplyTranspose(const Matrix4x4 &b)
             result.a[i * 4 + j] = a[i*4] * b.a[j * 4] + a[i*4 + 1] * b.a[j * 4 + 1] + a[i*4 + 2] * b.a[j * 4 + 2] + a[i*4 + 3] * b.a[j * 4 + 3];
         }
     }
-//    result.a11 = a11*b.a11 + a12*b.a12 + a13*b.a13 + a14*b.a14;
-//    result.a12 = a11*b.a21 + a12*b.a22 + a13*b.a23 + a14*b.a24;
-//    result.a13 = a11*b.a31 + a12*b.a32 + a13*b.a33 + a14*b.a34;
-//    result.a14 = a11*b.a41 + a12*b.a42 + a13*b.a43 + a14*b.a44;
-
-//    result.a21 = a21*b.a11 + a22*b.a12 + a23*b.a13 + a24*b.a14;
-//    result.a22 = a21*b.a21 + a22*b.a22 + a23*b.a23 + a24*b.a24;
-//    result.a23 = a21*b.a31 + a22*b.a32 + a23*b.a33 + a24*b.a34;
-//    result.a24 = a21*b.a41 + a22*b.a42 + a23*b.a43 + a24*b.a44;
-
-//    result.a31 = a31*b.a11 + a32*b.a12 + a33*b.a13 + a34*b.a14;
-//    result.a32 = a31*b.a21 + a32*b.a22 + a33*b.a23 + a34*b.a24;
-//    result.a33 = a31*b.a31 + a32*b.a32 + a33*b.a33 + a34*b.a34;
-//    result.a34 = a31*b.a41 + a32*b.a42 + a33*b.a43 + a34*b.a44;
-
-//    result.a41 = a41*b.a11 + a42*b.a12 + a43*b.a13 + a44*b.a14;
-//    result.a42 = a41*b.a21 + a42*b.a22 + a43*b.a23 + a44*b.a24;
-//    result.a43 = a41*b.a31 + a42*b.a32 + a43*b.a33 + a44*b.a34;
-//    result.a44 = a41*b.a41 + a42*b.a42 + a43*b.a43 + a44*b.a44;
     return result;
 }
 
@@ -1070,14 +1051,14 @@ Vector Matrix4x4::MultiplyTranspose(const Vector &v)
     return res;
 }
 
-Matrix4x4 Matrix4x4::operator*(const Matrix4x4 &b)
+Matrix4x4 Matrix4x4::operator*(const Matrix4x4 &b) const
 {
     Matrix4x4 result;
     for (int i = 0; i < 4; i++)
     {
         for (int j = 0; j < 4; j++)
         {
-            result.a[i * 4 + j] = a[i * 4] * b.a[j] + a[i*4 + 1] * b.a[4 + j] + a[i*4 + 2] * b.a[8 + j]  + a[i*4 + 3] * b.a[12 + j];
+            result.a[i * 4 + j] = a[i * 4] * b.a[j] + a[i*4 + 1] * b.a[4 + j] + a[i*4 + 2] * b.a[8 + j] + a[i*4 + 3] * b.a[12 + j];
         }
     }
     return result;
@@ -1108,7 +1089,7 @@ void Matrix4x4::MakeIdentity()
 
 void Matrix4x4::MakeNull()
 {
-    for (int i = 0; i < 16; i++)
+    for (counter i = 0; i < 16; i++)
     {
         a[i] = 0;
     }

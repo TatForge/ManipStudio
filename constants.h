@@ -8,6 +8,8 @@
 #define WITH_GTESTS     false
 #define WITH_QTESTS     false
 #define WITH_COLLISIONS false
+//assertions turn off
+//#define NDEBUG
 #define SMESH +2.58
 //__________________________________
 #define RANGE_TO_PLOT 0.025  // 25 mm

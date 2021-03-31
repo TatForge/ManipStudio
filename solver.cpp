@@ -443,7 +443,7 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
 
 #endif
         }
-        SolveForwardDynamic(angles_v[i]);
+//        SolveForwardDynamic(angles_v[i]);
 
 #if !WITH_BENCHMARK
         m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec);
@@ -491,8 +491,8 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
 #ifdef VECTOR
     m_emulator->MoveManipLinear(angles_v, accel_v, dt_millisec);
     res_angle = angles_v.back();
-#else
     m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec,true);
+#else
     Angles *agl = new Angles[1000];
     emulator->MoveManipLinear(angles/*agl*/, std::size(angles), dt_millisec, accel);
     res_angle = angles[t_millisec / dt_millisec];

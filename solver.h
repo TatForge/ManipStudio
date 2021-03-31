@@ -41,7 +41,7 @@ public:
                 for (int ctr = 0; ctr <= j; ctr++)
                 {
                     if (ctr == k)
-                        U[k*6 + j] = U[k*6 + j] * T[ctr] * q;
+                        U[k*6 + j].SelfMultipl(T[ctr], q);// = U[k*6 + j] * T[ctr] * q;
                     else
                     {
                         U[k*6 + j] = U[k*6 + j] * T[ctr];
@@ -66,7 +66,6 @@ public:
             }
             ctr++;
         }
-
         //Расчет D для i-го элемента манипулятора
         for (counter i = 0; i < 6; i++)
         {
@@ -82,7 +81,6 @@ public:
             }
         }
 
-        scalar hikm_buff(0);
         Matrix4x4 u_buff;
         for (counter i = 0; i < 6; i++)
         {
@@ -90,7 +88,7 @@ public:
             {
                 for (counter m = 0; m < 6; m++)
                 {
-                    hikm_buff = 0;
+                    buff = 0;
                     for (counter j = i; j < 6; j++)
                     {
                         u_buff.MakeIdentity();
@@ -103,17 +101,15 @@ public:
                             else
                                 u_buff = u_buff * T[ctr];
                         }
-                        hikm_buff += Trace(u_buff * m_ji[i].MultiplyTranspose(U[i*6 + j])) * angles.q_p[i] * angles.q_p[i];
+                        buff += Trace(u_buff * m_ji[i].MultiplyTranspose(U[i*6 + j])) * angles.q_p[i] * angles.q_p[i];
                     }
-                    m_moments.hikm[i] += hikm_buff;
+                    m_moments.hikm[i] += buff;
                 }
             }
         }
         for ( int i = 0; i < 6; i++)
         {
             m_moments.tao[i] = m_moments.p[i] + m_moments.dv[i] + m_moments.hikm[i];
-            if (m_moments.tao[i] > 500)
-                auto art = 0;
         }
 
 //        cout << "tao 1 = " << m_moments.tao[0] << "\ntao 2 = " << m_moments.tao[1] << "\ntao 3 = " << m_moments.tao[2] <<

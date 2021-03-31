@@ -220,20 +220,39 @@ namespace RoboMath
         scalar a[16];
         Matrix4x4();
         Matrix4x4(const initializer_list<scalar> il);
-        void operator=(const Matrix &m);
-        void operator*=(const scalar &sc);
         Matrix4x4 MultiplyTranspose(const Matrix4x4 &b);
         Vector MultiplyTranspose(const Vector &v);
-        Matrix4x4 operator*(const Matrix4x4 &b);
+        bool operator == (const Matrix4x4 &m) const;
+        void operator=(const Matrix &m);
+        void SelfMultipl(const Matrix4x4 &m1, const Matrix4x4 &m2)
+        {
+//            //this * m1 * m2
+//            Matrix4x4 buff;
+//            for (int i = 0; i < 4; i++)
+//            {
+//                for (int j = 0; j < 4; j++)
+//                {
+//                    buff.a[i * 4 + j] = m1.a[i * 4] * m2.a[j] + m1.a[i*4 + 1] * m2.a[4 + j] + m1.a[i*4 + 2] * m2.a[8 + j] + m1.a[i*4 + 3] * m2.a[12 + j];
+//                }
+//            }
+//            for (int i = 0; i < 4; i++)
+//            {
+//                for (int j = 0; j < 4; j++)
+//                {
+//                    a[i * 4 + j] = a[i * 4] * m1.a[j] + a[i*4 + 1] * m1.a[4 + j] + a[i*4 + 2] * m1.a[8 + j] + a[i*4 + 3] * m1.a[12 + j];
+//                }
+//            }
+        };
+        void operator*=(const scalar &sc);
+        scalar &operator()(const int &row, const int &col);
+        scalar at(const int &row, const int &col) const;
+        Matrix4x4 operator*(const Matrix4x4 &b) const;
+        Quaternion ConvertToQuaternion() const;
+        Vector3 ConvertToVector3() const;
         void MatrixCout(const char *ch) const;
         void MakeIdentity();
         void MakeNull();
-        bool operator == (const Matrix4x4 &m) const;
-        scalar &operator()(const int &row, const int &col);
-        scalar at(const int &row, const int &col) const;
         int MaxElem() const;
-        Quaternion ConvertToQuaternion() const;
-        Vector3 ConvertToVector3() const;
     };
     class MatrixOfMatrix6x6
     {
