@@ -116,8 +116,8 @@ public:
                 auto art = 0;
         }
 
-        cout << "tao 1 = " << m_moments.tao[0] << "\ntao 2 = " << m_moments.tao[1] << "\ntao 3 = " << m_moments.tao[2] <<
-        "\ntao 4 = " << m_moments.tao[3] << "\ntao 5 = " << m_moments.tao[4] << "\ntao 6 = " << m_moments.tao[5] << endl << endl;
+//        cout << "tao 1 = " << m_moments.tao[0] << "\ntao 2 = " << m_moments.tao[1] << "\ntao 3 = " << m_moments.tao[2] <<
+//        "\ntao 4 = " << m_moments.tao[3] << "\ntao 5 = " << m_moments.tao[4] << "\ntao 6 = " << m_moments.tao[5] << endl << endl;
         return true;
     };
 //    void MoveMeshes(const Quaternion qtr[], const Vector3 v[]);

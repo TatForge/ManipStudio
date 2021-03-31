@@ -233,9 +233,9 @@ int main(int argc, char *argv[])
 //    StateVector stv(  -0.35, -0.3441, 0.0515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv(  0.35, -0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv1(-0.15, +0.241, 0.0515, ToRad(178), ToRad(-45), ToRad(0));
-    StateVector tarv2(-0.65, +0.1341, -0.05, ToRad(178), ToRad(0), ToRad(0));
-    StateVector tarv3(-0.45, -0.3341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
-    StateVector tarv4(-0.84, -0.0341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
+    StateVector tarv2(-0.35, +0.1341, 0.12, ToRad(178), ToRad(0), ToRad(0));
+    StateVector tarv3(-0.35, -0.3341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
+    StateVector tarv4(-0.45, -0.3341, 0.0515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv5( 0.35, -0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv6( 0.15, +0.3341, 0.2515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv7(-0.35, +0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
@@ -268,10 +268,10 @@ int main(int argc, char *argv[])
     scalar v_tcp(1);
     scalar a_tcp(0.5);
     try {
-//        solver.CalcPolynomLine(stv,   tarv,  v_tcp, a_tcp, angle_start, res_an, 10, result);
-//        solver.CalcPolynomLine(tarv,  tarv1, v_tcp, a_tcp, res_an,      res_an, 10, result);
-//        solver.CalcPolynomLine(tarv1, tarv2, v_tcp, a_tcp, res_an,      res_an, 10, result);
-//        solver.CalcPolynomLine(tarv2, tarv3, v_tcp, a_tcp, res_an,      res_an, 10, result);
+        solver.CalcPolynomLine(stv,   tarv,  v_tcp, a_tcp, angle_start, res_an, 10, result);
+        solver.CalcPolynomLine(tarv,  tarv1, v_tcp, a_tcp, res_an,      res_an, 10, result);
+        solver.CalcPolynomLine(tarv1, tarv2, v_tcp, a_tcp, res_an,      res_an, 10, result);
+        solver.CalcPolynomLine(tarv2, tarv3, v_tcp, a_tcp, res_an,      res_an, 10, result);
         solver.CalcPolynomLine(tarv3, tarv4, v_tcp, a_tcp, res_an,      res_an, 10, result);
     }  catch (std::string &str) {
         cout << str << endl;

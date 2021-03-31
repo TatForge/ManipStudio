@@ -400,7 +400,7 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
                 for (uint i = 0; i < 8/*meshes_buff.size()*/; i++)
                 {
 //                    for (uint j = RoboMath::max(uint(3), i + 3); j < 8; j++)
-                        if (/*meshes_buff[i].CheckCollision(meshes_buff[j]) || */meshes_buff[i].CheckCollision(meshes_buff[8]))
+                        if (/*meshes_buff[i].CheckCollision(meshes_buff[j]) || */m_meshes_buff[i].CheckCollision(m_meshes_buff[8]))
                         {
 //                            cout << "HOLY SHIT! COLLISION! Between " << i << " and " << j << " elements" << endl;
                             //show collision in visual
@@ -428,52 +428,6 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
     speed_v.resize(size);
     accel_v.resize(size);
 #endif
-//    int i(0);
-//    while (x != end_point.x && y != end_point.y && z != end_point.z)
-//    {
-//        ax = a_tcp * dist_x / distance;
-//        ay = a_tcp * dist_y / distance;
-//        az = a_tcp * dist_z / distance;
-//        //попробовать расчет по t
-//        if ((vx + ax * dt_s) <= v_tcp * dist_x)
-//        {
-//            vx += ax * dt_s;
-//            vy += ay * dt_s;
-//            vz += az * dt_s;
-//    //        d_x = start_point.x + (V0x + dt * ax) + ax * dt * dt / 2;
-//    //        d_y = start_point.y + (V0y + dt * ay) + ay * dt * dt / 2;
-//    //        d_z = start_point.z + (V0z + dt * az) + az * dt * dt / 2;
-//        }
-//        else // v = vтреб
-//        {
-//            vx = v_tcp * (end_point.x - start_point.x) / distance;
-//            vy = v_tcp * (end_point.y - start_point.y) / distance;
-//            vz = v_tcp * (end_point.z - start_point.z) / distance;
-//        }
-//        dx = vx * dt_s;
-//        dy = vy * dt_s;
-//        dz = vz * dt_s;
-
-//        d_rol = (end_point.roll  - start_point.roll)  / (t_millisec / dt);
-//        d_pit = (end_point.pitch - start_point.pitch) / (t_millisec / dt);
-//        d_yaw = (end_point.yaw   - start_point.yaw)   / (t_millisec / dt);
-//        x += dx; y += dy; z += dz;
-//        rol += d_rol; pit += d_pit; yaw += d_yaw;
-
-//        SolveInverseKinematic(ACCURACY, StateVector(x, y, z, rol, pit, yaw), angles[i], angles[i+1]);
-
-
-
-
-//        i++;
-//    }
-
-//    for (int i = 0; i < t_millisec / dt; i++)
-//    {
-//        x += dx; y += dy; z += dz;
-//        rol += d_rol; pit += d_pit; yaw += d_yaw;
-//        SolveInverseKinematic(ACCURACY, StateVector(x, y, z, rol, pit, yaw), angles[i], angles[i+1]);
-//    }
     for (uint i = 0; i < size - 1/*t_millisec / dt*/; i++)
     {
         for (uint j = 0; j < JOINTS_COUNT; j++)
@@ -490,7 +444,10 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
 #endif
         }
         SolveForwardDynamic(angles_v[i]);
+
+#if !WITH_BENCHMARK
         m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec);
+#endif
     }
     for (int j = 0; j < JOINTS_COUNT; j++)
     {
@@ -529,16 +486,13 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
 //            cout << "ALAAAAAAAAAAAAARM" << endl;
     }
 
-    m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec,true);
-//    for (int i = 0; i < size/*t_millisec / dt*/; i++)
-//    angles_v.shrink_to_fit();
-//    accel_v.shrink_to_fit();
-//    auto kk = angles_v.size();
+
 #if !WITH_BENCHMARK
 #ifdef VECTOR
     m_emulator->MoveManipLinear(angles_v, accel_v, dt_millisec);
     res_angle = angles_v.back();
 #else
+    m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec,true);
     Angles *agl = new Angles[1000];
     emulator->MoveManipLinear(angles/*agl*/, std::size(angles), dt_millisec, accel);
     res_angle = angles[t_millisec / dt_millisec];

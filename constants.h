@@ -4,7 +4,7 @@
 #include <cmath>
 
 //______ALL_PROJECT_CONSTANTS______
-#define WITH_BENCHMARK  false
+#define WITH_BENCHMARK  true
 #define WITH_GTESTS     false
 #define WITH_QTESTS     false
 #define WITH_COLLISIONS false

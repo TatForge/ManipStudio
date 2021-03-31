@@ -189,7 +189,7 @@ static void BMInverseKinematic(benchmark::State &state)
 }
 BENCHMARK(BMInverseKinematic)->Unit(benchmark::kMicrosecond);
 
-static void BMForwardDinamic(benchmark::State &state)
+static void BMForwardDynamic(benchmark::State &state)
 {
  Robo manip(6);
  manip.LoadManip();
@@ -198,7 +198,7 @@ static void BMForwardDinamic(benchmark::State &state)
      manip.SolveForwardDynamic();
  }
 }
-BENCHMARK(BMForwardDinamic)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BMForwardDynamic)->Unit(benchmark::kMicrosecond);
 
 static void BMCalcPolynomLine(benchmark::State &state)
 {
