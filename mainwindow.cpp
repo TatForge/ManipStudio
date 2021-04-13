@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -65,6 +66,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::PlotCoordinates(double value_x, double value_y, double value_z, double yaw, double pitch, double roll, double dt, bool is_last)
 {
+#if !WITH_BENCHMARK
     double t = m_time;
     ui->plot_x->graph(0)->addData(t/1000.0, value_x);
     ui->plot_y->graph(0)->addData(t/1000.0, value_y);
@@ -72,26 +74,11 @@ void MainWindow::PlotCoordinates(double value_x, double value_y, double value_z,
     ui->plot_yaw->graph(0)->addData(t/1000.0, yaw);
     ui->plot_pit->graph(0)->addData(t/1000.0, pitch);
     ui->plot_rol->graph(0)->addData(t/1000.0, roll);
-//    ui->plot_x->graph(1)->setPen(QPen(QColor("red")));
-//    ui->plot_y->graph(1)->setPen(QPen(QColor("red")));
-//    ui->plot_x->graph(1)->setPen(QPen(QColor("red")));
-//    ui->plot_x->graph(1)->addData(t, value_vx);
-//    ui->plot_y->graph(1)->addData(t, value_vy);
-//    ui->plot_z->graph(1)->addData(t, value_vz);
-//    ui->plot_x->xAxis->setRange(0, t + 1);
-//    ui->plot_y->xAxis->setRange(0, t + 1);
-//    ui->plot_z->xAxis->setRange(0, t + 1);
-//    ui->plot_yaw->xAxis->setRange(0, t + 1);
-//    ui->plot_pit->xAxis->setRange(0, t + 1);
-//    ui->plot_rol->xAxis->setRange(0, t + 1);
     if (is_last)
     {
         ui->plot_x->yAxis->rescale();
         ui->plot_y->yAxis->rescale();
         ui->plot_z->yAxis->rescale();
-//        ui->plot_yaw->yAxis->setRange(QCPRange(0.01, 0.01));
-//        ui->plot_pit->yAxis->setRange(QCPRange(0.01, 0.01));
-//        ui->plot_rol->yAxis->setRange(QCPRange(0.01, 0.01));
         ui->plot_yaw->xAxis->setRange(QCPRange(0, t/1000.0 + 0.2));
         ui->plot_pit->xAxis->setRange(QCPRange(0, t/1000.0 + 0.2));
         ui->plot_rol->xAxis->setRange(QCPRange(0, t/1000.0 + 0.2));
@@ -112,10 +99,12 @@ void MainWindow::PlotCoordinates(double value_x, double value_y, double value_z,
         ui->plot_rol->replot();
     }
     m_time += dt;
+#endif
 }
 
 void MainWindow::PlotSpeeds(rm::Angles speeds, bool is_last)
-{
+{    
+#if !WITH_BENCHMARK
     double t = m_time;
 //    if (speeds.q_p[1] > ui->plot_rol->yAxis->range().maxRange)
 //        ui->plot_rol->yAxis->setRange(-1.5, speeds.q_p[1] + 1);
@@ -138,6 +127,7 @@ void MainWindow::PlotSpeeds(rm::Angles speeds, bool is_last)
         ui->plot_speed->replot();
         ui->plot_accel->replot();
     }
+#endif
 }
 
 void MainWindow::PrintResult(double x, double y, double z, double yaw, double pitch, double roll)

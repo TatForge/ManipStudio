@@ -9,10 +9,9 @@ Emulator::Emulator()
 
 Emulator::Emulator(const Robo &manip)
 {
-//#if !BENCHMARK
     w.show();
     moments_window.show();
-//#endif
+
     state_matrix = new Matrix(manip.state_matrix->GetColsCount(), manip.state_matrix->GetRowsCount());
     for (int i = 0; i < JOINTS_COUNT; i++)
     {
@@ -75,7 +74,6 @@ void Emulator::MoveManipLinear(std::vector<Angles> angles, std::vector<Vector3> 
         OneIterMoveLinear(angles[i], angles[i + 1], dt_msec, is_last, accel[i]);
     }
     w.PlotSpeeds(m_emu_angles);
-
 }
 
 void Emulator::MoveManipPolynom(Polynom polynom_in, int moving_time_millisec)
@@ -171,6 +169,7 @@ void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, con
 //        auto ii = Vector3(accel[(t_m)/dt_msec].x, accel[(t_m)/dt_msec].y, accel[(t_m)/dt_msec].z);
 //        w.PlotCoordinates(L(0,3), L(1,3), L(2,3), /*ToDeg(angles.z), ToDeg(angles.y), ToDeg(angles.x),*/
 //                          accel[(t_m)/dt_msec].x, accel[(t_m)/dt_msec].y, accel[(t_m)/dt_msec].z, m_delta_t_millisec, is_last);
+
         w.PlotCoordinates(L(0,3), L(1,3), L(2,3), accel.x, accel.y, accel.z, m_delta_t_millisec, is_last);
 
         w.PlotSpeeds(m_emu_angles, is_last);

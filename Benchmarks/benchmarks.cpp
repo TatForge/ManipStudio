@@ -9,25 +9,7 @@ Benchmarks::Benchmarks()
 
 }
 
-//class MyFixture : public benchmark::Fixture{
-//public:
-//    MyFixture()
-//    {
-//        Robo manipulator(6);
-//        manipulator.LoadManip();
-//        Solver solver(manipulator);
-//    }
-//    void BMDirectKinematic(const benchmark::State &state)
-//    {
-//        Matrix4x4 L[JOINTS_COUNT];
-//        Angles a;
-//        for (auto _ : state)
-//        {
-//            SolveDirectKinematic(a, L);
-//        }
-//    }
 
-//};
 
 
 void SolveDirectKinematic(const Angles &q, Matrix4x4 TR[])
@@ -93,12 +75,14 @@ BENCHMARK(BMInverseKinematic)->Unit(benchmark::kMicrosecond);
 
 static void BMForwardDynamic(benchmark::State &state)
 {
- Robo manip(6);
- manip.LoadManip();
- for (auto _ : state)
- {
-     manip.SolveForwardDynamic();
- }
+    Robo manip(6);
+    manip.LoadManip();
+    Solver s(manip);
+    Angles angles;
+    for (auto _ : state)
+    {
+        s.SolveForwardDynamic(angles);
+    }
 }
 BENCHMARK(BMForwardDynamic)->Unit(benchmark::kMicrosecond);
 
@@ -138,7 +122,7 @@ static void Matrix4x4Mulitplication(benchmark::State &state)
         m3.SelfMultipl(m1, m2);
     }
 }
-BENCHMARK(Matrix4x4Mulitplication)->Unit(benchmark::kNanosecond);
+//BENCHMARK(Matrix4x4Mulitplication)->Unit(benchmark::kNanosecond);
 
 //static void BMCollisionDetection(benchmark::State &state)
 //{

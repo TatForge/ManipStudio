@@ -527,7 +527,7 @@ void Matrix::MatrixCout(const char *ch) const
     {
         for (counter j = 0; j < m_cols; j++)
         {
-            cout << setw(9) << *(data + i * m_cols + j) << "\t";
+            cout << setw(11) << *(data + i * m_cols + j) << "\t";
         }
         cout << endl;
     }
@@ -932,6 +932,7 @@ void Quaternion::Scale(const scalar &s)
 void Quaternion::Normalize()
 {
     scalar l = sqrt(x * x + y * y + z * z + w * w);
+    w /= l;
     x /= l;
     y /= l;
     z /= l;
@@ -1071,7 +1072,7 @@ void Matrix4x4::MatrixCout(const char *ch) const
          << ch
          << "___________________________"
          << endl;
-    const int w = 13;
+    const int w = 12;
     cout << setw(w) << a[0]  << setw(w) << a[1]  << setw(w) << a[2]  << setw(w) << a[3]  << endl;
     cout << setw(w) << a[4]  << setw(w) << a[5]  << setw(w) << a[6]  << setw(w) << a[7]  << endl;
     cout << setw(w) << a[8]  << setw(w) << a[9]  << setw(w) << a[10] << setw(w) << a[11] << endl;
@@ -1292,13 +1293,13 @@ Vector3 StateVector::GetAngles() const
     return Vector3(roll, pitch, yaw);
 }
 
-checkTime::checkTime()
+CheckTime::CheckTime()
 {
     start = std::chrono::high_resolution_clock::now();
     checked = false;
 }
 
-checkTime::~checkTime()
+CheckTime::~CheckTime()
 {
     if (!checked)
     {
@@ -1308,7 +1309,7 @@ checkTime::~checkTime()
     }
 }
 
-std::chrono::duration<double> checkTime::duration()
+std::chrono::duration<double> CheckTime::duration()
 {
     stop = std::chrono::high_resolution_clock::now();
     d = stop - start;

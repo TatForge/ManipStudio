@@ -85,7 +85,7 @@ void JustFoo()
               {3,3,3,3},
               {3,3,3,3}};
     Matrix rrrr(4,4);
-    checkTime chktmr;
+    CheckTime chktmr;
     for (int i = 0; i < 100; i++)
     {
         for(int j = 0; j < 100; j++)
@@ -111,7 +111,7 @@ void JustFoo()
                    1,1,1,1,
                    1,1,1,1,
                    1,1,1,1});
-    checkTime chktmr3;
+    CheckTime chktmr3;
     int ctr11 = 0;
     for (int i = 0; i < 100; i++)
     {

@@ -4,13 +4,15 @@
 #include <cmath>
 
 //______ALL_PROJECT_CONSTANTS______
-#define WITH_BENCHMARK  true
+#define WITH_BENCHMARK  false
 #define WITH_GTESTS     false
 #define WITH_QTESTS     false
-#define WITH_COLLISIONS false
+#define WITH_COLLISIONS true
+#define MULTITHREAD     false
+//#define WITH_WINDOW     true
 //assertions turn off
 //#define NDEBUG
-#define SMESH +2.58
+#define SMESH +0.58
 //__________________________________
 #define RANGE_TO_PLOT 0.025  // 25 mm
 
@@ -52,7 +54,7 @@ const scalar MaxAngleDls = ToRad(45.0);
 #define DELTA_T_FOR_LINE_CHECK 10  //дельта времени, через которую траектория проверяется на удаленность от прямой ms
 #define DELTA_RANGE 0.0001         //дельта метров, на которые эффектор манипулятора может отклониться от прямой
 #define MAX_KINEMATIC_ITERS 100
-#define ACCURACY 10e-7
+#define ACCURACY 10e-8
 
 //_____________________________
 

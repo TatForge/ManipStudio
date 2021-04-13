@@ -415,9 +415,9 @@ void Robo::SolveForwardDynamic()
                     for (counter ctr = 0; ctr < j; ctr++)
                     {
                         if (ctr == k && ctr == m)
-                            u_buff = u_buff * q_sq * T[ctr];
+                            u_buff = u_buff * cq_sq * T[ctr];
                         else if (ctr == k || ctr == m)
-                            u_buff = u_buff * q * T[ctr];
+                            u_buff = u_buff * cq * T[ctr];
                         else
                             u_buff = u_buff * T[ctr];
                     }
@@ -882,7 +882,7 @@ void Robo::CalcUMatrix()
             {
 //                T[ctr].MatrixCout();
                 if (ctr == k)
-                    U[k*6 + j] = U[k*6 + j] * T[ctr] * q;
+                    U[k*6 + j] = U[k*6 + j] * T[ctr] * cq;
                 else
                 {
                     U[k*6 + j] = U[k*6 + j] * T[ctr];

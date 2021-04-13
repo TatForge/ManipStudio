@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
     Vector3 target(-0.114, -0.2501, 0.1355);
     Vector3 target_r(ToRad(180), ToRad(0),   ToRad(0));
     int kolvo = 1;
-    checkTime ct;
+    CheckTime ct;
     for (int i = 0; i < kolvo; i ++)
     {
         manipulator.SolveInverseKinematic(0.00001, target, target_r);
@@ -225,9 +225,9 @@ int main(int argc, char *argv[])
     Angles start_an;
     Angles res_an;
 
-    solver.SolveDirectKinematic(start_an, TT);
+//    std::thread thread_dynamic();
+
     StateVector stv( 0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
-//    StateVector tarv(0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));
     StateVector tarv(0.1, 0.241, 0.05, ToRad(179), ToRad(45), ToRad(0));
     StateVector tarv1(-0.2, 0.241, 0.05, ToRad(179), ToRad(45), ToRad(0));
 //    StateVector stv(  -0.35, -0.3441, 0.0515, ToRad(178), ToRad(0), ToRad(0));
@@ -265,17 +265,20 @@ int main(int argc, char *argv[])
 
 //    solver.SolveDirectKinematic(angle_stop, TT);
     Polynom result[1000];
-    scalar v_tcp(1);
-    scalar a_tcp(0.5);
+    scalar v_tcp(0.18);
+    scalar a_tcp(1);
+    CheckTime ct1;
     try {
         solver.CalcPolynomLine(stv,   tarv,  v_tcp, a_tcp, angle_start, res_an, 10, result);
-        solver.CalcPolynomLine(tarv,  tarv1, v_tcp, a_tcp, res_an,      res_an, 10, result);
-        solver.CalcPolynomLine(tarv1, tarv2, v_tcp, a_tcp, res_an,      res_an, 10, result);
-        solver.CalcPolynomLine(tarv2, tarv3, v_tcp, a_tcp, res_an,      res_an, 10, result);
-        solver.CalcPolynomLine(tarv3, tarv4, v_tcp, a_tcp, res_an,      res_an, 10, result);
+//        solver.CalcPolynomLine(tarv,  tarv1, v_tcp, a_tcp, res_an,      res_an, 10, result);
+//        solver.CalcPolynomLine(tarv1, tarv2, v_tcp, a_tcp, res_an,      res_an, 10, result);
+//        solver.CalcPolynomLine(tarv2, tarv3, v_tcp, a_tcp, res_an,      res_an, 10, result);
+//        solver.CalcPolynomLine(tarv3, tarv4, v_tcp, a_tcp, res_an,      res_an, 10, result);
     }  catch (std::string &str) {
         cout << str << endl;
     }
+
+    cout << " Time = " << ct1.duration().count() << endl;
 
 
 //    solver.CalcPolynomLine(tarv2, tarv3, res_an,    res_an, 10, result);
@@ -337,5 +340,6 @@ int main(int argc, char *argv[])
 #endif
     cout << "!!!___FINISH___!!!" << endl;
     return app.exec();
+//    return 0;
 }
 #endif

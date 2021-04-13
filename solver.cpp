@@ -32,13 +32,14 @@ Solver::Solver(Robo &manip)
     m_mass[2] = 0.6399;
     m_mass[3] = 0.3551;
     m_mass[4] = 0.1747;
-    m_mass[5] = 5.1667;
+    m_mass[5] = 0.1667;
     m_cm[0] = Vector({0, 0, 0, 1});
     m_cm[1] = Vector({0, 0, 0, 1});
     m_cm[2] = Vector({0, 0, 0, 1});
     m_cm[3] = Vector({0, 0, 0, 1});
     m_cm[4] = Vector({0, 0, 0, 1});
     m_cm[5] = Vector({0, 0, 0, 1});
+
     for (int i = 0; i < JOINTS_COUNT; i++)
     {
         m_ji[i] = {{(-m_inertion[i].xx() + m_inertion[i].yy() + m_inertion[i].zz())/2, m_inertion[i].xy(), m_inertion[i].xz(), m_mass[i] * m_cm[i](0)},
@@ -47,14 +48,33 @@ Solver::Solver(Robo &manip)
                    {m_mass[i] * m_cm[i](0),  m_mass[i] * m_cm[i](1), m_mass[i] * m_cm[i](2), m_mass[i]}};
 //            m_ji[i].MatrixCout("m_ji");
     }
+    m_moments_counter = 0;
+    m_collisions_counter = 0;
 
 #if !WITH_BENCHMARK
     m_emulator = new Emulator(manip);
 #endif
+    uint vector_size = 500;
+    m_moments_vector.resize(vector_size);
+    m_angles_v.resize(vector_size);
+    m_speed_v.resize(vector_size);
+    m_accel_v.resize(vector_size);
+#if MULTITHREAD
+    m_dynamic_thread = new thread(&Solver::SolveForwardDynamicMultithread, this);
+    m_collision_thread = new thread(&Solver::CheckCollisionMultithread, this);
+    m_dynamic_thread->detach();
+    m_collision_thread->detach();
+#endif
 }
-void Solver::SolveDirectKinematic(const Angles &q, Matrix4x4 TR[])
+void Solver::SolveDirectKinematic(const Angles &q, Matrix4x4 TR[], Matrix4x4 *T)
 {
     const Matrix &A = *manip_config;
+    if (T == nullptr)
+        T = m_T;
+
+#if MULTITHREAD
+//    Matrix4x4 T[6];
+#endif
     T[0] = {{         cos(q.q[0]),         -sin(q.q[0]),       0,           A.at(0,0)},
             {sin(q.q[0]) * cos(0), cos(q.q[0]) * cos(0), -sin(0), -sin(0) * A.at(0,2)},
             {sin(q.q[0]) * sin(0), cos(q.q[0]) * sin(0),  cos(0),  cos(0) * A.at(0,2)},
@@ -66,6 +86,7 @@ void Solver::SolveDirectKinematic(const Angles &q, Matrix4x4 TR[])
                 {sin(q.q[i]) * sin(A.at(i-1,1)), cos(q.q[i]) * sin(A.at(i-1,1)),  cos(A.at(i-1,1)),  cos(A.at(i-1,1)) * A.at(i,2)},
                 {                                0,                                 0,                 0,                             1}};
     }
+
     TR[0] = T[0];
     TR[1] = T[0] * T[1];
     TR[2] = T[0] * T[1] * T[2];
@@ -141,6 +162,7 @@ void Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &ta
 #endif
         aug_matrix.SolveGauss();
         aug_matrix.GetTheRoots(delta_t);
+//        aug_matrix.MatrixCout("a");
         delta_thetas = jacobian_transposed * delta_t;
 
         scalar max = delta_thetas.MaxAbs();
@@ -187,7 +209,11 @@ void Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &ta
 //            exc_str.push_back(") roll(");   exc_str.push_back(QString::number(ToDeg(target.roll)));
 //            exc_str.push_back(") pitch(");  exc_str.push_back(QString::number(ToDeg(target.pitch)));
 //            exc_str.push_back(") yaw(");    exc_str.push_back(QString::number(ToDeg(target.yaw))); exc_str.push_back(")");
+#if WITH_BENCHMARK
+            cout << " cant move to this point" << endl;
+#else
             throw str;
+#endif
 //            return -1;
         }
         //не имеет решения
@@ -249,19 +275,8 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
     scalar t(0);
     scalar dt_s = ToSec(dt_millisec);
     Matrix4x4 buff[6];
-#ifdef VECTOR
-    std::vector<Angles> angles_v;
-    std::vector<Vector3> speed_v;
-    std::vector<Vector3> accel_v;
-    angles_v.resize(500);
-    speed_v.resize(500);
-    accel_v.resize(500);
-#else
-    Angles angles[500];
-    Vector3 speed[500];
-    Vector3 accel[500];
-#endif
-    //calc max a value
+    m_moments_counter = 0;
+    m_collisions_counter = 0;
     Angles max_qpp;
     scalar v_curr;
     scalar a_curr;
@@ -276,32 +291,35 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
     scalar dist_curr;
     scalar t_stop;
     //__________
-#ifdef VECTOR
-    SolveInverseKinematic(ACCURACY, start_point, curr_angles, angles_v[0]);
-    SolveDirectKinematic(angles_v[0], buff);
-#else
-    SolveInverseKinematic(ACCURACY, start_point, curr_angles, angles[0]);
-    SolveDirectKinematic(angles[0], buff);
-#endif
 
+    SolveInverseKinematic(ACCURACY, start_point, curr_angles, m_angles_v[0]);
+    SolveDirectKinematic(m_angles_v[0], buff);
 
-    unsigned int size(0);
+    uint size(0);
     bool is_last(0);
     bool breaking(false);
     while (Distance(end_point, StateVector(x, y, z, rol, pit, yaw)) > 10e-5 && !is_last)
     {
+        if (size > 0)
+        {
+#if MULTITHREAD
+//            //Расчет динамики и коллизий на предыдущем шаге
+            m_dynamic_notified = true;
+            m_dynamic_cv.notify_one();
+            m_collision_notified = true;
+            m_collision_cv.notify_one();
+#endif
+        }
+
         v_curr = sqrt(vx*vx + vy*vy + vz*vz);
         a_curr = sqrt(ax*ax + ay*ay + az*az);
         t_stop = v_curr / a_tcp;
-        auto distance_next_step = Distance(end_point, StateVector(x + vx * dt_s + ax*dt_s*dt_s/2,
+        auto distance_next_step = Distance(end_point, StateVector(x + vx *   dt_s + ax*dt_s*dt_s/2,
                                                                   y + vy * dt_s + ay*dt_s*dt_s/2,
                                                                   z + vz * dt_s + az*dt_s*dt_s/2,
                                                                   rol + 0, pit + 0, yaw + 0));
-//        auto distance = Distance(end_point, StateVector(x, y, z, rol, pit, yaw));
         if (!sign(vy + ay * dt_s, vy))
             is_last = true;
-        step = sqrt(pow(vx * dt_s, 2) + pow(vy * dt_s, 2) + pow(vz * dt_s, 2));
-//        auto distance_to_stop = v_curr * t_stop - a_tcp * t_stop * t_stop * 0.5;
         //Режим торможения (если расстояние < Sтормож)
         if (distance_next_step <= (v_curr * t_stop - a_curr * t_stop * t_stop * 0.5) && !breaking)
         {
@@ -358,146 +376,173 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
             yaw = end_point.yaw;
         }
 
-
-        //сделать аналогично для углов
-//        rol += d_rol; pit += d_pit; yaw += d_yaw;
-#ifdef VECTOR
-        if (size + 1 >= angles_v.size())
+#if MULTITHREAD
+        if (size + 1 >= m_angles_v.size())
         {
-            angles_v.resize(2 * (size + 1));
-            accel_v.resize(2 * (size + 1));
-            speed_v.resize(2 * (size + 1));
+            while(1)
+            {
+                unique_lock<mutex> lock_dynamic(m_dynamic_mtx);
+                unique_lock<mutex> lock_collision(m_collision_mtx);
+                cout << "VECTORS RESIZED!!!!!!!!!!!!!" << endl;
+                m_moments_vector.resize(2 * (size + 1));
+                m_angles_v.resize(2 * (size + 1));
+                m_accel_v.resize(2 * (size + 1));
+                m_speed_v.resize(2 * (size + 1));
+                break;
+            }
         }
-        SolveInverseKinematic(ACCURACY, StateVector(x, y, z, rol, pit, yaw), angles_v[size], angles_v[size+1]);
-        SolveDirectKinematic(angles_v[size + 1], buff);
 #else
-        SolveInverseKinematic(ACCURACY, StateVector(x, y, z, rol, pit, yaw), angles[size], angles[size+1]);
-        SolveDirectKinematic(angles[size + 1], buff);
+        if (size + 1 >= m_angles_v.size())
+        {
+            m_moments_vector.resize(2 * (size + 1));
+            m_angles_v.resize(2 * (size + 1));
+            m_accel_v.resize(2 * (size + 1));
+            m_speed_v.resize(2 * (size + 1));
+        }
 #endif
-
-
+        SolveInverseKinematic(ACCURACY, StateVector(x, y, z, rol, pit, yaw), m_angles_v[size], m_angles_v[size+1]);
+        SolveDirectKinematic(m_angles_v[size + 1], buff);
 //        distance = Distance(end_point, StateVector(x + vx * dt_s + ax*dt_s*dt_s/2, vy * dt_s + ay*dt_s*dt_s/2, vz * dt_s + az*dt_s*dt_s/2, rol + 0, pit + 0, yaw + 0));
-#ifdef VECTOR
-        speed_v[size + 1].x = vx;
-        speed_v[size + 1].y = vy;
-        speed_v[size + 1].z = vz;
-        accel_v[size].x = vx;
-        accel_v[size].y = vy;
-        accel_v[size].z = vz;
-#else
-        speed[size].x = vx;
-        speed[size].y = vy;
-        speed[size].z = vz;
-        accel[size].x = vx;
-        accel[size].y = vy;
-        accel[size].z = vz;
-#endif
-#if WITH_COLLISIONS
+        m_speed_v[size + 1].x = vx;
+        m_speed_v[size + 1].y = vy;
+        m_speed_v[size + 1].z = vz;
+        m_accel_v[size].x = vx;
+        m_accel_v[size].y = vy;
+        m_accel_v[size].z = vz;
+#if WITH_COLLISIONS && !MULTITHREAD
         //Mesh calculations
         {
             if (MoveMeshes(buff))
             {
-                for (uint i = 0; i < 8/*meshes_buff.size()*/; i++)
+                for (uint i = 0; i < m_meshes_buff.size() - 1; i++)
                 {
-//                    for (uint j = RoboMath::max(uint(3), i + 3); j < 8; j++)
-                        if (/*meshes_buff[i].CheckCollision(meshes_buff[j]) || */m_meshes_buff[i].CheckCollision(m_meshes_buff[8]))
-                        {
-//                            cout << "HOLY SHIT! COLLISION! Between " << i << " and " << j << " elements" << endl;
-                            //show collision in visual
-#if !WITH_BENCHMARK
-#ifdef VECTOR
-                            emulator->OneIterMoveLinear(angles_v[size], angles_v[size + 1],  dt_millisec, false, accel_v[i]);
-#else
-                            emulator->OneIterMoveLinear(angles[size], angles[size + 1],  dt_millisec, false, accel[i]);
-#endif
-#endif
+                    if (/*meshes_buff[i].CheckCollision(meshes_buff[j]) || */m_meshes_buff[i].CheckCollision(m_meshes_buff[8]))
+                    {
+//                                                cout << "HOLY SHIT! COLLISION! Between " << i << " and " << j << " elements" << endl;
+                        //show collision in visual
+                    #if !WITH_BENCHMARK
+                    #ifdef VECTOR
+                        m_emulator->OneIterMoveLinear(m_angles_v[size], m_angles_v[size + 1],  dt_millisec, false, m_accel_v[i]);
+                    #else
+                        emulator->OneIterMoveLinear(angles[size], angles[size + 1],  dt_millisec, false, accel[i]);
+                    #endif
+                    #endif
 
-                            throw std::runtime_error("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + "cube"  /*to_string(cube)*/ + " elements");
-                        }
+                        throw std::runtime_error("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + "cube"  /*to_string(cube)*/ + " elements");
+                    }
                 }
             }
             else
                 cout << "Can't calculate all mesh points for this configuration" << endl;
         }
 #endif
+        for (uint j = 0; j < JOINTS_COUNT; j++)
+        {
+            m_angles_v[size].q_pp[j] = (m_angles_v[size + 1].q[j] - m_angles_v[size].q[j] - m_angles_v[size].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
+            m_angles_v[size + 1].q_p[j] = m_angles_v[size].q_p[j] + m_angles_v[size].q_pp[j] * dt_s;
+        }
+#if !MULTITHREAD
+        SolveForwardDynamic(m_angles_v[size]);
+        m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec);
+
+#endif
+//        cout << endl;
+//        cout << "angles vector element added " << size << endl << endl;
+//        m_angles_v[size] = m_angles_v[size];
+//        cout << " angle 1 = " << m_angles_v[size].q[0]
+//             << " angle 2 = " << m_angles_v[size].q[1]
+//             << " angle 3 = " << m_angles_v[size].q[2] << endl
+//             << " angle 4 = " << m_angles_v[size].q[3]
+//             << " angle 5 = " << m_angles_v[size].q[4]
+//             << " angle 6 = " << m_angles_v[size].q[5] << endl;
+
+
         size++;
+//        cout << " size = " << size << endl;
         t+= dt_s;
     }
-#ifdef VECTOR
-    angles_v.resize(size);
-    speed_v.resize(size);
-    accel_v.resize(size);
+
+    m_angles_v.resize(size);
+    m_speed_v.resize(size);
+    m_accel_v.resize(size);
+#if MULTITHREAD
+    bool dynamic_calculated(0);
+    bool collisions_calculated(0);
+    while(1)
+    {
+        while (!exception_queue.empty())
+        try {
+            exception_ptr p = exception_queue.front();
+            exception_queue.pop();
+            rethrow_exception(p);
+        }  catch (std::exception const &e) {
+            cout << "FAIL" << e.what() << endl;
+        }
+        if (m_moments_counter < size)
+        {
+            m_dynamic_notified = true;
+            m_dynamic_cv.notify_one();
+        } else {
+            dynamic_calculated = true;
+        }
+        if (m_collisions_counter < size)
+        {
+            m_collision_notified = true;
+            m_collision_cv.notify_one();
+        } else {
+            collisions_calculated = true;
+        }
+
+        if (dynamic_calculated && collisions_calculated)
+            break;
+    }
 #endif
     for (uint i = 0; i < size - 1/*t_millisec / dt*/; i++)
     {
-        for (uint j = 0; j < JOINTS_COUNT; j++)
-        {
-#ifdef VECTOR
-            angles_v[i].q_pp[j] = (angles_v[i + 1].q[j] - angles_v[i].q[j] - angles_v[i].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
-            angles_v[i + 1].q_p[j] = angles_v[i].q_p[j] + angles_v[i].q_pp[j] * dt_s;
-#else
-            //Acceleration
-            angles[i].q_pp[j] =(angles[i + 1].q[j] - angles[i].q[j] - angles[i].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
-            //Speed
-            angles[i + 1].q_p[j] = angles[i].q_p[j] + angles[i].q_pp[j] * dt_s;
-
-#endif
-        }
-//        SolveForwardDynamic(angles_v[i]);
-
-#if !WITH_BENCHMARK
-        m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec);
-#endif
-    }
-    for (int j = 0; j < JOINTS_COUNT; j++)
-    {
-        angles_v[size].q_pp[j] = (angles_v[size].q[j] - angles_v[size - 1].q[j] - angles_v[size - 1].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
-        angles_v[size].q_p[j] = 0;
-    }
-//    for (int i = 1; i < size/*t_millisec / dt*/; i++)
-//    {
-//        for (int j = 0; j < 6; j++)
+//        for (uint j = 0; j < JOINTS_COUNT; j++)
 //        {
-//            angles[i].q_pp[j] = (angles[i + 1].q_p[j] - angles[i].q_p[j]) / ToSec(dt);//0.5 * (ToSec(dt) * max_qpp.q_pp[j]);//(angles[i + 1].q[j] - angles[i].q[j]) / ToSec(dt);
+//#ifdef VECTOR
+//            angles_v[i].q_pp[j] = (angles_v[i + 1].q[j] - angles_v[i].q[j] - angles_v[i].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
+//            angles_v[i + 1].q_p[j] = angles_v[i].q_p[j] + angles_v[i].q_pp[j] * dt_s;
+//#else
+//            //Acceleration
+//            angles[i].q_pp[j] =(angles[i + 1].q[j] - angles[i].q[j] - angles[i].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
+//            //Speed
+//            angles[i + 1].q_p[j] = angles[i].q_p[j] + angles[i].q_pp[j] * dt_s;
+
+//#endif
 //        }
-//    }
+//#if !MULTITHREAD
+//        SolveForwardDynamic(angles_v[i]);
+//#else
+//        m_dynamic_notified = true;
+//        m_dynamic_cv.notify_one();
+//#endif
+//    this_thread::sleep_for(chrono::milliseconds(100));
+    }
+
+    for (int j = 1; j < JOINTS_COUNT; j++)
+    {
+        m_angles_v[size].q_pp[j] = (m_angles_v[size].q[j] - m_angles_v[size - 1].q[j] - m_angles_v[size - 1].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
+        m_angles_v[size].q_p[j] = 0;
+    }
+
     for (uint i = 0; i < size/*t_millisec / dt*/; i++)
     {
-
-//        result[i].CalcPolynom(&angles[i], &angles[i + 1], dt);
-        //_______________for polynoms________________________
-//        CheckTrajectoryForLinear(result[i], start_point.GetCoord(), end_point.GetCoord(), dt, DELTA_RANGE);
-        //___________________________________________________
-        //_______________for angles________________________
-
-#ifdef VECTOR
-        CheckTrajectoryForLinear(angles_v[i], start_point.GetCoord(), end_point.GetCoord(), DELTA_RANGE);
-#else
-        CheckTrajectoryForLinear(angles[i], start_point.GetCoord(), end_point.GetCoord(), DELTA_RANGE);
-
-#endif
-
-
-        //___________________________________________________
-//        SolveDirectKinematic(angles[i + 1], buff);
-//        if (CheckCollisionAABB(buff))
-//            CkeckCapsuleCollision();
-//        if (CheckAABB(BoxAABB(0, 0, 0, 1, 1, 1), BoxAABB(-0.1, -0.1, -0.1, 0.1, 0.1, 0.1)))
-//            cout << "ALAAAAAAAAAAAAARM" << endl;
+        CheckTrajectoryForLinear(m_angles_v[i], start_point.GetCoord(), end_point.GetCoord(), DELTA_RANGE);
     }
 
 
+
 #if !WITH_BENCHMARK
-#ifdef VECTOR
-    m_emulator->MoveManipLinear(angles_v, accel_v, dt_millisec);
-    res_angle = angles_v.back();
-    m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec,true);
-#else
-    Angles *agl = new Angles[1000];
-    emulator->MoveManipLinear(angles/*agl*/, std::size(angles), dt_millisec, accel);
-    res_angle = angles[t_millisec / dt_millisec];
+    m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec, true);
+    m_emulator->MoveManipLinear(m_angles_v, m_accel_v, dt_millisec);
+    res_angle = m_angles_v.back();
+//    m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec,true);
 #endif
-#endif
+
+//    cout << "CalcPolynomLine ended" << endl;
+
 }
 
 bool Solver::CheckTrajectoryForLinear(const Angles angles, const Vector3 &l1, const Vector3 &l2, const scalar &max_delta)
@@ -549,54 +594,268 @@ bool Solver::MoveMeshes(const Matrix4x4 TR[])
     return true;
 }
 
-//void Solver::MoveMeshes(const Quaternion qtr[], const Vector3 v[])
-//{
-//    meshes_buff = meshes;
-//    for (uint i = 0; i < meshes.size(); i++)
-//    {
-//        meshes_buff[i].MoveMesh(qtr[i], v[i]);
-//    }
-//}
-
-pair<int,int> Solver::CheckCollisionAABB(const Matrix4x4 state[])
+void Solver::CalcUMatrix()
 {
-    //Возвращает номер двух столкнувшихс элементов (0..n)
-    bool collision = false;
-    int col1, col2;
-    for (ushort i = 0; i < JOINTS_COUNT - 3; i++)
+    for (counter k = 0; k < 6; k++)
     {
-        for (ushort j = i + 2; j < JOINTS_COUNT - 2; j++)
+        for (counter j = k; j < 6; j++)
         {
-            collision = CheckAABB(BoxAABB(state[i].at(0,3), state[i].at(1,3), state[i].at(2,3), state[i + 1].at(0,3), state[i + 1].at(1,3), state[i + 1].at(2,3)),
-                    BoxAABB(state[j].at(0,3), state[j].at(1,3), state[j].at(2,3), state[j + 1].at(0,3), state[j + 1].at(1,3), state[j + 1].at(2,3)));
-            if (collision)
+            U[k*6 + j].MakeIdentity();
+            //Считается Ujk для конкретного i,j,k
+            for (int ctr = 0; ctr <= j; ctr++)
             {
-                cout << "ALARM!!! COLLISION!!! Between " << i << " and " << j << endl;
-                col1 = i;
-                col2 = j;
+                if (ctr == k)
+                    U[k*6 + j].SelfMultipl(m_T[ctr], cq);// = U[k*6 + j] * T[ctr] * q;
+                else
+                {
+                    U[k*6 + j] = U[k*6 + j] * m_T[ctr];
+                }
             }
         }
     }
-    return make_pair(col1, col2);
 }
 
-bool Solver::CheckAABB(const BoxAABB &box1, const BoxAABB &box2)
+void Solver::SolveForwardDynamicMultithread()
 {
-    return(box1.point_max.x > box2.point_min.x &&
-           box1.point_min.x < box2.point_max.x &&
-           box1.point_max.y > box2.point_min.y &&
-           box1.point_min.y < box2.point_max.y &&
-           box1.point_max.z > box2.point_min.z &&
-           box1.point_min.z < box2.point_max.z);
+#if MULTITHREAD
+//    cout << "Solve Forward Dynamic started" << endl;
+    unique_lock<mutex> lock(m_dynamic_mtx);
+    int dt_millisec = 10;
+    Matrix4x4 T[6];
+    Matrix4x4 U[36];
+    const Matrix &A = *manip_config;
+    auto q = m_angles_v[m_moments_counter];
+    while(1)
+    {
+        while(!m_dynamic_notified)
+        {
+            m_dynamic_cv.wait(lock);
+        }
+        T[0] = {{         cos(q.q[0]),         -sin(q.q[0]),       0,           A.at(0,0)},
+                {sin(q.q[0]) * cos(0), cos(q.q[0]) * cos(0), -sin(0), -sin(0) * A.at(0,2)},
+                {sin(q.q[0]) * sin(0), cos(q.q[0]) * sin(0),  cos(0),  cos(0) * A.at(0,2)},
+                {                   0,                    0,       0,                   1}};
+        for (counter i = 1; i < JOINTS_COUNT; i++)
+        {
+            T[i] = {{cos(q.q[i]),                                      -sin(q.q[i]),                 0,                   A.at(i-1,0)},
+                    {sin(q.q[i]) * cos(A.at(i-1,1)), cos(q.q[i]) * cos(A.at(i-1,1)), -sin(A.at(i-1,1)), -sin(A.at(i-1,1)) * A.at(i,2)},
+                    {sin(q.q[i]) * sin(A.at(i-1,1)), cos(q.q[i]) * sin(A.at(i-1,1)),  cos(A.at(i-1,1)),  cos(A.at(i-1,1)) * A.at(i,2)},
+                    {                                0,                                 0,                 0,                             1}};
+        }
+        for (counter k = 0; k < 6; k++)
+        {
+            for (counter j = k; j < 6; j++)
+            {
+                U[k*6 + j].MakeIdentity();
+                //Считается Ujk для конкретного i,j,k
+                for (int ctr = 0; ctr <= j; ctr++)
+                {
+                    if (ctr == k)
+                        U[k*6 + j].SelfMultipl(T[ctr], cq);// = U[k*6 + j] * T[ctr] * q;
+                    else
+                    {
+                        U[k*6 + j] = U[k*6 + j] * T[ctr];
+                    }
+                }
+            }
+        }
+        m_moments.MakeNull();
+        scalar buff(0);
+        int ctr(0);
+        for (counter i = 0; i < 6; i++)
+        {
+            for (counter j = i; j < 6; j++)
+            {
+                //            U[i*6 + j].MatrixCout("U");
+                //            m_cm[j].VectorCout("m_cm");
+                m_moments.p[i] += - m_mass[j] * m_gv.MultiplyTranspose(U[i*6 + j].MultiplyTranspose(m_cm[j]));
+            }
+            ctr++;
+        }
+        //Расчет D для i-го элемента манипулятора
+        for (counter i = 0; i < 6; i++)
+        {
+            for (counter k = i; k < 6; k++)
+            {
+                buff = 0;
+                for (counter j = RoboMath::max(i, k); j < 6; j++)
+                {
+                    buff += Trace(U[k*6 + j] * m_ji[k].MultiplyTranspose(U[i*6 + j]));
+                }
+                buff *= m_angles_v[m_moments_counter].q_pp[k];
+                m_moments.dv[i] += buff;
+            }
+        }
+
+        Matrix4x4 u_buff;
+        for (counter i = 0; i < 6; i++)
+        {
+            for (counter k = 0; k < 6; k++)
+            {
+                for (counter m = 0; m < 6; m++)
+                {
+                    buff = 0;
+                    for (counter j = i; j < 6; j++)
+                    {
+                        u_buff.MakeIdentity();
+                        for (counter ctr = 0; ctr < j; ctr++)
+                        {
+                            if (ctr == k && ctr == m)
+                                u_buff = u_buff * cq_sq * T[ctr];
+                            else if (ctr == k || ctr == m)
+                                u_buff = u_buff * cq * T[ctr];
+                            else
+                                u_buff = u_buff * T[ctr];
+                        }
+                        buff += Trace(u_buff * m_ji[i].MultiplyTranspose(U[i*6 + j])) * m_angles_v[m_moments_counter].q_p[i] * m_angles_v[m_moments_counter].q_p[i];
+                    }
+                    m_moments.hikm[i] += buff;
+                }
+            }
+        }
+        for ( int i = 0; i < 6; i++)
+        {
+            m_moments.tao[i] = m_moments.p[i] + m_moments.dv[i] + m_moments.hikm[i];
+        }
+        m_moments_vector[m_moments_counter] = m_moments;
+
+
+
+//        cout << "size of moments vec tor = " << m_moments_counter << endl;
+        m_emulator->moments_window.PlotCoordinates(m_moments_vector[m_moments_counter].tao[0], m_moments_vector[m_moments_counter].tao[1],
+                                                   m_moments_vector[m_moments_counter].tao[2],m_moments_vector[m_moments_counter].tao[3],
+                                                   m_moments_vector[m_moments_counter].tao[4],m_moments_vector[m_moments_counter].tao[5], dt_millisec);
+        m_moments_counter++;
+        m_dynamic_notified = false;
+        m_dynamic_cv.wait(lock);
+    }
+#endif
 }
 
-BoxAABB::BoxAABB(const scalar &x_min, const scalar &y_min, const scalar &z_min, const scalar &x_max, const scalar &y_max, const scalar &z_max)
+void Solver::CheckCollisionMultithread()
 {
-    // Плюс добавить дельту, которая будет обеспечивать ширину каждого линка
-    point_max.x = x_max;
-    point_max.y = y_max;
-    point_max.z = z_max;
-    point_min.x = x_min;
-    point_min.y = y_min;
-    point_min.z = z_min;
+#if MULTITHREAD
+    Matrix4x4 buff1[6];
+    unique_lock<mutex> lock(m_collision_mtx);
+    Matrix4x4 T[6];
+    while(1)
+    {
+        while(!m_collision_notified)
+        {
+            m_collision_cv.wait(lock);
+        }
+        SolveDirectKinematic(m_angles_v[m_collisions_counter], buff1, T);
+
+        cout << m_angles_v[m_collisions_counter].q[0] << " "
+             << m_angles_v[m_collisions_counter].q[1] << " "
+             << m_angles_v[m_collisions_counter].q[2] << " "
+             << endl;
+
+        cout << buff1->ConvertToVector3().x << " "
+             << buff1->ConvertToVector3().y << " "
+             << buff1->ConvertToVector3().z << " "
+             << endl;
+        if (MoveMeshes(buff1))
+        {
+            for (uint i = 0; i < m_meshes_buff.size() - 1; i++)
+            {
+                if (m_meshes_buff[i].CheckCollision(m_meshes_buff[8]))
+                {
+                #if !WITH_BENCHMARK
+//                    m_emulator->OneIterMoveLinear(m_angles_v[size], m_angles_v[size + 1],  dt_millisec, false, m_accel_v[i]);
+                #endif
+                    try {
+                        throw string("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + "cube"  /*to_string(cube)*/ + " elements");
+                        cout << "HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + "cube"  /*to_string(cube)*/ + " elements" << endl;
+                    }  catch (...) {
+                        exception_ptr p = current_exception();
+                        exception_queue.push(p);
+                    }
+//                    throw std::runtime_error("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + "cube"  /*to_string(cube)*/ + " elements");
+                }
+            }
+
+        }
+        m_collisions_counter++;
+        m_collision_notified = false;
+        m_collision_cv.wait(lock);
+    }
+#endif
+}
+
+bool Solver::SolveForwardDynamic(const Angles &angles)
+{
+#if MULTITHREAD
+    cout << "Solve Forward Dynamic started" << endl;
+#endif
+    CalcUMatrix();
+    m_moments.MakeNull();
+    scalar buff(0);
+    int ctr(0);
+    for (counter i = 0; i < 6; i++)
+    {
+        for (counter j = i; j < 6; j++)
+        {
+            //            U[i*6 + j].MatrixCout("U");
+            //            m_cm[j].VectorCout("m_cm");
+            m_moments.p[i] += - m_mass[j] * m_gv.MultiplyTranspose(U[i*6 + j].MultiplyTranspose(m_cm[j]));
+        }
+        ctr++;
+    }
+    //Расчет D для i-го элемента манипулятора
+    for (counter i = 0; i < 6; i++)
+    {
+        for (counter k = i; k < 6; k++)
+        {
+            buff = 0;
+            for (counter j = RoboMath::max(i, k); j < 6; j++)
+            {
+                buff += Trace(U[k*6 + j] * m_ji[k].MultiplyTranspose(U[i*6 + j]));
+            }
+            buff *= angles.q_pp[k];
+            m_moments.dv[i] += buff;
+        }
+    }
+
+    Matrix4x4 u_buff;
+    for (counter i = 0; i < 6; i++)
+    {
+        for (counter k = 0; k < 6; k++)
+        {
+            for (counter m = 0; m < 6; m++)
+            {
+                buff = 0;
+                for (counter j = i; j < 6; j++)
+                {
+                    u_buff.MakeIdentity();
+                    for (counter ctr = 0; ctr < j; ctr++)
+                    {
+                        if (ctr == k && ctr == m)
+                            u_buff = u_buff * cq_sq * m_T[ctr];
+                        else if (ctr == k || ctr == m)
+                            u_buff = u_buff * cq * m_T[ctr];
+                        else
+                            u_buff = u_buff * m_T[ctr];
+                    }
+                    buff += Trace(u_buff * m_ji[i].MultiplyTranspose(U[i*6 + j])) * angles.q_p[i] * angles.q_p[i];
+                }
+                m_moments.hikm[i] += buff;
+            }
+        }
+    }
+    for ( int i = 0; i < 6; i++)
+    {
+        m_moments.tao[i] = m_moments.p[i] + m_moments.dv[i] + m_moments.hikm[i];
+    }
+#if MULTITHREAD
+    m_moments_vector[m_moments_counter] = m_moments;
+#endif
+
+    //        cout << "tao 1 = " << m_moments.tao[0] << "\ntao 2 = " << m_moments.tao[1] << "\ntao 3 = " << m_moments.tao[2] <<
+    //        "\ntao 4 = " << m_moments.tao[3] << "\ntao 5 = " << m_moments.tao[4] << "\ntao 6 = " << m_moments.tao[5] << endl << endl;
+
+#if MULTITHREAD
+//    cout << "Solve Forward Dynamic finished" << endl;
+#endif
+    return true;
 }

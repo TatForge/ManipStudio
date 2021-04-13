@@ -8,7 +8,6 @@ include_directories(/home/devel/Projects/SimulatorClient/)
 include_directories(/home/devel/Projects/Visualization/VisualizatorOpenGL/)
 include_directories(${CMAKE_SOURCE_DIR}/Tests/models/)
 include_directories(${CMAKE_SOURCE_DIR}/STLmodels/)
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -19,10 +18,12 @@ SET(CMAKE_AUTORCC ON)
 find_package(Qt5Test)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 find_package(benchmark REQUIRED)
-find_package(CUDA REQUIRED)
+find_package(CUDA QUIET)
 find_package(GTest REQUIRED)
+
 enable_testing(true)
 
+#if (GTest_FOUND)
 
 #FetchContent_Declare(
 #    gtest
@@ -43,22 +44,17 @@ enable_testing(true)
 ##endif()
 
 
-include_directories(${CUDA_INCLUDE_DIRS} ${CUDART_INCLUDE_DIRS}
-    ${QTEST_INCLUDE_DIRS}  #[[${GTEST_INCLUDE_DIRS}]]#[[${Qt5Test_INCLUDE_DIRS}]])
+if (CUDA_FOUND)
+    include_directories(${CUDA_INCLUDE_DIRS} ${CUDART_INCLUDE_DIRS}
+        ${QTEST_INCLUDE_DIRS})
+    set(CMAKE_CUDA_ARCHITECTURES 50)
+    set(CMAKE_CXX_FLAGS "-L/opt/cuda/lib64")
+    file(GLOB CUDA_FILES "./" *.cu)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR} /opt/cuda/targets/x86_64-linux/include)
+    CUDA_COMPILE(CUDA_OBJECTS ${CUDA_FILES})
+endif()
+
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build)
-#find_library(CUDA_LIB lib "-L/opt/cuda/lib64")
-#if (NOT CUDA_LIB)
-#    message("cuda lib not found in /opt/cuda/lib64 \ntrying to find in /usr/local/cuda-10.2/lib64")
-#    find_library(CUDA_LIB /usr/local/cuda-10.2/lib64)
-#endif()
-
-set(CMAKE_CUDA_ARCHITECTURES 50)
-set(CMAKE_CXX_FLAGS "-L/opt/cuda/lib64")
-
-file(GLOB CUDA_FILES "./" *.cu)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR} /opt/cuda/targets/x86_64-linux/include)
-CUDA_COMPILE(CUDA_OBJECTS ${CUDA_FILES})
-
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
 #Main target
@@ -71,10 +67,10 @@ add_executable(MainKinematic
     mainwindow.h
     solver.h
     constants.h
-#    gjkcollision3d.h
     meshcollider.h
     stlreader.h
     stl_reader.h
+    sharedmem.h
     Tests
     Tests/test_my_math.h
     Benchmarks/benchmarks.h
@@ -86,7 +82,7 @@ add_executable(MainKinematic
     emulator.cpp
     mainwindow.cpp
     solver.cpp
-#    gjkcollision3d.cpp
+    sharedmem.cpp
     stlreader.cpp
     meshcollider.cpp
     ${CUDA_OBJECTS}
@@ -96,10 +92,8 @@ add_executable(MainKinematic
 
     mainwindow.ui
 )
-target_link_libraries(MainKinematic Qt5::Core Qt5Test cudart Qt5::Widgets -lqcustomplot benchmark::benchmark benchmark::benchmark_main GTest::gtest)
-
-
-#target_compile_options(MainKinematic PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(MainKinematic Qt5::Core Qt5Test Qt5::Widgets benchmark::benchmark benchmark::benchmark_main GTest::gtest)
+target_link_libraries(MainKinematic cudart -lqcustomplot)
 
 add_custom_command(TARGET MainKinematic POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
                    ${CMAKE_SOURCE_DIR}/ManipulatorSettigns.ini $<TARGET_FILE_DIR:MainKinematic>/)

@@ -313,11 +313,11 @@ namespace RoboMath
             return false;
         return true;
     }
-    const Matrix4x4 q ({0, -1, 0, 0,
+    const Matrix4x4 cq ({0, -1, 0, 0,
                         1,  0, 0, 0,
                         0,  0, 0, 0,
                         0,  0, 0, 0});
-    const Matrix4x4 q_sq ({-1,   0, 0, 0,
+    const Matrix4x4 cq_sq ({-1,   0, 0, 0,
                             0,  -1, 0, 0,
                             0,   0, 0, 0,
                             0,   0, 0, 0});
@@ -328,11 +328,11 @@ scalar Trace(const RoboMath::Matrix &ma);
 
 scalar Distance(const RoboMath::StateVector &v1, const RoboMath::StateVector &v2);
 scalar CalcDistancePointToLine(RoboMath::Vector3 p, const RoboMath::Vector3 *l1, const RoboMath::Vector3 *l2);
-class checkTime
+class CheckTime
 {
 public:
-    checkTime();
-    ~checkTime();
+    CheckTime();
+    ~CheckTime();
     std::chrono::duration<double> duration();
 
 private:
