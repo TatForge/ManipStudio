@@ -19,7 +19,7 @@ SET(CMAKE_AUTORCC ON)
 find_package(Qt5Test)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 find_package(benchmark REQUIRED)
-find_package(CUDA REQUIRED)
+find_package(CUDA QUIET)
 find_package(GTest REQUIRED)
 enable_testing(true)
 
@@ -42,22 +42,16 @@ enable_testing(true)
 ##    add_subdirectory()
 ##endif()
 
-
-include_directories(${CUDA_INCLUDE_DIRS} ${CUDART_INCLUDE_DIRS}
-    ${QTEST_INCLUDE_DIRS}  #[[${GTEST_INCLUDE_DIRS}]]#[[${Qt5Test_INCLUDE_DIRS}]])
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build)
-#find_library(CUDA_LIB lib "-L/opt/cuda/lib64")
-#if (NOT CUDA_LIB)
-#    message("cuda lib not found in /opt/cuda/lib64 \ntrying to find in /usr/local/cuda-10.2/lib64")
-#    find_library(CUDA_LIB /usr/local/cuda-10.2/lib64)
-#endif()
-
-set(CMAKE_CUDA_ARCHITECTURES 50)
-set(CMAKE_CXX_FLAGS "-L/opt/cuda/lib64")
-
-file(GLOB CUDA_FILES "./" *.cu)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR} /opt/cuda/targets/x86_64-linux/include)
-CUDA_COMPILE(CUDA_OBJECTS ${CUDA_FILES})
+if (CUDA_FOUND)
+    include_directories(${CUDA_INCLUDE_DIRS} ${CUDART_INCLUDE_DIRS}
+        ${QTEST_INCLUDE_DIRS})
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build)
+    set(CMAKE_CUDA_ARCHITECTURES 50)
+    set(CMAKE_CXX_FLAGS "-L/opt/cuda/lib64")
+    file(GLOB CUDA_FILES "./" *.cu)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR} /opt/cuda/targets/x86_64-linux/include)
+    CUDA_COMPILE(CUDA_OBJECTS ${CUDA_FILES})
+endif()
 
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
