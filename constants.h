@@ -4,7 +4,7 @@
 #include <cmath>
 
 //______ALL_PROJECT_CONSTANTS______
-#define WITH_BENCHMARK  false
+#define WITH_BENCHMARK  true
 #define WITH_GTESTS     false
 #define WITH_QTESTS     false
 #define WITH_COLLISIONS true
@@ -12,7 +12,7 @@
 //#define WITH_WINDOW     true
 //assertions turn off
 //#define NDEBUG
-#define SMESH +0.58
+#define SMESH +3.55
 //__________________________________
 #define RANGE_TO_PLOT 0.025  // 25 mm
 

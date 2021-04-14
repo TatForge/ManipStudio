@@ -166,40 +166,40 @@ int main(int argc, char *argv[])
 //        manipulator.WriteSettingsToFile();
 //    }
 
-    manipulator.ComputeJointsPosition();
-    manipulator.SolveForwardDynamic();
+//    manipulator.ComputeJointsPosition();
+//    manipulator.SolveForwardDynamic();
 //    manipulator.WriteSettingsToFile();
 //    manipulator.SolveInverseDynamic();
 //    manipulator.SolveDirectKinematic(manipulator.get)
 //    Robo::Moments *res_mom = manipulator.GetMoments();
 //    rm::Angles *res_ang = manipulator.GetAngles();
-    for (int i = 0; i < 6; i++)
-    {
+//    for (int i = 0; i < 6; i++)
+//    {
 //        cout << "tao " << setw(10) << res_mom->tao[i]
 //             << "\tDv "  << setw(10) << res_mom->dv[i]
 //             << "\thikm "<< setw(10) << res_mom->hikm[i]
 //             << "\tp "   << setw(10) << res_mom->p[i]
 //             << endl;
-    }
-    for (int i = 0; i < 6; i++)
-    {
+//    }
+//    for (int i = 0; i < 6; i++)
+//    {
 //        cout << "Q " << setw(10) << res_ang->q[i]
 //             << "\tQp " << setw(10) << res_ang->q_p[i]
 //             << "\tQpp " << setw(10) << res_ang->q_pp[i]
 //             << endl;
-    }
+//    }
 //    cout << "Duration " << tim.duration().count() << endl;
 //    hikm.VectorCout("hikm");
 //    Dv.VectorCout("Dv");
 //    p.VectorCout("p");
-    Vector3 target(-0.114, -0.2501, 0.1355);
-    Vector3 target_r(ToRad(180), ToRad(0),   ToRad(0));
-    int kolvo = 1;
-    CheckTime ct;
-    for (int i = 0; i < kolvo; i ++)
-    {
-        manipulator.SolveInverseKinematic(0.00001, target, target_r);
-    }
+//    Vector3 target(-0.114, -0.2501, 0.1355);
+//    Vector3 target_r(ToRad(180), ToRad(0),   ToRad(0));
+//    int kolvo = 1;
+//    CheckTime ct;
+//    for (int i = 0; i < kolvo; i ++)
+//    {
+//        manipulator.SolveInverseKinematic(0.00001, target, target_r);
+//    }
 //    cout << "Time of " << kolvo << " calculations " << ct.duration().count() << endl;
 //    cout << "One iter duration = " << ct.duration().count() / kolvo << endl;
 //    cout << "Точность " << manipulator.GetDeltaR().Length() + manipulator.GetDeltaS().Length()<< endl;
@@ -252,14 +252,14 @@ int main(int argc, char *argv[])
 //        cout << str << endl;
 //    }
 
-    MeshCollider cube;
-    MeshCollider cube2;
-    cube.ReadStl("STLmodels/cube2m.stl");
-    cube2.ReadStl("STLmodels/cube2m.stl");
-    cube2.MoveMesh(Quaternion(0.707, 0, 0, 0.707), Vector3(2, 2, 0));
-//    cube2.MoveMesh(Quaternion(0, 0, 0, 1), Vector3(1.9, 1.9, 0));
-    if (cube.CheckCollision(cube2))
-        cout << "ALARM!" << endl;
+//    MeshCollider cube;
+//    MeshCollider cube2;
+//    cube.ReadStl("STLmodels/cube2m.stl");
+//    cube2.ReadStl("STLmodels/cube2m.stl");
+//    cube2.MoveMesh(Quaternion(0.707, 0, 0, 0.707), Vector3(2, 2, 0));
+////    cube2.MoveMesh(Quaternion(0, 0, 0, 1), Vector3(1.9, 1.9, 0));
+//    if (cube.CheckCollision(cube2))
+//        cout << "ALARM!" << endl;
 
 
 
@@ -270,10 +270,10 @@ int main(int argc, char *argv[])
     CheckTime ct1;
     try {
         solver.CalcPolynomLine(stv,   tarv,  v_tcp, a_tcp, angle_start, res_an, 10, result);
-//        solver.CalcPolynomLine(tarv,  tarv1, v_tcp, a_tcp, res_an,      res_an, 10, result);
-//        solver.CalcPolynomLine(tarv1, tarv2, v_tcp, a_tcp, res_an,      res_an, 10, result);
-//        solver.CalcPolynomLine(tarv2, tarv3, v_tcp, a_tcp, res_an,      res_an, 10, result);
-//        solver.CalcPolynomLine(tarv3, tarv4, v_tcp, a_tcp, res_an,      res_an, 10, result);
+        solver.CalcPolynomLine(tarv,  tarv1, v_tcp, a_tcp, res_an,      res_an, 10, result);
+        solver.CalcPolynomLine(tarv1, tarv2, v_tcp, a_tcp, res_an,      res_an, 10, result);
+        solver.CalcPolynomLine(tarv2, tarv3, v_tcp, a_tcp, res_an,      res_an, 10, result);
+        solver.CalcPolynomLine(tarv3, tarv4, v_tcp, a_tcp, res_an,      res_an, 10, result);
     }  catch (std::string &str) {
         cout << str << endl;
     }

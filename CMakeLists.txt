@@ -4,8 +4,6 @@ project(MainKinematic LANGUAGES CXX)
 include(FetchContent)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-include_directories(/home/devel/Projects/SimulatorClient/)
-include_directories(/home/devel/Projects/Visualization/VisualizatorOpenGL/)
 include_directories(${CMAKE_SOURCE_DIR}/Tests/models/)
 include_directories(${CMAKE_SOURCE_DIR}/STLmodels/)
 set(CMAKE_CXX_STANDARD 17)

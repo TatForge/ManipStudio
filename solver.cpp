@@ -266,6 +266,11 @@ void Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &ta
 void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &curr_angles, Angles& res_angle, const ushort &dt_millisec, Polynom result[])
 {
 #define VECTOR
+    uint vector_size = 500;
+    m_moments_vector.resize(vector_size);
+    m_angles_v.resize(vector_size);
+    m_speed_v.resize(vector_size);
+    m_accel_v.resize(vector_size);
     scalar x(start_point.x), vx(0), ax(0);
     scalar y(start_point.y), vy(0), ay(0);
     scalar z(start_point.z), vz(0), az(0);
@@ -280,7 +285,6 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
     Angles max_qpp;
     scalar v_curr;
     scalar a_curr;
-    scalar step(0);
     scalar distance = Distance(end_point, start_point);
     scalar  dist_x_norm = (end_point.x - start_point.x) / distance,
             dist_y_norm = (end_point.y - start_point.y) / distance,
@@ -383,7 +387,7 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
             {
                 unique_lock<mutex> lock_dynamic(m_dynamic_mtx);
                 unique_lock<mutex> lock_collision(m_collision_mtx);
-                cout << "VECTORS RESIZED!!!!!!!!!!!!!" << endl;
+                cout << "VECTORS RESIZED!!!!!! From " << m_angles_v.size() << " to " << 2 * (size + 1) << endl;
                 m_moments_vector.resize(2 * (size + 1));
                 m_angles_v.resize(2 * (size + 1));
                 m_accel_v.resize(2 * (size + 1));
@@ -443,6 +447,9 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
         }
 #if !MULTITHREAD
         SolveForwardDynamic(m_angles_v[size]);
+        for (int i = 0; i < 6; i++)
+//            cout << "p = " << m_moments.p[i] << " dv = " << m_moments.dv[i] << " hikm = " << m_moments.hikm[i] << endl;
+//        cout << endl;
         m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec);
 
 #endif
@@ -476,7 +483,7 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
             exception_queue.pop();
             rethrow_exception(p);
         }  catch (std::exception const &e) {
-            cout << "FAIL" << e.what() << endl;
+            cout << "FAIL rethrowing exception" << e.what() << endl;
         }
         if (m_moments_counter < size)
         {
@@ -565,20 +572,22 @@ bool Solver::MoveMeshes(const Matrix4x4 TR[])
 {
     std::vector<Vector3>v_move;
     std::vector<Quaternion> quat_move;
-    v_move.push_back(Vector3(0, 0, 0));
-    v_move.push_back(TR[0].ConvertToVector3());
-    v_move.push_back(TR[1].ConvertToVector3());
-    v_move.push_back(TR[2].ConvertToVector3());
-    v_move.push_back(TR[3].ConvertToVector3());
-    v_move.push_back(TR[4].ConvertToVector3());
-    v_move.push_back(TR[5].ConvertToVector3());
+    v_move.resize(7);
+    quat_move.resize(6);
+    v_move[0] = Vector3(0, 0, 0);
+    v_move[1] = TR[0].ConvertToVector3();
+    v_move[2] = TR[1].ConvertToVector3();
+    v_move[3] = TR[2].ConvertToVector3();
+    v_move[4] = TR[3].ConvertToVector3();
+    v_move[5] = TR[4].ConvertToVector3();
+    v_move[6] = TR[5].ConvertToVector3();
 
-    quat_move.push_back(TR[0].ConvertToQuaternion());
-    quat_move.push_back(TR[1].ConvertToQuaternion());
-    quat_move.push_back(TR[2].ConvertToQuaternion());
-    quat_move.push_back(TR[3].ConvertToQuaternion());
-    quat_move.push_back(TR[4].ConvertToQuaternion());
-    quat_move.push_back(TR[5].ConvertToQuaternion());
+    quat_move[0] = TR[0].ConvertToQuaternion();
+    quat_move[1] = TR[1].ConvertToQuaternion();
+    quat_move[2] = TR[2].ConvertToQuaternion();
+    quat_move[3] = TR[3].ConvertToQuaternion();
+    quat_move[4] = TR[4].ConvertToQuaternion();
+    quat_move[5] = TR[5].ConvertToQuaternion();
 
     //пересчет точек тут же
     m_meshes_buff = m_meshes;
@@ -624,23 +633,23 @@ void Solver::SolveForwardDynamicMultithread()
     Matrix4x4 T[6];
     Matrix4x4 U[36];
     const Matrix &A = *manip_config;
-    auto q = m_angles_v[m_moments_counter];
+    auto q = &m_angles_v[m_moments_counter];
     while(1)
     {
         while(!m_dynamic_notified)
         {
             m_dynamic_cv.wait(lock);
         }
-        T[0] = {{         cos(q.q[0]),         -sin(q.q[0]),       0,           A.at(0,0)},
-                {sin(q.q[0]) * cos(0), cos(q.q[0]) * cos(0), -sin(0), -sin(0) * A.at(0,2)},
-                {sin(q.q[0]) * sin(0), cos(q.q[0]) * sin(0),  cos(0),  cos(0) * A.at(0,2)},
+        T[0] = {{         cos(q->q[0]),         -sin(q->q[0]),       0,           A.at(0,0)},
+                {sin(q->q[0]) * cos(0), cos(q->q[0]) * cos(0), -sin(0), -sin(0) * A.at(0,2)},
+                {sin(q->q[0]) * sin(0), cos(q->q[0]) * sin(0),  cos(0),  cos(0) * A.at(0,2)},
                 {                   0,                    0,       0,                   1}};
         for (counter i = 1; i < JOINTS_COUNT; i++)
         {
-            T[i] = {{cos(q.q[i]),                                      -sin(q.q[i]),                 0,                   A.at(i-1,0)},
-                    {sin(q.q[i]) * cos(A.at(i-1,1)), cos(q.q[i]) * cos(A.at(i-1,1)), -sin(A.at(i-1,1)), -sin(A.at(i-1,1)) * A.at(i,2)},
-                    {sin(q.q[i]) * sin(A.at(i-1,1)), cos(q.q[i]) * sin(A.at(i-1,1)),  cos(A.at(i-1,1)),  cos(A.at(i-1,1)) * A.at(i,2)},
-                    {                                0,                                 0,                 0,                             1}};
+            T[i] = {{cos(q->q[i]),                                      -sin(q->q[i]),                 0,                     A.at(i-1,0)},
+                    {sin(q->q[i]) * cos(A.at(i-1,1)), cos(q->q[i]) * cos(A.at(i-1,1)), -sin(A.at(i-1,1)), -sin(A.at(i-1,1)) * A.at(i,2)},
+                    {sin(q->q[i]) * sin(A.at(i-1,1)), cos(q->q[i]) * sin(A.at(i-1,1)),  cos(A.at(i-1,1)),  cos(A.at(i-1,1)) * A.at(i,2)},
+                    {                              0,                               0,                 0,                            1}};
         }
         for (counter k = 0; k < 6; k++)
         {
@@ -666,8 +675,6 @@ void Solver::SolveForwardDynamicMultithread()
         {
             for (counter j = i; j < 6; j++)
             {
-                //            U[i*6 + j].MatrixCout("U");
-                //            m_cm[j].VectorCout("m_cm");
                 m_moments.p[i] += - m_mass[j] * m_gv.MultiplyTranspose(U[i*6 + j].MultiplyTranspose(m_cm[j]));
             }
             ctr++;
@@ -686,7 +693,6 @@ void Solver::SolveForwardDynamicMultithread()
                 m_moments.dv[i] += buff;
             }
         }
-
         Matrix4x4 u_buff;
         for (counter i = 0; i < 6; i++)
         {
@@ -718,8 +724,9 @@ void Solver::SolveForwardDynamicMultithread()
             m_moments.tao[i] = m_moments.p[i] + m_moments.dv[i] + m_moments.hikm[i];
         }
         m_moments_vector[m_moments_counter] = m_moments;
-
-
+        for (int i = 0; i < 6; i++)
+//            cout << "p = " << m_moments.p[i] << " dv = " << m_moments.dv[i] << " hikm = " << m_moments.hikm[i] << endl;
+//        cout << endl;
 
 //        cout << "size of moments vec tor = " << m_moments_counter << endl;
         m_emulator->moments_window.PlotCoordinates(m_moments_vector[m_moments_counter].tao[0], m_moments_vector[m_moments_counter].tao[1],
@@ -738,6 +745,7 @@ void Solver::CheckCollisionMultithread()
     Matrix4x4 buff1[6];
     unique_lock<mutex> lock(m_collision_mtx);
     Matrix4x4 T[6];
+    float dt_millisec = 10;
     while(1)
     {
         while(!m_collision_notified)
@@ -746,23 +754,29 @@ void Solver::CheckCollisionMultithread()
         }
         SolveDirectKinematic(m_angles_v[m_collisions_counter], buff1, T);
 
-        cout << m_angles_v[m_collisions_counter].q[0] << " "
-             << m_angles_v[m_collisions_counter].q[1] << " "
-             << m_angles_v[m_collisions_counter].q[2] << " "
-             << endl;
+//        cout << m_angles_v[m_collisions_counter].q[0] << " "
+//             << m_angles_v[m_collisions_counter].q[1] << " "
+//             << m_angles_v[m_collisions_counter].q[2] << " "
+//             << endl;
 
-        cout << buff1->ConvertToVector3().x << " "
-             << buff1->ConvertToVector3().y << " "
-             << buff1->ConvertToVector3().z << " "
-             << endl;
+//        cout << " x = " << buff1[5].ConvertToVector3().x
+//             << " y = " << buff1[5].ConvertToVector3().y
+//             << " z = " << buff1[5].ConvertToVector3().z
+//             << endl;
         if (MoveMeshes(buff1))
         {
             for (uint i = 0; i < m_meshes_buff.size() - 1; i++)
             {
-                if (m_meshes_buff[i].CheckCollision(m_meshes_buff[8]))
+                if (m_meshes_buff[i].CheckCollision(m_meshes_buff[8]) ||
+                        [&](){
+                        for (int j = i + 3; j < 6; j++)
+                            if (m_meshes_buff[i].CheckCollision(m_meshes_buff[j]))
+                                return true;
+                        return false;}())
+
                 {
                 #if !WITH_BENCHMARK
-//                    m_emulator->OneIterMoveLinear(m_angles_v[size], m_angles_v[size + 1],  dt_millisec, false, m_accel_v[i]);
+                    m_emulator->OneIterMoveLinear(m_angles_v[m_collisions_counter], m_angles_v[m_collisions_counter + 1],  dt_millisec, false, m_accel_v[i]);
                 #endif
                     try {
                         throw string("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + "cube"  /*to_string(cube)*/ + " elements");
@@ -771,7 +785,6 @@ void Solver::CheckCollisionMultithread()
                         exception_ptr p = current_exception();
                         exception_queue.push(p);
                     }
-//                    throw std::runtime_error("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + "cube"  /*to_string(cube)*/ + " elements");
                 }
             }
 
@@ -786,7 +799,7 @@ void Solver::CheckCollisionMultithread()
 bool Solver::SolveForwardDynamic(const Angles &angles)
 {
 #if MULTITHREAD
-    cout << "Solve Forward Dynamic started" << endl;
+//    cout << "Solve Forward Dynamic started" << endl;
 #endif
     CalcUMatrix();
     m_moments.MakeNull();
