@@ -9,9 +9,9 @@ Emulator::Emulator()
 
 Emulator::Emulator(const Robo &manip)
 {
+//#if !BENCHMARK
     w.show();
     moments_window.show();
-
     state_matrix = new Matrix(manip.state_matrix->GetColsCount(), manip.state_matrix->GetRowsCount());
     for (int i = 0; i < JOINTS_COUNT; i++)
     {
@@ -74,6 +74,7 @@ void Emulator::MoveManipLinear(std::vector<Angles> angles, std::vector<Vector3> 
         OneIterMoveLinear(angles[i], angles[i + 1], dt_msec, is_last, accel[i]);
     }
     w.PlotSpeeds(m_emu_angles);
+
 }
 
 void Emulator::MoveManipPolynom(Polynom polynom_in, int moving_time_millisec)

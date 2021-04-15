@@ -53,10 +53,8 @@ public:
     void OneIterMoveLinear(const Angles &angle1, const Angles &angle2, const int &dt_msec, bool is_last, Vector3 accel);
     void SendDataToShared(SharedMemKey skey, float *data_ptr, size_t size);
     void FillManipPositionData();
-#ifdef VREMENNO_DLYA_VISUALKI
     void MoveThatShit();
     MainWindow moments_window;
-#endif
 private:
     Matrix4x4 T[JOINTS_COUNT];
     Matrix *state_matrix;

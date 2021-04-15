@@ -22,20 +22,15 @@ public :
     inline void SetRotationAxisLocal(const rm::Vector3 &rot);
     inline void SetRotationAxis(const rm::Vector3 &rot);
     inline void SetPosition(const rm::Vector3 &V);
-//    inline void SetRotation(const rm::Quaternion &rot);
     const rm::Vector3 &GetRotationAxis() const;
     const rm::Vector3 &GetRotationAxisLocal() const;
     const rm::Vector3 &GetPositionLocal() const;
     const rm::Vector3 &GetPosition() const;
-//    const rm::Quaternion &GetRotation() const;
-//    const rm::Quaternion &GetRotationLocal() const;
 protected:
     rm::Vector3 pos;
     rm::Vector3 pos_local;
     rm::Vector3 rotation_axis;
     rm::Vector3 rotation_axis_loc;
-//    rm::Quaternion rotation_quat;
-//    rm::Quaternion rotation_quat_base;//Положение эффектора, задаваемое на старте программы. Не менять.
     scalar theta;
     scalar theta_added;
 };
@@ -98,9 +93,7 @@ public:
     void WriteSettingsToFile();
     void LoadSettingsFromFile();
     void UpdateTMatrix();
-
     bool CheckTrajectoryForLinear(const rm::Polynom pol, rm::Vector3 l1, rm::Vector3 l2, const scalar &t, const scalar &delta_t, const scalar &delta_r);
-
     bool LoadManip();
     Moments *GetMoments();
     rm::Angles *GetAngles();

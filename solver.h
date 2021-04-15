@@ -7,11 +7,6 @@
 #include <condition_variable>
 #include <queue>
 
-//#include "gjkcollision3d.h"
-//#include "my_math.h"
-
-
-
 using namespace rm;
 
 struct BoxAABB
@@ -21,24 +16,44 @@ struct BoxAABB
     Vector3 point_min;
 };
 
+struct IKData
+{
+    Quaternion end_eff_target_ori;
+    Quaternion end_eff_world_ori;
+    Quaternion deltaQ;
+    Matrix4x4 TR[6];
+    Vector3 ang_vel;
+    Vector3 delta_r;
+    Vector3 delta_s;
+    Vector3 axis;
+    Vector3 maxis;
+    Matrix jacobian = Matrix(6,6);
+    Matrix jacobian_transposed = Matrix(6, 6);
+    Matrix U = Matrix(6, 6);
+    Matrix aug_matrix = Matrix(6, 7);
+    Angles d_thet;
+    Vector delta_t = Vector(6);
+    Vector delta_thetas = Vector(6);
+    counter ctr = 0;
+    scalar angle = 0;
+};
+
+
 class Solver
 {
 public:
     Solver(Robo &manip);
-    void SolveDirectKinematic(const Angles &q, Matrix4x4 TR[], Matrix4x4 *T = nullptr);
-    void SolveInverseKinematic(const scalar &accuracy, const StateVector &target, const Angles &curr_angle, Angles &res_angle);
-    int CalcPolynomMaxQPP(const StateVector &start_point, const StateVector &end_point, const Angles &curr_angles, Angles& res_angle, const int &t_millisec, const scalar &dt_millisec, Polynom result[]);
+    void SolveDirectKinematic(const Angles &q, Matrix4x4 TR[], Matrix4x4 *T = nullptr) noexcept;
+    void SolveInverseKinematic(const scalar &accuracy, const StateVector &target, const Angles &curr_angle, Angles &res_angle, IKData *data  = nullptr);
     void CalcPolynomLine(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &start_angles, Angles &res_angle, const ushort &dt_millisec, Polynom result[]);
-//    int CalcPolynomCircle(const StateVector &start_point, const StateVector &end_point,)
     bool CheckTrajectoryForLinear(const Polynom &pol, const Vector3 &l1, const Vector3 &l2, const scalar &t_millisec, const scalar &max_delta);
     bool CheckTrajectoryForLinear(const Angles angles, const Vector3 &l1, const Vector3 &l2, const scalar &max_delta);
-    bool MoveMeshes(const Matrix4x4 TR[]);
-    void CalcUMatrix();
+    bool MoveMeshes(const Matrix4x4 TR[]) noexcept;
+    void CalcUMatrix() noexcept;
     //Multithread
     void SolveForwardDynamicMultithread();
     void CheckCollisionMultithread();
     bool SolveForwardDynamic(const Angles &angles);
-//    void MoveMeshes(const Quaternion qtr[], const Vector3 v[]);
 private:
     Solver(Solver &solver) = delete;
     Solver(Solver &&solver) = delete;
@@ -60,19 +75,18 @@ private:
     array<rm::Tensor, JOINTS_COUNT> m_i;
     array<rm::Matrix4x4, JOINTS_COUNT> m_ji;
 
-//    queue<Angles> m_angles_queue;
-//    queue<Robo::Moments> m_moments_queue;
     vector<Angles>  m_angles_v;
     vector<Vector3> m_speed_v;
     vector<Vector3> m_accel_v;
-
     vector<Robo::Moments> m_moments_vector;
     uint m_moments_counter;
     uint m_collisions_counter;
+    IKData *m_main_IKData;
 
     //    Angles m_buff_angles_last;
     //    Angles m_buff_angles_previous;
 #if MULTITHREAD
+    IKData *m_dynamic_IKData;
     thread *m_dynamic_thread;
     thread *m_collision_thread;
     thread *m_visual_thread;

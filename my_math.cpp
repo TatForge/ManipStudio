@@ -989,7 +989,7 @@ Matrix4x4::Matrix4x4()
 //    MakeNull();
 }
 
-Matrix4x4::Matrix4x4(const initializer_list<scalar> il)
+Matrix4x4::Matrix4x4(const initializer_list<scalar> il) noexcept
 {
     int i = 0;
     for (auto el : il)
@@ -999,7 +999,7 @@ Matrix4x4::Matrix4x4(const initializer_list<scalar> il)
     }
 }
 
-void Matrix4x4::operator=(const Matrix &m)
+void Matrix4x4::operator=(const Matrix &m) noexcept
 {
     a[0]  = m.at(0,0);
     a[1]  = m.at(0,1);
@@ -1019,7 +1019,7 @@ void Matrix4x4::operator=(const Matrix &m)
     a[15] = m.at(3,3);
 }
 
-void Matrix4x4::operator*=(const scalar &sc)
+void Matrix4x4::operator*=(const scalar &sc) noexcept
 {
     for (int i = 0; i < 16; i++)
     {
@@ -1027,7 +1027,7 @@ void Matrix4x4::operator*=(const scalar &sc)
     }
 }
 
-Matrix4x4 Matrix4x4::MultiplyTranspose(const Matrix4x4 &b)
+Matrix4x4 Matrix4x4::MultiplyTranspose(const Matrix4x4 &b) noexcept
 {
     Matrix4x4 result;
     for (int i = 0; i < 4; i++)
@@ -1040,7 +1040,7 @@ Matrix4x4 Matrix4x4::MultiplyTranspose(const Matrix4x4 &b)
     return result;
 }
 
-Vector Matrix4x4::MultiplyTranspose(const Vector &v)
+Vector Matrix4x4::MultiplyTranspose(const Vector &v) noexcept
 {
     Vector res(v.GetLength());
     //            v.VectorCout("input vector");
@@ -1052,7 +1052,7 @@ Vector Matrix4x4::MultiplyTranspose(const Vector &v)
     return res;
 }
 
-Matrix4x4 Matrix4x4::operator*(const Matrix4x4 &b) const
+Matrix4x4 Matrix4x4::operator*(const Matrix4x4 &b) const noexcept
 {
     Matrix4x4 result;
     for (int i = 0; i < 4; i++)
@@ -1066,7 +1066,7 @@ Matrix4x4 Matrix4x4::operator*(const Matrix4x4 &b) const
 }
 
 
-void Matrix4x4::MatrixCout(const char *ch) const
+void Matrix4x4::MatrixCout(const char *ch) const noexcept
 {
     cout << "___________________________"
          << ch
@@ -1079,7 +1079,7 @@ void Matrix4x4::MatrixCout(const char *ch) const
     cout << setw(w) << a[12] << setw(w) << a[13] << setw(w) << a[14] << setw(w) << a[15] << endl;
 }
 
-void Matrix4x4::MakeIdentity()
+void Matrix4x4::MakeIdentity() noexcept
 {
     MakeNull();
     a[0] = 1;
@@ -1088,7 +1088,7 @@ void Matrix4x4::MakeIdentity()
     a[15] = 1;
 }
 
-void Matrix4x4::MakeNull()
+void Matrix4x4::MakeNull() noexcept
 {
     for (counter i = 0; i < 16; i++)
     {
@@ -1096,7 +1096,7 @@ void Matrix4x4::MakeNull()
     }
 }
 
-bool Matrix4x4::operator ==(const Matrix4x4 &m) const
+bool Matrix4x4::operator ==(const Matrix4x4 &m) const noexcept
 {
     for (int i = 0; i < 16; i++)
     {
@@ -1106,17 +1106,17 @@ bool Matrix4x4::operator ==(const Matrix4x4 &m) const
     return true;
 }
 
-scalar &Matrix4x4::operator()(const int &row, const int &col)
+scalar &Matrix4x4::operator()(const int &row, const int &col) noexcept
 {
     return a[row * 4 + col];
 }
 
-scalar Matrix4x4::at(const int &row, const int &col) const
+scalar Matrix4x4::at(const int &row, const int &col) const noexcept
 {
     return a[row * 4 + col];
 }
 
-int Matrix4x4::MaxElem() const
+int Matrix4x4::MaxElem() const noexcept
 {
     //return maximum element col number
     scalar max_elem = a[0];
@@ -1133,7 +1133,7 @@ int Matrix4x4::MaxElem() const
     return max_col;
 }
 
-Quaternion Matrix4x4::ConvertToQuaternion() const
+Quaternion Matrix4x4::ConvertToQuaternion() const noexcept
 {
     RoboMath::Quaternion res;
     scalar trace = a[0] + a[5] + a[10] + 1;
@@ -1175,7 +1175,7 @@ Quaternion Matrix4x4::ConvertToQuaternion() const
     return res;
 }
 
-Vector3 Matrix4x4::ConvertToVector3() const
+Vector3 Matrix4x4::ConvertToVector3() const noexcept
 {
     return Vector3(a[3],a[7],a[11]);
 }

@@ -9,9 +9,6 @@ Benchmarks::Benchmarks()
 
 }
 
-
-
-
 void SolveDirectKinematic(const Angles &q, Matrix4x4 TR[])
 {
     const Matrix &A = {{0,     -M_PI/2, 0.2325, q.q[0]},
@@ -86,6 +83,19 @@ static void BMForwardDynamic(benchmark::State &state)
 }
 BENCHMARK(BMForwardDynamic)->Unit(benchmark::kMicrosecond);
 
+static void BMCalcUMatrix(benchmark::State &state)
+{
+    Robo manipulator(6);
+    manipulator.LoadManip();
+    Solver solver(manipulator);
+
+    for (auto e : state)
+    {
+        solver.CalcUMatrix();
+    }
+}
+BENCHMARK(BMCalcUMatrix)->Unit(benchmark::kMicrosecond);
+
 static void BMCalcPolynomLine(benchmark::State &state)
 {
     Angles angles;
@@ -108,7 +118,6 @@ static void BMCalcPolynomLine(benchmark::State &state)
     }
 }
 BENCHMARK(BMCalcPolynomLine)->Unit(benchmark::kMicrosecond);
-
 
 static void Matrix4x4Mulitplication(benchmark::State &state)
 {

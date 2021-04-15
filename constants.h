@@ -9,10 +9,9 @@
 #define WITH_QTESTS     false
 #define WITH_COLLISIONS true
 #define MULTITHREAD     false
-//#define WITH_WINDOW     true
 //assertions turn off
 //#define NDEBUG
-#define SMESH +3.55
+#define SMESH +2.55
 //__________________________________
 #define RANGE_TO_PLOT 0.025  // 25 mm
 
