@@ -12,6 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_AUTOMOC ON)
 SET(CMAKE_AUTOUIC ON)
 SET(CMAKE_AUTORCC ON)
+SET(CUDA_REQUIRED false)
 
 find_package(Qt5Test)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
@@ -42,7 +43,7 @@ enable_testing(true)
 ##endif()
 
 
-if (CUDA_FOUND)
+if (CUDA_FOUND AND CUDA_REQUIRED)
     include_directories(${CUDA_INCLUDE_DIRS} ${CUDART_INCLUDE_DIRS}
         ${QTEST_INCLUDE_DIRS})
     set(CMAKE_CUDA_ARCHITECTURES 50)
@@ -50,8 +51,8 @@ if (CUDA_FOUND)
     file(GLOB CUDA_FILES "./" *.cu)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR} /opt/cuda/targets/x86_64-linux/include)
     CUDA_COMPILE(CUDA_OBJECTS ${CUDA_FILES})
+    target_link_libraries(MainKinematic cudart)
 endif()
-
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build)
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
@@ -60,7 +61,7 @@ add_executable(MainKinematic
     main.h
     my_math.h
     robo.h
-    cuda_math.h
+#    cuda_math.h
     emulator.h
     mainwindow.h
     solver.h
@@ -91,7 +92,8 @@ add_executable(MainKinematic
     mainwindow.ui
 )
 target_link_libraries(MainKinematic Qt5::Core Qt5Test Qt5::Widgets benchmark::benchmark benchmark::benchmark_main GTest::gtest)
-target_link_libraries(MainKinematic cudart -lqcustomplot)
+target_link_libraries(MainKinematic -lqcustomplot)
+
 
 add_custom_command(TARGET MainKinematic POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
                    ${CMAKE_SOURCE_DIR}/ManipulatorSettigns.ini $<TARGET_FILE_DIR:MainKinematic>/)

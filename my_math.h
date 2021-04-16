@@ -178,13 +178,13 @@ namespace RoboMath
         scalar& operator()(const int &row, const int &col);
         int GetColsCount() const { return m_cols; }
         int GetRowsCount() const { return m_rows; }
-        scalar* GetDataPtr() const {return data;};
+        scalar* GetDataPtr() const {return m_data_ptr;};
         void MatrixCout(const char *ch = "Matrix") const;
 
     private:
         int m_rows;
         int m_cols;
-        scalar *data;
+        scalar *m_data_ptr;
         void DataNewMemory();
         void DataNewMemory(const int &rows, const int &cols);
         int index(const int &row, const int &col) const { return row * m_cols + col;}

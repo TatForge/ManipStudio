@@ -19,7 +19,7 @@ Matrix::Matrix()
 {
     m_rows = 0;
     m_cols = 0;
-    data = nullptr;
+    m_data_ptr = nullptr;
 }
 
 Matrix::Matrix(const int &rows, const int &cols)
@@ -31,15 +31,15 @@ Matrix::Matrix(const int &rows, const int &cols)
 
 Matrix::Matrix(const Matrix &source) : Matrix (source.m_rows, source.m_cols)
 {
-    memcpy(data, source.data, sizeof(scalar) * m_rows * m_cols);
+    memcpy(m_data_ptr, source.m_data_ptr, sizeof(scalar) * m_rows * m_cols);
 }
 
 Matrix::Matrix(Matrix &&source)
 {
     this->m_cols = source.m_cols;
     this->m_rows = source.m_rows;
-    this->data = source.data;
-    source.data = nullptr;
+    this->m_data_ptr = source.m_data_ptr;
+    source.m_data_ptr = nullptr;
 }
 
 Matrix::Matrix(const initializer_list<initializer_list<scalar> > &il) : Matrix (il.size(), il.begin()->size())
@@ -50,7 +50,7 @@ Matrix::Matrix(const initializer_list<initializer_list<scalar> > &il) : Matrix (
         for (auto elem : l)
         {
             //                il_sec =  l.size();
-            *(data + i) = elem;
+            *(m_data_ptr + i) = elem;
 #ifdef DEBUG_COUT
             cout << *(data + i);
 #endif
@@ -62,15 +62,15 @@ Matrix::Matrix(const initializer_list<initializer_list<scalar> > &il) : Matrix (
 
 Matrix::~Matrix()
 {
-    if(data != nullptr)
-        delete[] data;
+    if(m_data_ptr != nullptr)
+        delete[] m_data_ptr;
 }
 
 scalar &Matrix::at(const int &row, const int &col) const
 {
     assert(col >= 0 && col <= m_cols);
     assert(row >= 0 && row <= m_rows);
-    return *(data + index(row, col));
+    return *(m_data_ptr + index(row, col));
 }
 
 Matrix Matrix::Multuply(const Matrix &matrix1, const Matrix &matrix2) const
@@ -139,7 +139,7 @@ Vector Matrix::MultiplyTranspose(Vector &v) const
     {
         for (counter j = 0; j < m_cols; j++)
         {
-            buff += *(data + i * m_cols + j) * v(j);
+            buff += *(m_data_ptr + i * m_cols + j) * v(j);
         }
         result(i) = buff;
         buff = 0;
@@ -155,7 +155,7 @@ size_t Matrix::Size() const
 void Matrix::AddDiagonal(const scalar &d)
 {
     int len = RoboMath::min(m_rows, m_cols);
-    scalar *scalarP(data);
+    scalar *scalarP(m_data_ptr);
     for (counter i  = 0; i < len; i++)
     {
         *scalarP += d;
@@ -167,7 +167,7 @@ void Matrix::PlusMatrix(const Matrix &m)
 {
     assert(m_rows == m.m_rows && m_cols == m.m_cols);
     for (int i = 0; i < m_rows * m_cols; i++)
-        *(data + i) += *(m.data + i);
+        *(m_data_ptr + i) += *(m.m_data_ptr + i);
 }
 
 void Matrix::SetSubmatrix(const Matrix &source, const int col, const int row)
@@ -176,7 +176,7 @@ void Matrix::SetSubmatrix(const Matrix &source, const int col, const int row)
     assert((col + source.m_cols) <= this->m_cols && (row + source.m_rows) <= this->m_rows);
     int step = this->m_cols - source.m_cols;
     scalar *from = source.GetDataPtr();
-    scalar *to = this->data + col + row * this->m_cols;
+    scalar *to = this->m_data_ptr + col + row * this->m_cols;
     for (counter i = 0; i < source.m_rows; i++)
     {
         for (counter j = 0; j < source.m_cols; j++)
@@ -200,7 +200,7 @@ void Matrix::SetColumn(const Vector &v, const int ColNumber)
 {
     assert(ColNumber <= m_cols && ColNumber >= 0);
     assert(v.GetLength() == m_rows);
-    scalar *to = data + ColNumber - 1;
+    scalar *to = m_data_ptr + ColNumber - 1;
     scalar *from = v.GetDataPtr();
     for (counter i = 0; i < v.GetLength(); i++)
     {
@@ -213,7 +213,7 @@ void Matrix::SetColumn(const Vector3 &v, const int ColNumber)
 {
     assert(ColNumber <= (m_cols - 1) && ColNumber >= 0);
     assert(m_rows == 3);
-    scalar *to = data + ColNumber;
+    scalar *to = m_data_ptr + ColNumber;
     *(to           ) = v.x;
     *(to +     m_cols) = v.y;
     *(to + 2 * m_cols) = v.z;
@@ -223,8 +223,8 @@ void Matrix::SetSubColumn(const Vector3 &v, const int ColNumber, const int RowNu
 {
     assert(ColNumber <= (m_cols - 1) && ColNumber >= 0);
     assert(RowNumber <= m_rows - 3);
-    scalar *to = data + ColNumber + m_cols * RowNumber;
-    *(to           ) = v.x;
+    scalar *to = m_data_ptr + ColNumber + m_cols * RowNumber;
+    *(to             ) = v.x;
     *(to +     m_cols) = v.y;
     *(to + 2 * m_cols) = v.z;
 }
@@ -234,7 +234,7 @@ void Matrix::SolveGauss()
     int num_iter = min(m_cols, m_rows); // почему берется min, а не rows, ведь проверка по столбцам??
     // num_iter = rows;
     //First of all find maximum element in first col
-    scalar *main_elem_ptr = data;
+    scalar *main_elem_ptr = m_data_ptr;
     scalar *max_row_ptr = nullptr;
     scalar *to = nullptr;
     scalar *from = nullptr;
@@ -245,21 +245,21 @@ void Matrix::SolveGauss()
     for (; num_iter > 1; num_iter--)
     {
 
-        scalar *row_for_swap = main_elem_ptr;
+        scalar *row_for_swap(0);
         scalar max_abs = fabs(*main_elem_ptr);
         max_row_ptr = main_elem_ptr;
         //Find row with maximum (abs) element value
         for (counter j = 1; j < num_iter; j++)
         {
-            if (*(data + m_cols * j) > max_abs)
+            if (*(m_data_ptr + m_cols * j) > max_abs)
             {
-                max_abs = *(data + m_cols * j);
-                max_row_ptr = data + m_cols * j;
+                max_abs = *(m_data_ptr + m_cols * j);
+                max_row_ptr = m_data_ptr + m_cols * j;
             }
-            else if ( - *(data + m_cols * j) > max_abs)
+            else if ( - *(m_data_ptr + m_cols * j) > max_abs)
             {
-                max_abs = -*(data + m_cols * j);
-                max_row_ptr = data + m_cols * j;
+                max_abs = -*(m_data_ptr + m_cols * j);
+                max_row_ptr = m_data_ptr + m_cols * j;
             }
         }
         //swap elements
@@ -292,11 +292,8 @@ void Matrix::SolveGauss()
                 *to -= (*from) * alpha;
             }
         }
-//        this->MatrixCout();
         main_elem_ptr += diagonal_step;
-//        this->MatrixCout();
         --row_length;
-//        --num_iter;
     }
 }
 
@@ -305,11 +302,10 @@ void Matrix::GetTheRoots(Vector &V) const
     //Получение корней СЛАУ методом Гаусса
     assert(V.GetLength() == m_rows);
 
-    scalar *row_elem_ptr = data + m_cols * m_rows - 2;
-    scalar *right_val_ptr = data + m_cols * m_rows - 1;
+    scalar *row_elem_ptr = m_data_ptr + m_cols * m_rows - 2;
+    scalar *right_val_ptr = m_data_ptr + m_cols * m_rows - 1;
     scalar *result_ptr_last = V.GetDataPtr() + V.GetLength() - 1;
     scalar accum;
-
     for (counter i = m_rows; i > 0; i--)
     {
         accum = *(right_val_ptr);
@@ -337,11 +333,11 @@ void Matrix::MakeIdentity()
     {
         if (i == one_pos)
         {
-            *(data + i) = 1;
+            *(m_data_ptr + i) = 1;
             one_pos += (m_cols + 1);
         }
         else
-            *(data + i) = 0;
+            *(m_data_ptr + i) = 0;
     }
 }
 
@@ -349,16 +345,13 @@ void Matrix::MakeZero()
 {
     for (counter i = 0; i < m_cols * m_rows; i++)
     {
-        *(data + i) = 0;
+        *(m_data_ptr + i) = 0;
     }
 }
 Matrix Matrix::operator *(const Matrix &matrix2) const
 {
     Matrix result(m_rows, matrix2.m_cols);
     scalar buff = 0;
-//    Matrix *res = temp_1;
-//    if (*this == *temp_1)
-//        res = temp_2;
     for (counter i = 0; i < this->m_rows; i++)
     {
         for (counter j = 0 ; j < matrix2.m_cols; j++)
@@ -400,7 +393,7 @@ Vector Matrix::operator*(const Vector &vector2) const
     const scalar *vector_data_ptr;
     Vector result(this->m_rows);
     scalar *result_ptr = result.GetDataPtr();
-    scalar *jacoby_data_ptr = data;
+    scalar *jacoby_data_ptr = m_data_ptr;
     for (short i = 0; i < this->m_rows; i++)
     {
         vector_data_ptr = vector2.GetDataPtr();
@@ -433,14 +426,14 @@ Matrix Matrix::operator=(const Matrix &matrix1)
 {
     if (this == &matrix1)
         return *this;
-    if (data != nullptr)
+    if (m_data_ptr != nullptr)
     {
-        delete [] data;
+        delete [] m_data_ptr;
     }
     m_rows = matrix1.m_rows;
     m_cols = matrix1.m_cols;
     DataNewMemory();
-    memcpy(data, matrix1.data, sizeof(scalar) * m_rows * m_cols);
+    memcpy(m_data_ptr, matrix1.m_data_ptr, sizeof(scalar) * m_rows * m_cols);
 
     return *this;
 }
@@ -449,12 +442,12 @@ void Matrix::operator =(Matrix &&matrix1)
 {
 //    if (this->data == matrix1.data)
 //        return *this;
-    if (this->data != nullptr)
-        delete[] data;
-    this->m_cols = matrix1.m_cols;
-    this->m_rows = matrix1.m_rows;
-    this->data = matrix1.data;
-    matrix1.data = nullptr;
+    if (this->m_data_ptr != nullptr)
+        delete[] m_data_ptr;
+    m_cols = matrix1.m_cols;
+    m_rows = matrix1.m_rows;
+    m_data_ptr = matrix1.m_data_ptr;
+    matrix1.m_data_ptr = nullptr;
 }
 
 Matrix Matrix::operator+(const Matrix &matrix) const
@@ -463,7 +456,7 @@ Matrix Matrix::operator+(const Matrix &matrix) const
     Matrix result(m_rows, m_cols);
     for (int i = 0; i < m_rows * m_cols; i++)
     {
-        *(data + i) = *(matrix.data + i);
+        *(m_data_ptr + i) = *(matrix.m_data_ptr + i);
     }
     return result;
 }
@@ -474,7 +467,7 @@ bool Matrix::operator==(const Matrix &m) const
     //Сравнение векторов с точностью до 6 знака
     for (counter i = 0; i < m.m_rows * m.m_cols; i++)
     {
-        if (!(round(*(data + i)*100000)/100000 == round(*(m.data + i) * 100000)/100000)){
+        if (!(round(*(m_data_ptr + i)*100000)/100000 == round(*(m.m_data_ptr + i) * 100000)/100000)){
 //            cout << *(data + i) << " " << *(m.data + i);
             return false;
         }
@@ -486,12 +479,12 @@ scalar &Matrix::operator()(const int &row, const int &col)
 {
     assert(col >= 0 && col <= this->m_cols);
     assert(row >= 0 && row <= this->m_rows);
-    return *(data + index(row, col));
+    return *(m_data_ptr + index(row, col));
 }
 
 void Matrix::Transpose()
 {
-    assert(this->data != nullptr && "Matrix has no data in 'Matrix::Transpose'");
+    assert(this->m_data_ptr != nullptr && "Matrix has no data in 'Matrix::Transpose'");
     assert(this->m_cols > 1 && this->m_rows > 1 && "Matrix rows or cols < 1 in 'Matrix::Transpose'");
     scalar *tdata = new scalar [m_rows*m_cols];
 
@@ -501,7 +494,7 @@ void Matrix::Transpose()
 #ifdef DEBUG_COUT
             cout << " data " << *(data + i*rows + j) << endl;
 #endif
-            *(tdata + j*m_rows + i) = *(data + i*m_cols + j);
+            *(tdata + j*m_rows + i) = *(m_data_ptr + i*m_cols + j);
         }
 #ifdef DEBUG_COUT
     for(counter i = 0; i < cols * rows; i++)
@@ -512,7 +505,7 @@ void Matrix::Transpose()
     int trows = m_cols;
     m_cols = m_rows;
     m_rows = trows;
-    memcpy(data, tdata, sizeof(scalar) * m_rows * m_cols);
+    memcpy(m_data_ptr, tdata, sizeof(scalar) * m_rows * m_cols);
     delete[] tdata;
 }
 
@@ -527,7 +520,7 @@ void Matrix::MatrixCout(const char *ch) const
     {
         for (counter j = 0; j < m_cols; j++)
         {
-            cout << setw(11) << *(data + i * m_cols + j) << "\t";
+            cout << setw(11) << *(m_data_ptr + i * m_cols + j) << "\t";
         }
         cout << endl;
     }
@@ -537,12 +530,12 @@ void Matrix::MatrixCout(const char *ch) const
 
 void Matrix::DataNewMemory()
 {
-    data = new scalar[m_rows*m_cols];
+    m_data_ptr = new scalar[m_rows*m_cols];
 }
 
 void Matrix::DataNewMemory(const int &rows, const int &cols)
 {
-    data = new scalar[rows*cols];
+    m_data_ptr = new scalar[rows*cols];
 #ifdef DEBUG_COUT
     cout << "Data matrix was initialized with rows = "
                  << rows << " end cols = " << cols << endl;
