@@ -46,7 +46,6 @@ enable_testing(true)
 ##    add_subdirectory()
 ##endif()
 
-
 if (CUDA_FOUND AND CUDA_REQUIRED)
     include_directories(${CUDA_INCLUDE_DIRS} ${CUDART_INCLUDE_DIRS}
         ${QTEST_INCLUDE_DIRS})
@@ -57,7 +56,7 @@ if (CUDA_FOUND AND CUDA_REQUIRED)
     CUDA_COMPILE(CUDA_OBJECTS ${CUDA_FILES})
     target_link_libraries(MainKinematic cudart)
 endif()
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build)
+
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
 #Main target
