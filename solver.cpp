@@ -177,11 +177,13 @@ void Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &ta
             std::exception exc;
             std::string str;
             str = "Точка недостижима: x(" + to_string(target.x) + ") y(" + to_string(target.y) + ") z(" + to_string(target.z)
-                    + ") roll(" + to_string(ToDeg(target.roll)) + ") pitch(" + to_string(ToDeg(target.pitch)) + ") yaw(" + to_string(ToDeg(target.yaw)) + ")";
+                    + ") roll(" + to_string(ToDeg(target.roll)) + ") pitch(" + to_string(ToDeg(target.pitch )) + ") yaw(" + to_string(ToDeg(target.yaw)) + ")";
 #if WITH_BENCHMARK
             cout << " cant move to this point" << endl;
 #else
-            throw str;
+            throw std::runtime_error("Точка недостижима: x(" + to_string(target.x) + ") y(" + to_string(target.y) +
+                                     ") z(" + to_string(target.z) + ") roll(" + to_string(ToDeg(target.roll)) + ") pitch("
+                                     + to_string(ToDeg(target.pitch)) + ") yaw(" + to_string(ToDeg(target.yaw)) + ")");
 #endif
         }
     }
@@ -381,7 +383,9 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
 //             << " a6 = " << m_angles_v[size].q[5] << endl;
 #if !MULTITHREAD
         SolveForwardDynamic(m_angles_v[size]);
+#if WITH_WINDOW
         m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec);
+#endif
 #endif
         size++;
         t+= dt_s;
@@ -432,9 +436,11 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
         CheckTrajectoryForLinear(m_angles_v[i], start_point.GetCoord(), end_point.GetCoord(), DELTA_RANGE);
     }
 #if !WITH_BENCHMARK
+#if WITH_WINDOW
     m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec, true);
-//    m_emulator->MoveManipLinear(m_angles_v, m_accel_v, dt_millisec);
+    m_emulator->MoveManipLinear(m_angles_v, m_accel_v, dt_millisec);
     res_angle = m_angles_v.back();
+#endif
 #endif
 }
 
@@ -620,9 +626,11 @@ void Solver::SolveForwardDynamicMultithread()
 //        cout << endl;
 
 //        cout << "size of moments vec tor = " << m_moments_counter << endl;
+#if WITH_WINDOW
         m_emulator->moments_window.PlotCoordinates(m_moments_vector[m_moments_counter].tao[0], m_moments_vector[m_moments_counter].tao[1],
-                                                   m_moments_vector[m_moments_counter].tao[2],m_moments_vector[m_moments_counter].tao[3],
-                                                   m_moments_vector[m_moments_counter].tao[4],m_moments_vector[m_moments_counter].tao[5], dt_millisec);
+                                                   m_moments_vector[m_moments_counter].tao[2], m_moments_vector[m_moments_counter].tao[3],
+                                                   m_moments_vector[m_moments_counter].tao[4], m_moments_vector[m_moments_counter].tao[5], dt_millisec);
+#endif
         m_moments_counter++;
 //        cout << "moments counter " << m_moments_counter << endl;
         m_dynamic_notified = false;
@@ -738,6 +746,6 @@ bool Solver::SolveForwardDynamic(const Angles &angles)
         m_moments.tao[i] = m_moments.p[i] + m_moments.dv[i] + m_moments.hikm[i];
     }
     m_moments_counter++;
-    cout << " counter " << m_moments_counter << endl;
+//    cout << " counter " << m_moments_counter << endl;
     return true;
 }

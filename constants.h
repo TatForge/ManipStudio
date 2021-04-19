@@ -4,11 +4,12 @@
 #include <cmath>
 
 //______ALL_PROJECT_CONSTANTS______
-#define WITH_BENCHMARK  false
-#define WITH_GTESTS     false
-#define WITH_QTESTS     false
-#define WITH_COLLISIONS true
-#define MULTITHREAD     false
+#define WITH_BENCHMARK  0
+#define WITH_GTESTS     0
+#define WITH_QTESTS     0
+#define WITH_COLLISIONS 1
+#define MULTITHREAD     1
+#define WITH_WINDOW     1
 //assertions turn off
 //#define NDEBUG
 #define SMESH +2.55

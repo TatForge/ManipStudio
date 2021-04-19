@@ -10,8 +10,10 @@ Emulator::Emulator()
 Emulator::Emulator(const Robo &manip)
 {
 //#if !BENCHMARK
+#if WITH_WINDOW
     w.show();
     moments_window.show();
+#endif
     state_matrix = new Matrix(manip.state_matrix->GetColsCount(), manip.state_matrix->GetRowsCount());
     for (int i = 0; i < JOINTS_COUNT; i++)
     {
@@ -60,7 +62,9 @@ void Emulator::MoveManipLinear(const Angles angles[], size_t size, scalar dt_mse
         if (is_last)
             break;
     }
+#if WITH_WINDOW
     w.PlotSpeeds(m_emu_angles);
+#endif
 }
 
 void Emulator::MoveManipLinear(std::vector<Angles> angles, std::vector<Vector3> accel, scalar dt_msec)
@@ -73,8 +77,9 @@ void Emulator::MoveManipLinear(std::vector<Angles> angles, std::vector<Vector3> 
             is_last = true;
         OneIterMoveLinear(angles[i], angles[i + 1], dt_msec, is_last, accel[i]);
     }
+#if WITH_WINDOW
     w.PlotSpeeds(m_emu_angles);
-
+#endif
 }
 
 void Emulator::MoveManipPolynom(Polynom polynom_in, int moving_time_millisec)
@@ -89,7 +94,10 @@ void Emulator::MoveManipPolynom(Polynom polynom_in, int moving_time_millisec)
             is_last = true;
         OneIterMove(is_last);
     }
+
+#if WITH_WINDOW
     w.PlotSpeeds(m_emu_angles,11);
+#endif
     t_m = 0;
 }
 
@@ -138,12 +146,15 @@ void Emulator::OneIterMove(bool is_last = false)
 //            if (points_to_visual[i] > 2 || points_to_visual[i + 1] > 2 || points_to_visual[i + 2] > 2)
 //                std::cout << "points " << " x = " << points_to_visual[i] << " y = " << points_to_visual[i + 1] << " z = " << points_to_visual[i + 2] << endl;
     auto angles = L.ConvertToQuaternion().GetEulerAngles();
+
+#if WITH_WINDOW
     w.PlotCoordinates(L(0,3), L(1,3), L(2,3), ToDeg(angles.z), ToDeg(angles.y), ToDeg(angles.x), m_delta_t_millisec, is_last);
     w.PlotSpeeds(m_emu_angles, is_last);
     if (is_last)
     {
         w.PrintResult(L(0,3), L(1,3), L(2,3), angles.z, angles.y, angles.x);
     }
+#endif
 }
 
 void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, const int &dt_msec, bool is_last, Vector3 accel)
@@ -171,6 +182,7 @@ void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, con
 //        w.PlotCoordinates(L(0,3), L(1,3), L(2,3), /*ToDeg(angles.z), ToDeg(angles.y), ToDeg(angles.x),*/
 //                          accel[(t_m)/dt_msec].x, accel[(t_m)/dt_msec].y, accel[(t_m)/dt_msec].z, m_delta_t_millisec, is_last);
 
+#if WITH_WINDOW
         w.PlotCoordinates(L(0,3), L(1,3), L(2,3), accel.x, accel.y, accel.z, m_delta_t_millisec, is_last);
 
         w.PlotSpeeds(m_emu_angles, is_last);
@@ -178,6 +190,7 @@ void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, con
         {
             w.PrintResult(L(0,3), L(1,3), L(2,3), angles.z, angles.y, angles.x);
         }
+#endif
         t_m += m_delta_t_millisec;
     }
 

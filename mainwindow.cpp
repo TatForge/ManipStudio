@@ -1,5 +1,7 @@
 #include "mainwindow.h"
 
+#if WITH_WINDOW
+
 #include "./ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -153,3 +155,4 @@ void MainWindow::on_pushButton_clicked()
 //    Emulator emul(manipulator);
 //    emul.MoveManip(pol, 3);
 }
+#endif

@@ -2,9 +2,12 @@
 #define MAINWINDOW_H
 
 #include "my_math.h"
+
+#if WITH_WINDOW
+
 #include "robo.h"
 #include <QMainWindow>
-#include <QTimer>
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -29,3 +32,4 @@ private:
     Ui::MainWindow *ui;
 };
 #endif // MAINWINDOW_H
+#endif

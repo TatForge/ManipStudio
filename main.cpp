@@ -18,7 +18,9 @@
 #include <QtTest/QTest>
 #endif
 
+#if WITH_WINDOW
 #include <QApplication>
+#endif
 
 #include <QString>
 QString a11 = QString::number(123);
@@ -31,8 +33,9 @@ using namespace RoboMath;
 #if ((!WITH_BENCHMARK) && (!WITH_GTESTS))
 int main(int argc, char *argv[])
 {
+#if WITH_WINDOW
     QApplication app(argc, argv);
-
+#endif
     Robo manipulator(6);
     try{
         manipulator.LoadManip();
@@ -74,7 +77,7 @@ int main(int argc, char *argv[])
 //    StateVector tarv(0.3, -0.2341, 0.1515, ToRad(90), ToRad(+90),   ToRad(+90));
 
     Polynom result[1000];
-    scalar v_tcp(0.18);
+    scalar v_tcp(0.2);
     scalar a_tcp(1);
     CheckTime ct1;
     try {
@@ -93,7 +96,10 @@ int main(int argc, char *argv[])
     QTest::qExec(new test_my_math, argc, argv);
 #endif
     cout << "!!!___FINISH___!!!" << endl;
+#if WITH_WINDOW
     return app.exec();
-//    return 0;
+#else
+    return 0;
+#endif
 }
 #endif

@@ -9,7 +9,6 @@
 #include "sharedmem.h"
 
 
-#include <QApplication>
 //#include <qcustomplot.h>
 
 #define VREMENNO_DLYA_VISUALKI
@@ -54,7 +53,9 @@ public:
     void SendDataToShared(SharedMemKey skey, float *data_ptr, size_t size);
     void FillManipPositionData();
     void MoveThatShit();
+#if WITH_WINDOW
     MainWindow moments_window;
+#endif
 private:
     Matrix4x4 T[JOINTS_COUNT];
     Matrix *state_matrix;
@@ -78,9 +79,9 @@ private:
     std::vector<MeshCollider> meshes_buff;
 #endif
 
-//#if !BENCHMARK
+#if WITH_WINDOW
     MainWindow w;
-//#else
+#endif
 //    class EmulatorConsoleOut
 //    {
 //    public:

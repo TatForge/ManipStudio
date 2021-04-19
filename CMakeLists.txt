@@ -14,6 +14,10 @@ SET(CMAKE_AUTOUIC ON)
 SET(CMAKE_AUTORCC ON)
 SET(CUDA_REQUIRED false)
 
+#EXECUTE_PROCESS(COMMAND umane -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE)
+#try_run(COMMAND umane -m OUTPUT_VARIABLE ARCHITECTURE)
+#message(STATUS ${ARCHITECTURE} "Architecture: ${ARCHITECTURE}")
+
 find_package(Qt5Test)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 find_package(benchmark REQUIRED)
@@ -91,9 +95,13 @@ add_executable(MainKinematic
 
     mainwindow.ui
 )
-target_link_libraries(MainKinematic Qt5::Core Qt5Test Qt5::Widgets benchmark::benchmark benchmark::benchmark_main GTest::gtest)
-target_link_libraries(MainKinematic -lqcustomplot)
+target_link_libraries(MainKinematic Qt5::Core Qt5Test benchmark::benchmark benchmark::benchmark_main GTest::gtest)
 
+message(STATUS "Architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
+
+if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+    target_link_libraries(MainKinematic -lqcustomplot  Qt5::Widgets)
+endif()
 
 add_custom_command(TARGET MainKinematic POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
                    ${CMAKE_SOURCE_DIR}/ManipulatorSettigns.ini $<TARGET_FILE_DIR:MainKinematic>/)
