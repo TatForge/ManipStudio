@@ -10,9 +10,9 @@
 #include <chrono>
 #include <string.h>
 #include <thread>
-#include <QSharedMemory>
 #include <stl_reader.h>
 
+#include "sharedmem.h"
 
 #ifdef WITH_TESTS
 #include <QtTest/QTest>
@@ -22,8 +22,6 @@
 #include <QApplication>
 #endif
 
-#include <QString>
-QString a11 = QString::number(123);
 
 //#include "commandworker.h"
 
@@ -36,6 +34,15 @@ int main(int argc, char *argv[])
 #if WITH_WINDOW
     QApplication app(argc, argv);
 #endif
+    char const *ch = "/home/devel/Projects/MainKinematic/ForKeys.txt";
+    SharedMemLinux shml(ch, 1024);
+    float f[2048];
+    for (int i = 0; i < 2048; i++)
+    {
+        f[i] = i;
+    }
+    shml.SendData(f, 2048);
+
     Robo manipulator(6);
     try{
         manipulator.LoadManip();

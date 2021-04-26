@@ -17,6 +17,8 @@
 #include "meshcollider.h"
 #endif
 
+typedef SharedMemLinux SharedMemory;
+
 //#include "QTimer"
 //#include "QThread"
 //#include "QObject"
@@ -62,9 +64,9 @@ private:
     rm::Angles m_emu_angles;
     Polynom m_polynom;
     Matrix4x4 L;
-    SharedMem *shared_manip;
-    SharedMem *shared_points;
-    SharedMem *shared_meshes;
+    SharedMemory *shared_manip;
+    SharedMemory *shared_points;
+    SharedMemory *shared_meshes;
     float manip_to_visual[18];
     float points_to_visual[999];
     float meshes_to_visual[999];

@@ -4,10 +4,11 @@ project(MainKinematic LANGUAGES CXX)
 include(FetchContent)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-include_directories(${CMAKE_SOURCE_DIR}/Tests/models/)
-include_directories(${CMAKE_SOURCE_DIR}/STLmodels/)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+include_directories(${CMAKE_SOURCE_DIR}/Tests/models/)
+include_directories(${CMAKE_SOURCE_DIR}/STLmodels/)
 
 SET(CMAKE_AUTOMOC ON)
 SET(CMAKE_AUTOUIC ON)
@@ -71,7 +72,7 @@ add_executable(MainKinematic
     constants.h
     meshcollider.h
     stlreader.h
-    stl_reader.h
+#    stl_reader.h
     sharedmem.h
     Tests
     Tests/test_my_math.h
@@ -80,7 +81,7 @@ add_executable(MainKinematic
     main.cpp
     my_math.cpp
     robo.cpp
-    some_trash.cpp
+#    some_trash.cpp
     emulator.cpp
     mainwindow.cpp
     solver.cpp
@@ -101,6 +102,9 @@ message(STATUS "Architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
     target_link_libraries(MainKinematic -lqcustomplot  Qt5::Widgets)
 endif()
+
+configure_file(${CMAKE_SOURCE_DIR}/../Visualization/VisualizatorOpenGL/sharedmem.h ${CMAKE_SOURCE_DIR}/sharedmem.h COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/../Visualization/VisualizatorOpenGL/sharedmem.cpp ${CMAKE_SOURCE_DIR}/sharedmem.cpp COPYONLY)
 
 add_custom_command(TARGET MainKinematic POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
                    ${CMAKE_SOURCE_DIR}/ManipulatorSettigns.ini $<TARGET_FILE_DIR:MainKinematic>/)

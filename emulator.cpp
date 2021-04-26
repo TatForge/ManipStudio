@@ -21,9 +21,9 @@ Emulator::Emulator(const Robo &manip)
     }
     *state_matrix = *manip.state_matrix;
     m_emu_angles = manip.m_angles;
-    shared_manip = new SharedMem("manipulator", 18);
-    shared_points = new SharedMem("points", sizeof(points_to_visual) / sizeof(float));
-    shared_meshes = new SharedMem("meshes", sizeof(meshes_to_visual) / sizeof(float));
+    shared_manip = new SharedMemory("manipulator", 18);
+    shared_points = new SharedMemory("points", sizeof(points_to_visual) / sizeof(float));
+    shared_meshes = new SharedMemory("meshes", sizeof(meshes_to_visual) / sizeof(float));
     for (size_t i = 0; i < shared_points->GetSize(); i++)
         points_to_visual[i] = 0;
 #ifdef VREMENNO_DLYA_VISUALKI
