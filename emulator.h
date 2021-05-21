@@ -7,7 +7,7 @@
 #include "mutex"
 #include "mainwindow.h"
 #include "sharedmem.h"
-
+#include "sysvsharedmemory.h"
 
 //#include <qcustomplot.h>
 
@@ -17,7 +17,7 @@
 #include "meshcollider.h"
 #endif
 
-typedef SharedMemLinux SharedMemory;
+typedef /*SysVSharedMemory*/SharedMem SharedMemory;
 
 //#include "QTimer"
 //#include "QThread"
@@ -48,7 +48,7 @@ public:
     void MoveManipPolynom(Polynom polynom_in, int moving_time_millisec);
     void MoveManipPolynom(Polynom polynom_arr[], scalar moving_time, scalar dt);
     void MoveManipLinear(const Angles angles[], size_t size, scalar dt_msec, const Vector3 accel[]);
-    void MoveManipLinear(std::vector<Angles> angles, std::vector<Vector3> accel, scalar dt_msec);
+    void MoveManipLinear(std::vector<Angles> angles, std::vector<Vector3> speed, scalar dt_msec);
     void SolveDirectKinematic();
     void OneIterMove(bool is_last);
     void OneIterMoveLinear(const Angles &angle1, const Angles &angle2, const int &dt_msec, bool is_last, Vector3 accel);
@@ -93,7 +93,7 @@ private:
 //    };
 //    EmulatorConsoleOut w;
 //#endif
-    void SetPolynomKF(Polynom polynom_in);;
+    void SetPolynomKF(Polynom polynom_in);
     void UpdateStateMatrix();
 };
 

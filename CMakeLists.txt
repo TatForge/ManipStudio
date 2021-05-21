@@ -74,6 +74,7 @@ add_executable(MainKinematic
     stlreader.h
 #    stl_reader.h
     sharedmem.h
+    sysvsharedmemory.h
     Tests
     Tests/test_my_math.h
     Benchmarks/benchmarks.h
@@ -86,6 +87,7 @@ add_executable(MainKinematic
     mainwindow.cpp
     solver.cpp
     sharedmem.cpp
+    sysvsharedmemory.cpp
     stlreader.cpp
     meshcollider.cpp
     ${CUDA_OBJECTS}
@@ -103,8 +105,17 @@ if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
     target_link_libraries(MainKinematic -lqcustomplot  Qt5::Widgets)
 endif()
 
+set(FILES_FOR_COPY
+    ${CMAKE_SOURCE_DIR}/../Visualization/VisualizatorOpenGL/sharedmem.h
+    ${CMAKE_SOURCE_DIR}/../Visualization/VisualizatorOpenGL/sharedmem.cpp
+    ${CMAKE_SOURCE_DIR}/../Visualization/VisualizatorOpenGL/sysvsharedmemory.h
+    ${CMAKE_SOURCE_DIR}/../Visualization/VisualizatorOpenGL/sysvsharedmemory.cpp
+    ${CMAKE_SOURCE_DIR}/../Visualization/VisualizatorOpenGL/sysvsharedmemory.cpp)
+
 configure_file(${CMAKE_SOURCE_DIR}/../Visualization/VisualizatorOpenGL/sharedmem.h ${CMAKE_SOURCE_DIR}/sharedmem.h COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/../Visualization/VisualizatorOpenGL/sharedmem.cpp ${CMAKE_SOURCE_DIR}/sharedmem.cpp COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/../Visualization/VisualizatorOpenGL/sysvsharedmemory.h ${CMAKE_SOURCE_DIR}/sysvsharedmemory.h COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/../Visualization/VisualizatorOpenGL/sysvsharedmemory.cpp ${CMAKE_SOURCE_DIR}/sysvsharedmemory.cpp COPYONLY)
 
 add_custom_command(TARGET MainKinematic POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
                    ${CMAKE_SOURCE_DIR}/ManipulatorSettigns.ini $<TARGET_FILE_DIR:MainKinematic>/)

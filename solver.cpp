@@ -23,24 +23,32 @@ Solver::Solver(Robo &manip)
     }  catch (std::string &exc) {
         cout << exc << endl;
     }
-    m_inertion[0] = {0.000588, 0.000587, 0.000929, -1.299e-8, 2.44e-8, 1.79e-6};
-    m_inertion[1] = {0.000928, 0.001512, 0.000937, 1.86e-5,  1.55e-10, 5.34e-12};
-    m_inertion[2] = {0.001759, 0.000747, 0.001913, 2.32e-8,  6.37e-9,  1.68e-6};
-    m_inertion[3] = {0.000198, 0.000479, 0.002059, 3.16e-11, 5.59e-10, 1.59e-7};
-    m_inertion[4] = {9.826e-5, 0.000128, 0.000114, -2.74e-9, 4.41e-9,  5.82e-7};
-    m_inertion[5] = {5.529e-5, 5.359e-5, 8.415e-5, 1.99e-10, 2.53e-9,  1.85e-7};
-    m_mass[0] = 0.5982;
-    m_mass[1] = 1.1495;
-    m_mass[2] = 0.6399;
-    m_mass[3] = 0.3551;
-    m_mass[4] = 0.1747;
-    m_mass[5] = 0.1667;
-    m_cm[0] = Vector({0, 0, 0, 1});
+//    m_inertion[0] = {0.000588, 0.000587, 0.000929, -1.299e-8, 2.44e-8, 1.79e-6};
+//    m_inertion[1] = {0.000928, 0.001512, 0.000937, 1.86e-5,  1.55e-10, 5.34e-12};
+//    m_inertion[2] = {0.001759, 0.000747, 0.001913, 2.32e-8,  6.37e-9,  1.68e-6};
+//    m_inertion[3] = {0.000198, 0.000479, 0.002059, 3.16e-11, 5.59e-10, 1.59e-7};
+//    m_inertion[4] = {9.826e-5, 0.000128, 0.000114, -2.74e-9, 4.41e-9,  5.82e-7};
+//    m_inertion[5] = {5.529e-5, 5.359e-5, 8.415e-5, 1.99e-10, 2.53e-9,  1.85e-7};
+
+    m_inertion[0] = {0.0160, 0.0046, 0.0150, 0, 0, 0};
+    m_inertion[1] = {};
+    m_inertion[2] = {};
+    m_inertion[3] = {};
+    m_inertion[4] = {};
+    m_inertion[5] = {0.0002, 0.0001, 0.0002, 0, 0, 0};
+
+    m_mass[0] = 2.5 ;
+    m_mass[1] = 2.1 ;
+    m_mass[2] = 1.47;
+    m_mass[3] = 1.42;
+    m_mass[4] = 0.46;
+    m_mass[5] = 0.84 + 5;
+    m_cm[0] = Vector({0, 0.0473, -0.008, 1});
     m_cm[1] = Vector({0, 0, 0, 1});
     m_cm[2] = Vector({0, 0, 0, 1});
     m_cm[3] = Vector({0, 0, 0, 1});
     m_cm[4] = Vector({0, 0, 0, 1});
-    m_cm[5] = Vector({0, 0, 0, 1});
+    m_cm[5] = Vector({-0.0006, 0.0143, 0.0001, 1});
 
     for (int i = 0; i < JOINTS_COUNT; i++)
     {
@@ -196,8 +204,6 @@ void Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &ta
 
 void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &curr_angles, Angles& res_angle, const ushort &dt_millisec, Polynom result[])
 {
-#define VECTOR
-    uint vector_size = 500;
     m_moments_vector.resize(vector_size);
     m_angles_v.resize(vector_size);
     m_speed_v.resize(vector_size);
@@ -233,7 +239,8 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
     uint size(0);
     bool is_last(0);
     bool breaking(false);
-    while (Distance(end_point, StateVector(x, y, z, rol, pit, yaw)) > 10e-5 && !is_last)
+    scalar distance_next_step;
+    while (Distance(end_point, StateVector(x, y, z, rol, pit, yaw)) > 10e-6 && !is_last)
     {
         if (size > 0)
         {
@@ -248,7 +255,7 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
         v_curr = sqrt(vx*vx + vy*vy + vz*vz);
         a_curr = sqrt(ax*ax + ay*ay + az*az);
         t_stop = v_curr / a_tcp;
-        auto distance_next_step = Distance(end_point, StateVector(x + vx * dt_s + ax*dt_s*dt_s/2,
+        distance_next_step = Distance(end_point, StateVector(x + vx * dt_s + ax*dt_s*dt_s/2,
                                                                   y + vy * dt_s + ay*dt_s*dt_s/2,
                                                                   z + vz * dt_s + az*dt_s*dt_s/2,
                                                                   rol + 0, pit + 0, yaw + 0));
@@ -309,123 +316,32 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
             pit = end_point.pitch;
             yaw = end_point.yaw;
         }
+        if (size + 1 >= m_angles_v.size())
+            VectorsResize(size);
 
-#if MULTITHREAD
-        if (size + 1 >= m_angles_v.size())
-        {
-            while(1)
-            {
-                unique_lock<mutex> lock_dynamic(m_dynamic_mtx);
-                unique_lock<mutex> lock_collision(m_collision_mtx);
-                cout << "VECTORS RESIZED!!!!!! From " << m_angles_v.size() << " to " << 2 * (size + 1) << endl;
-                m_moments_vector.resize(2 * (size + 1));
-                m_angles_v.resize(2 * (size + 1));
-                m_accel_v.resize(2 * (size + 1));
-                m_speed_v.resize(2 * (size + 1));
-                break;
-            }
-        }
-#else
-        if (size + 1 >= m_angles_v.size())
-        {
-            m_moments_vector.resize(2 * (size + 1));
-            m_angles_v.resize(2 * (size + 1));
-            m_accel_v.resize(2 * (size + 1));
-            m_speed_v.resize(2 * (size + 1));
-            cout << "VECTOR REALLOC in CalcPolynomLine from " << size << " to " << 2 * (size + 1) << endl;
-        }
-#endif
         SolveInverseKinematic(ACCURACY, StateVector(x, y, z, rol, pit, yaw), m_angles_v[size], m_angles_v[size+1]);
-        SolveDirectKinematic(m_angles_v[size + 1], buff);
+//        SolveDirectKinematic(m_angles_v[size + 1], buff);
         m_speed_v[size + 1].x = vx;
         m_speed_v[size + 1].y = vy;
         m_speed_v[size + 1].z = vz;
-        m_accel_v[size].x = vx;
-        m_accel_v[size].y = vy;
-        m_accel_v[size].z = vz;
-#if WITH_COLLISIONS && !MULTITHREAD
-        //Mesh calculations
-        {
-            if (MoveMeshes(buff))
-            {
-                for (uint j, i = 0; i < m_meshes_buff.size() - 1; i++)
-                {
-                    if (m_meshes_buff[i].CheckCollision(m_meshes_buff[8])||
-                            [&](){
-                            for (j = i + 2; j < 8; j++)
-                                if (m_meshes_buff[i].CheckCollision(m_meshes_buff[j]))
-                                    return true;
-                            return false;}())
-                    {
-                    //show collision in visual
-                    #if !WITH_BENCHMARK
-                        m_emulator->OneIterMoveLinear(m_angles_v[size], m_angles_v[size + 1],  dt_millisec, false, m_accel_v[i]);
-                    #endif
-                        throw std::runtime_error("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + to_string(j)  /*to_string(cube)*/ + " elements");
-                    }
-                }
-            }
-            else
-                cout << "Can't calculate all mesh points for this configuration" << endl;
-        }
-#endif
-        for (uint j = 0; j < JOINTS_COUNT; j++)
-        {
-            m_angles_v[size].q_pp[j] = (m_angles_v[size + 1].q[j] - m_angles_v[size].q[j] - m_angles_v[size].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
-            m_angles_v[size + 1].q_p[j] = m_angles_v[size].q_p[j] + m_angles_v[size].q_pp[j] * dt_s;
-        }
-
-//        cout << " a1 = " << m_angles_v[size].q[0]
-//             << " a2 = " << m_angles_v[size].q[1]
-//             << " a3 = " << m_angles_v[size].q[2] << endl
-//             << " a4 = " << m_angles_v[size].q[3]
-//             << " a5 = " << m_angles_v[size].q[4]
-//             << " a6 = " << m_angles_v[size].q[5] << endl;
-#if !MULTITHREAD
-        SolveForwardDynamic(m_angles_v[size]);
-#if WITH_WINDOW
-        m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec);
-#endif
-#endif
+        m_accel_v[size].x = ax;
+        m_accel_v[size].y = ay;
+        m_accel_v[size].z = az;
         size++;
         t+= dt_s;
     }
 
-    m_angles_v.resize(size);
-    m_speed_v.resize(size);
-    m_accel_v.resize(size);
-#if MULTITHREAD
-    bool dynamic_calculated(0);
-    bool collisions_calculated(0);
-    while(1)
-    {
-        while (!exception_queue.empty())
-        try {
-            exception_ptr p = exception_queue.front();
-            exception_queue.pop();
-            rethrow_exception(p);
-        }  catch (std::exception const &e) {
-            cout << "FAIL rethrowing exception" << e.what() << endl;
-        }
-        if (m_moments_counter < size)
-        {
-            m_dynamic_notified = true;
-            m_dynamic_cv.notify_one();
-        } else {
-            dynamic_calculated = true;
-        }
-        if (m_collisions_counter < size)
-        {
-            m_collision_notified = true;
-            m_collision_cv.notify_one();
-        } else {
-            collisions_calculated = true;
-        }
-
-        if (dynamic_calculated && collisions_calculated)
-            break;
-    }
-#endif
+    CalcCollisionsDynamics(size, dt_millisec);
+    m_angles_v.resize(size + 1);
+    m_speed_v.resize(size + 1);
+    m_accel_v.resize(size + 1);
+//#if WITH_WINDOW
+//    for (counter i = 0; i < size; i++)
+//    {
+//        m_emulator->moments_window.PlotCoordinates(m_moments_vector[i].tao[0], m_moments_vector[i].tao[1], m_moments_vector[i].tao[2],
+//                m_moments_vector[i].tao[3],m_moments_vector[i].tao[4],m_moments_vector[i].tao[5], dt_millisec);
+//    }
+//#endif
     for (int j = 1; j < JOINTS_COUNT; j++)
     {
         m_angles_v[size].q_pp[j] = (m_angles_v[size].q[j] - m_angles_v[size - 1].q[j] - m_angles_v[size - 1].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
@@ -438,7 +354,7 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
 #if !WITH_BENCHMARK
 #if WITH_WINDOW
     m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec, true);
-    m_emulator->MoveManipLinear(m_angles_v, m_accel_v, dt_millisec);
+    m_emulator->MoveManipLinear(m_angles_v, m_speed_v, dt_millisec);
     res_angle = m_angles_v.back();
 #endif
 #endif
@@ -641,11 +557,10 @@ void Solver::SolveForwardDynamicMultithread()
 
 void Solver::CheckCollisionMultithread()
 {
-#if MULTITHREAD
+#if MULTITHREAD && WITH_COLLISIONS
     Matrix4x4 buff1[6];
     unique_lock<mutex> lock(m_collision_mtx);
     Matrix4x4 T[6];
-    float dt_millisec = 10;
     while(1)
     {
         while(!m_collision_notified)
@@ -655,27 +570,7 @@ void Solver::CheckCollisionMultithread()
         SolveDirectKinematic(m_angles_v[m_collisions_counter], buff1, T);
         if (MoveMeshes(buff1))
         {
-            for (uint i = 0; i < m_meshes_buff.size() - 1; i++)
-            {
-                if (m_meshes_buff[i].CheckCollision(m_meshes_buff[8]) ||
-                        [&](){
-                        for (int j = i + 3; j < 6; j++)
-                            if (m_meshes_buff[i].CheckCollision(m_meshes_buff[j]))
-                                return true;
-                        return false;}())
-                {
-                #if !WITH_BENCHMARK
-                    m_emulator->OneIterMoveLinear(m_angles_v[m_collisions_counter], m_angles_v[m_collisions_counter + 1],  dt_millisec, false, m_accel_v[i]);
-                #endif
-                    try {
-                        throw string("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + "cube"  /*to_string(cube)*/ + " elements");
-                        cout << "HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + "cube"  /*to_string(cube)*/ + " elements" << endl;
-                    }  catch (...) {
-                        exception_ptr p = current_exception();
-                        exception_queue.push(p);
-                    }
-                }
-            }
+            CheckCollision();
         }
         m_collisions_counter++;
         m_collision_notified = false;
@@ -748,4 +643,27 @@ bool Solver::SolveForwardDynamic(const Angles &angles)
     m_moments_counter++;
 //    cout << " counter " << m_moments_counter << endl;
     return true;
+}
+
+void Solver::VectorsResize(const counter &ctr)
+{
+#if MULTITHREAD
+    while(1)
+    {
+        unique_lock<mutex> lock_dynamic(m_dynamic_mtx);
+        unique_lock<mutex> lock_collision(m_collision_mtx);
+        cout << "VECTOR RESIZE from " << m_angles_v.size() << " to " << 2 * (ctr + 1) << endl;
+        m_moments_vector.resize(2 * (ctr + 1));
+        m_angles_v.resize(2 * (ctr + 1));
+        m_accel_v.resize(2 * (ctr + 1));
+        m_speed_v.resize(2 * (ctr + 1));
+        break;
+    }
+#else
+    cout << "VECTOR RESIZE from " << m_angles_v.size() << " to " << 2 * (ctr + 1) << endl;
+    m_moments_vector.resize(2 * (ctr + 1));
+    m_angles_v.resize(2 * (ctr + 1));
+    m_accel_v.resize(2 * (ctr + 1));
+    m_speed_v.resize(2 * (ctr + 1));
+#endif
 }

@@ -1,24 +1,12 @@
 #ifndef SHAREDMEM_H
 #define SHAREDMEM_H
 
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/sem.h>
 
 #include <QSharedMemory>
 #include <iostream>
 
 #define MAX_DATA_SIZE 1000
 
-//for system V shared mem
-#define BUF_SIZE_BYTES 8192
-#define BAD_RESULT -1
-
-//#define SHARED_MEMORY_READER 0444
-#define SHARED_MEMORY_WRITER 0666
-
-#define SHM_KEY 0x1
-#define FILE_NAME "/home/devel/Projects/MainKinematic/ForKeys.txt"
 class SharedMem
 {
 public:
@@ -89,12 +77,7 @@ private:
 };
 
 
-struct shmseg
-{
-    int cnt;
-    int complete;
-    float buf[BUF_SIZE_BYTES / sizeof(float)];
-};
+
 //struct sembuf
 //{
 //    pid_t sempid;
@@ -108,118 +91,5 @@ struct shmseg
 //    Reader,
 //    Writer
 //};
-class SharedMemLinux
-{
-public:
-    //Shared memory class based on mmap
-    SharedMemLinux(char const *shm_block_name, const size_t block_size_bytes)
-    {
-//        m_shmid = shmget(m_key, m_size, IPC_CREAT);         //creating shared memory segment
-//        if (m_shmid == -1)
-//            perror("error creating shared memory");
-//        else{
-//            m_shmptr = (shmseg*)shmat(m_shmid, NULL, 0);    //attaching shared memory
-//            if (m_shmptr == (void *) -1)
-//                perror("error attaching shared memory");
-//            m_buf_ptr = m_shmptr->buf;                      //get pointer to shared memory buffer
-//        }
-//        m_sem_ptr = semget()
-
-        m_size = block_size_bytes;
-//        m_data = new float [m_size];
-//        if ((m_key = ftok(shm_block_name, 0)) == -1)
-//            perror("");
-//        m_key = SHM_KEY;
-        m_key = ftok(shm_block_name, 0);
-        if ((m_shmid = shmget(m_key, block_size_bytes, IPC_CREAT | SHARED_MEMORY_WRITER)) == -1)
-            perror("Error shmget");
-        if ((m_sem_id = semget(m_key, 1, IPC_CREAT | SHARED_MEMORY_WRITER)) == -1)
-            perror("Error getting semaphore");
-        if (m_shmid == BAD_RESULT)
-            perror("Error getting block ID");
-        m_shmptr = (shmseg*)shmat(m_shmid, NULL, 0);
-        if (m_shmptr == (void*)BAD_RESULT)
-            perror("Error attaching shared memory");
-    }
-    bool SendData(const float *data, const size_t size_elements)
-    {
-        if (size_elements > BUF_SIZE_BYTES / sizeof(float))
-            return -1;
-        printf("Trying to lock semaphore\n");
-//        if (semop(m_sem_id, &semb, 1) == -1)
-//            perror("Error semop lock");
-        if (semctl(m_sem_id, 0, SETVAL, 0) == -1)
-            perror("Errro SETVAL");
-        else
-        {
-            printf("locked\n");
-            if (size_elements * sizeof(float) > m_size)
-                printf("Cant send, array size more than possible");
-            else
-                memcpy(m_shmptr->buf, data, size_elements * sizeof(float));
-        }
-//        if (semop(m_sem_id, &semb, 1) == -1)
-//            perror("Error semop unlock");
-        if (semctl(m_sem_id, 0, SETVAL, 1) == -1)
-            perror("Errro SETVAL");
-        else
-            printf("Semaphore unlocked\n");
-        return 0;
-    }
-    bool ReadData(const size_t size_elements)
-    {
-        if (m_shmptr == NULL)
-        {
-            perror("Shared memory is not attached");
-            return -1;
-        }
-//        if (semop(m_sem_id, &semb, 1) == -1)
-//            perror("Error semop lock");
-        if (semctl(m_sem_id, 0, SETVAL, 0) == -1)
-            perror("Errro SETVAL");
-        else
-        {
-            printf("Semaphore locked\n");
-//        else
-//        {
-//            printf("locked\n");
-            if (size_elements * sizeof(float) > m_size)
-                printf("Cant send, array size more than possible");
-            else
-                memcpy(m_data, m_shmptr->buf, size_elements * sizeof(float));
-        }
-//        if (semop(m_sem_id, &semb, 1) == -1)
-//            perror("Error semop unlock");
-        if (semctl(m_sem_id, 0, SETVAL, 1) == -1)
-            perror("Errro SETVAL");
-        else
-            printf("Semaphore unlocked\n");
-        return 0;
-    }
-    size_t GetSize() const
-    {
-        return m_size;
-    };
-    ~SharedMemLinux()
-    {
-        //detach
-        if (shmdt(m_shmptr) == BAD_RESULT)
-            perror("Error detaching");
-        //destroy
-
-    }
-private:
-    key_t m_key;
-
-    size_t m_size;
-    int m_shmid;
-    shmseg *m_shmptr;
-    int m_sem_id;
-    float *m_data;
-    sembuf semb = {0, 1, 0};
-//float *m_buf_ptr;
-//    sem_t *m_sem_ptr;
-
-};
 
 #endif // SHAREDMEM_H

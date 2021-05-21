@@ -13,6 +13,7 @@
 #include <stl_reader.h>
 
 #include "sharedmem.h"
+#include "sysvsharedmemory.h"
 
 #ifdef WITH_TESTS
 #include <QtTest/QTest>
@@ -34,14 +35,13 @@ int main(int argc, char *argv[])
 #if WITH_WINDOW
     QApplication app(argc, argv);
 #endif
-    char const *ch = "/home/devel/Projects/MainKinematic/ForKeys.txt";
-    SharedMemLinux shml(ch, 1024);
-    float f[2048];
-    for (int i = 0; i < 2048; i++)
-    {
-        f[i] = i;
-    }
-    shml.SendData(f, 2048);
+//    SysVSharedMemory shml(FILE_POINTS_SHM, 8196);
+//    float f[2048];
+//    for (int i = 0; i < 2048; i++)
+//    {
+//        f[i] = i;
+//    }
+//    shml.SendData(f, 106);
 
     Robo manipulator(6);
     try{
@@ -68,8 +68,8 @@ int main(int argc, char *argv[])
 
 //    std::thread thread_dynamic();
 
-    StateVector stv( 0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
-    StateVector tarv(0.1, 0.241, 0.05, ToRad(179), ToRad(45), ToRad(0));
+    StateVector stv(0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
+    StateVector tarv(0.1, 0.241, 0.05, ToRad(180), ToRad(45), ToRad(0));
     StateVector tarv1(-0.2, 0.241, 0.05, ToRad(179), ToRad(45), ToRad(0));
 //    StateVector stv(  -0.35, -0.3441, 0.0515, ToRad(178), ToRad(0), ToRad(0));
 //    StateVector tarv(  0.35, -0.1341, 0.1515, ToRad(178), ToRad(0), ToRad(0));
@@ -86,9 +86,23 @@ int main(int argc, char *argv[])
     Polynom result[1000];
     scalar v_tcp(0.2);
     scalar a_tcp(1);
+    Angles a1, a2, a3;
+    a1.q[0] = 0.15; a1.q[1] = 0.25; a1.q[2] = 0.35;
+    a1.q[3] = 0.25; a1.q[4] = 0.95; a1.q[5] = 0.67;
+//    a2.q[0] = -1.95; a2.q[1] = -0.55; a2.q[2] = 1.05;
+//    a2.q[3] = 1.43; a2.q[4] = -2.3; a2.q[5] = 1.17;
+    a2.q[0] = 0;        a2.q[1] = 0;      a2.q[2] = 0; a2.q[3] = 0;  a2.q[4] = 0;      a2.q[5] = 0;
+    a3.q[0] = 0;      a3.q[1] = -M_PI/2;      a3.q[2] = 0; a3.q[3] = 0;  a3.q[4] = 0;      a3.q[5] = 0;
+//    auto kk = solver.FindAngle(Vector3(1, 2, 3), Vector3(4, 8, 14), Vector3(8, 10, 1));
+//    solver.MoveCircle(Vector3(1, 2, 3), Vector3(2,4,6), Vector3(3, 6, 9), v_tcp, a_tcp, ToSec(10));
+//    solver.MoveCircle(a1, StateVector(Vector3(1, -1, 2), Vector3(0, 0, 0)), StateVector(Vector3(3, -1, 4), Vector3(0, 0, 0)),
+//                      StateVector(Vector3(5, -1, 2), Vector3(0, 0, 0)), v_tcp, a_tcp, 10);
     CheckTime ct1;
     try {
+//        solver.MoveJ(a1, a2, v_tcp, a_tcp, 10);
+//        solver.MoveJ(a2, a3, v_tcp, 5, 10);
         solver.CalcPolynomLine(stv,   tarv,  v_tcp, a_tcp, angle_start, res_an, 10, result);
+
 //        solver.CalcPolynomLine(tarv,  tarv1, v_tcp, a_tcp, res_an,      res_an, 10, result);
 //        solver.CalcPolynomLine(tarv1, tarv2, v_tcp, a_tcp, res_an,      res_an, 10, result);
 //        solver.CalcPolynomLine(tarv2, tarv3, v_tcp, a_tcp, res_an,      res_an, 10, result);

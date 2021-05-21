@@ -21,6 +21,9 @@ Emulator::Emulator(const Robo &manip)
     }
     *state_matrix = *manip.state_matrix;
     m_emu_angles = manip.m_angles;
+//    shared_manip = new SharedMemory(FILE_MANIP_SHM, 18);
+//    shared_points = new SharedMemory(FILE_POINTS_SHM, sizeof(points_to_visual) / sizeof(float));
+//    shared_meshes = new SharedMemory(FILE_MODELS_SHM, sizeof(meshes_to_visual) / sizeof(float));
     shared_manip = new SharedMemory("manipulator", 18);
     shared_points = new SharedMemory("points", sizeof(points_to_visual) / sizeof(float));
     shared_meshes = new SharedMemory("meshes", sizeof(meshes_to_visual) / sizeof(float));
@@ -38,7 +41,7 @@ Emulator::Emulator(const Robo &manip)
         meshes[6].ReadStl("STLmodels/joint5.stl");
         meshes[7].ReadStl("STLmodels/joint6.stl");
         meshes[8].ReadStl("STLmodels/cube0.5m.stl");
-        meshes[8].MoveMesh(Quaternion(0, 0, 0, 1), Vector3(SMESH + 0.05, SMESH - 0.05, 0));
+        meshes[8].MoveMesh(Quaternion(0, 0, 0, 1), Vector3(SMESH, SMESH, 0));
         meshes_buff = meshes;
     }  catch (std::string &exc) {
         cout << exc << endl;
@@ -67,7 +70,7 @@ void Emulator::MoveManipLinear(const Angles angles[], size_t size, scalar dt_mse
 #endif
 }
 
-void Emulator::MoveManipLinear(std::vector<Angles> angles, std::vector<Vector3> accel, scalar dt_msec)
+void Emulator::MoveManipLinear(std::vector<Angles> angles, std::vector<Vector3> speed, scalar dt_msec)
 {
     t_m = 0;
     bool is_last = false;
@@ -75,7 +78,7 @@ void Emulator::MoveManipLinear(std::vector<Angles> angles, std::vector<Vector3> 
     {
         if (i == angles.size() - 2)
             is_last = true;
-        OneIterMoveLinear(angles[i], angles[i + 1], dt_msec, is_last, accel[i]);
+        OneIterMoveLinear(angles[i], angles[i + 1], dt_msec, is_last, speed[i]);
     }
 #if WITH_WINDOW
     w.PlotSpeeds(m_emu_angles);
@@ -159,9 +162,9 @@ void Emulator::OneIterMove(bool is_last = false)
 
 void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, const int &dt_msec, bool is_last, Vector3 accel)
 {
-    for( int i = 0; i < dt_msec/m_delta_t_millisec; i++)
+    for(int i = 0; i < dt_msec/m_delta_t_millisec; i++)
     {
-        this_thread::sleep_for(std::chrono::microseconds(800));
+        this_thread::sleep_for(std::chrono::microseconds(1000));
         for (int j = 0; j < JOINTS_COUNT; j++)
         {
             m_emu_angles.q[j]    = interpolate(angle1.q[j],    angle2.q[j], (scalar(i) / scalar(dt_msec/m_delta_t_millisec)));
@@ -174,6 +177,9 @@ void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, con
 #ifdef VREMENNO_DLYA_VISUALKI
         MoveThatShit();
 #endif
+//        SendDataToShared(MANIP, manip_to_visual, 18);
+//        SendDataToShared(POINTS, points_to_visual, shared_points->GetSize() - 4);
+//        SendDataToShared(MESHES, meshes_to_visual, shared_meshes->GetSize() - 4);
         SendDataToShared(MANIP, manip_to_visual, sizeof(float) * 18);
         SendDataToShared(POINTS, points_to_visual, sizeof(float) * shared_points->GetSize() - 4);
         SendDataToShared(MESHES, meshes_to_visual, sizeof(float) * shared_meshes->GetSize() - 4);

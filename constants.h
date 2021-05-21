@@ -8,16 +8,17 @@
 #define WITH_GTESTS     0
 #define WITH_QTESTS     0
 #define WITH_COLLISIONS 1
-#define MULTITHREAD     1
-#define WITH_WINDOW     1
+#define MULTITHREAD     0
+#define WITH_WINDOW     0
 //assertions turn off
 //#define NDEBUG
-#define SMESH +2.55
+#define SMESH +0.65
+#define DT_MILLISEC 10
 //__________________________________
 #define RANGE_TO_PLOT 0.025  // 25 mm
 
-#define RAD M_PI/180
-#define DEG 180/M_PI
+#define RAD (M_PI/180)
+#define DEG (180/M_PI)
 #define JOINTS_COUNT 6
 
 //____Math_constants________________

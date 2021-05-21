@@ -95,12 +95,12 @@ namespace RoboMath
     public:
         Tensor();
         Tensor(const initializer_list<scalar> &il);
-        scalar& xx(){return *data;};
-        scalar& yy(){return *(data + 1);};
-        scalar& zz(){return *(data + 2);};
-        scalar& xy(){return *(data + 3);};
-        scalar& xz(){return *(data + 4);};
-        scalar& yz(){return *(data + 5);};
+        scalar& xx(){return data[0];};
+        scalar& yy(){return data[1];};
+        scalar& zz(){return data[2];};
+        scalar& xy(){return data[3];};
+        scalar& xz(){return data[4];};
+        scalar& yz(){return data[5];};
     private:
         scalar data[6];
     };
@@ -115,7 +115,7 @@ namespace RoboMath
         Vector3(const Vector3 &v) : x(v.x), y(v.y), z(v.z) {};
         void Rotate(const scalar &theta, const RoboMath::Vector3 &V);
         void Clear();
-        scalar  Length()    const {return sqrt(x * x + y * y + z * z);};
+        inline scalar Length()    const {return sqrt(x * x + y * y + z * z);};
         scalar Dot(const Vector3 &v) const;
 
         Vector3 Normalize() const;
@@ -127,6 +127,16 @@ namespace RoboMath
         Vector3 operator* (const Vector3 &V) const;
         Vector3 &operator+= (const Vector3 &V);
         Vector3 &operator* (const scalar &value);
+        Vector3 &operator/(const scalar &value);
+        inline scalar Angle(const Vector3 &V)
+        {
+            //Find angle between 2 vectors
+//            Vector3 A0O;
+//            Vector3 PO;
+//            A0O = A - O;
+//            PO = *this - O;
+            return acos(this->Dot(V) / (this->Length() * V.Length()));
+        }
         bool operator< (Vector3 &v);
         bool operator!= (Vector3 &v)
         {
@@ -300,9 +310,9 @@ namespace RoboMath
             x(x_in), y(y_in), z(z_in), roll(a.x), pitch(a.y), yaw(a.z){};
         StateVector(scalar x_in, scalar y_in, scalar z_in, Vector3 &&a) :
             x(x_in), y(y_in), z(z_in), roll(a.x), pitch(a.y), yaw(a.z){};
-        StateVector(Vector3 &r, scalar &roll_in, scalar &pitch_in, scalar &yaw_in) :
+        StateVector(const Vector3 &r, scalar &roll_in, scalar &pitch_in, scalar &yaw_in) :
             x(r.x), y(r.y), z(r.z), roll(roll_in), pitch(pitch_in), yaw(yaw_in){};
-        StateVector(Vector3 &r, Vector3 &a) :
+        StateVector(const Vector3 &r, const Vector3 &a) :
             x(r.x), y(r.y), z(r.z), roll(a.x), pitch(a.y), yaw(a.z){};
         Vector3 GetCoord() const;
         Vector3 GetAngles() const;

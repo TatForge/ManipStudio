@@ -636,7 +636,13 @@ Vector &Vector::operator=(const Vector &v)
     memcpy(m_data, v.m_data, sizeof(scalar) * m_length);
     return *this;
 }
-
+Vector3 &Vector3::operator/(const scalar &value)
+{
+    x /= value;
+    y /= value;
+    z /= value;
+    return *this;
+}
 Vector &Vector::operator=(const double &value)
 {
     for (int i = 0; i < this->m_length; i++)
