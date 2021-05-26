@@ -1136,7 +1136,7 @@ Quaternion Matrix4x4::ConvertToQuaternion() const noexcept
 {
     RoboMath::Quaternion res;
     scalar trace = a[0] + a[5] + a[10] + 1;
-    scalar s;
+    scalar s(0);
     if (trace > 0)
     {
         s = 0.5 / sqrt(trace);
@@ -1156,16 +1156,16 @@ Quaternion Matrix4x4::ConvertToQuaternion() const noexcept
         case 1:
             s = sqrt(1.0 + a[5] - a[0] - a[10]) * 2;
             res = Quaternion((a[1] + a[4]) / s,
-                    (0.5 / s),
-                    (a[6] + a[9]) / s,
-                    (a[2] + a[8]) / s);
+                             (0.5 / s),
+                             (a[6] + a[9]) / s,
+                             (a[2] + a[8]) / s);
             break;
         case 2:
             s = sqrt(1.0 + a[10] - a[0] - a[5]) * 2;
             res = Quaternion((a[2] + a[8]) / s,
-                    (a[6] + a[9]) / s,
-                    (0.5 / s),
-                    (a[1] + a[4]) / s);
+                             (a[6] + a[9]) / s,
+                             (0.5 / s),
+                             (a[1] + a[4]) / s);
             break;
         }
 

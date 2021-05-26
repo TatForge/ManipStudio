@@ -129,7 +129,7 @@ static void BMCalcPolynomLine(benchmark::State &state)
     for (auto e : state)
     {
         try {
-            solver.CalcPolynomLine(stv, tarv, 1, 0.5,  start_an, res_an, 10, result);
+            solver.MoveL(stv, tarv, 1, 0.5,  start_an, res_an, 10, result);
         }  catch (std::runtime_error &exc_str) {
             cout << exc_str.what() << endl;
         }

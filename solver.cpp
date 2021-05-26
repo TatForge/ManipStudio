@@ -30,25 +30,26 @@ Solver::Solver(Robo &manip)
 //    m_inertion[4] = {9.826e-5, 0.000128, 0.000114, -2.74e-9, 4.41e-9,  5.82e-7};
 //    m_inertion[5] = {5.529e-5, 5.359e-5, 8.415e-5, 1.99e-10, 2.53e-9,  1.85e-7};
 
-    m_inertion[0] = {0.0160, 0.0046, 0.0150, 0, 0, 0};
-    m_inertion[1] = {};
-    m_inertion[2] = {};
-    m_inertion[3] = {};
-    m_inertion[4] = {};
-    m_inertion[5] = {0.0002, 0.0001, 0.0002, 0, 0, 0};
-
-    m_mass[0] = 2.5 ;
-    m_mass[1] = 2.1 ;
-    m_mass[2] = 1.47;
-    m_mass[3] = 1.42;
-    m_mass[4] = 0.46;
-    m_mass[5] = 0.84 + 5;
-    m_cm[0] = Vector({0, 0.0473, -0.008, 1});
-    m_cm[1] = Vector({0, 0, 0, 1});
-    m_cm[2] = Vector({0, 0, 0, 1});
-    m_cm[3] = Vector({0, 0, 0, 1});
-    m_cm[4] = Vector({0, 0, 0, 1});
-    m_cm[5] = Vector({-0.0006, 0.0143, 0.0001, 1});
+    m_inertion[0] = {0.0116, 0.0113, 0.0030, 0, 0, 0};
+    m_inertion[1] = {0.0035, 0.2193, 0.2175, 0, 0, -0.0156};
+    m_inertion[2] = {0.0028, 0.0743, 0.0724, 0, 0, 0.0093};
+    m_inertion[3] = {0.0003, 0.0058, 0.0058, 0, 0, 0};
+    m_inertion[4] = {0.0016, 0.0016, 0.003, 0, 0, 0};
+    m_inertion[5] = {0.0001, 0.0001, 0.0001, 0, 0, 0};
+    scalar m_gruz(5);
+    Vector3 l_gruz(0.0, 0.0, 0.3);
+    m_mass[0] = 2.6444;
+    m_mass[1] = 1.9270;
+    m_mass[2] = 1.4586;
+    m_mass[3] = 0.8013;
+    m_mass[4] = 0.6680;
+    m_mass[5] = 0.1960 + m_gruz;
+    m_cm[0] = Vector({0,       0.0474, -0.0044, 1});
+    m_cm[1] = Vector({0.2838,  0,      -0.0178, 1});
+    m_cm[2] = Vector({0.2018,  0,       0.0242, 1});
+    m_cm[3] = Vector({0.0719,  0,       0.0009, 1});
+    m_cm[4] = Vector({-0.0022, 0,       0.0369, 1});
+    m_cm[5] = Vector({ 0.0001 + l_gruz.x, 0.0 + l_gruz.y, 0.0166 + l_gruz.z, 1});
 
     for (int i = 0; i < JOINTS_COUNT; i++)
     {
@@ -202,7 +203,7 @@ void Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &ta
     SolveDirectKinematic(res_angle, TRR);
 }
 
-void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &curr_angles, Angles& res_angle, const ushort &dt_millisec, Polynom result[])
+void Solver::MoveL(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &curr_angles, Angles& res_angle, const ushort &dt_millisec, Polynom result[])
 {
     m_moments_vector.resize(vector_size);
     m_angles_v.resize(vector_size);
@@ -330,7 +331,11 @@ void Solver::CalcPolynomLine(const StateVector &start_point, const StateVector &
         size++;
         t+= dt_s;
     }
-
+    for (uint j = 0; j < JOINTS_COUNT; j++)
+    {
+        m_angles_v[size].q_pp[j] = (m_angles_v[size + 1].q[j] - m_angles_v[size].q[j] - m_angles_v[size].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
+        m_angles_v[size + 1].q_p[j] = m_angles_v[size].q_p[j] + m_angles_v[size].q_pp[j] * dt_s;
+    }
     CalcCollisionsDynamics(size, dt_millisec);
     m_angles_v.resize(size + 1);
     m_speed_v.resize(size + 1);
@@ -543,9 +548,9 @@ void Solver::SolveForwardDynamicMultithread()
 
 //        cout << "size of moments vec tor = " << m_moments_counter << endl;
 #if WITH_WINDOW
-        m_emulator->moments_window.PlotCoordinates(m_moments_vector[m_moments_counter].tao[0], m_moments_vector[m_moments_counter].tao[1],
-                                                   m_moments_vector[m_moments_counter].tao[2], m_moments_vector[m_moments_counter].tao[3],
-                                                   m_moments_vector[m_moments_counter].tao[4], m_moments_vector[m_moments_counter].tao[5], dt_millisec);
+//        m_emulator->moments_window.PlotCoordinates(m_moments_vector[m_moments_counter].tao[0], m_moments_vector[m_moments_counter].tao[1],
+//                                                   m_moments_vector[m_moments_counter].tao[2], m_moments_vector[m_moments_counter].tao[3],
+//                                                   m_moments_vector[m_moments_counter].tao[4], m_moments_vector[m_moments_counter].tao[5], dt_millisec);
 #endif
         m_moments_counter++;
 //        cout << "moments counter " << m_moments_counter << endl;
@@ -599,7 +604,7 @@ bool Solver::SolveForwardDynamic(const Angles &angles)
     //Расчет D для i-го элемента манипулятора
     for (counter i = 0; i < 6; i++)
     {
-        for (counter k = i; k < 6; k++)
+        for (counter k = 0; k < 6; k++)
         {
             buff = 0;
             for (counter j = RoboMath::max(i, k); j < 6; j++)

@@ -45,7 +45,7 @@ public:
     Solver(Robo &manip);
     void SolveDirectKinematic(const Angles &q, Matrix4x4 TR[], Matrix4x4 *T = nullptr) noexcept;
     void SolveInverseKinematic(const scalar &accuracy, const StateVector &target, const Angles &curr_angle, Angles &res_angle, IKData *data  = nullptr);
-    void CalcPolynomLine(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &start_angles, Angles &res_angle, const ushort &dt_millisec, Polynom result[]);
+    void MoveL(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &start_angles, Angles &res_angle, const ushort &dt_millisec, Polynom result[]);
     bool CheckTrajectoryForLinear(const Polynom &pol, const Vector3 &l1, const Vector3 &l2, const scalar &t_millisec, const scalar &max_delta);
     bool CheckTrajectoryForLinear(const Angles angles, const Vector3 &l1, const Vector3 &l2, const scalar &max_delta);
     bool MoveMeshes(const Matrix4x4 TR[]) noexcept;
@@ -54,7 +54,25 @@ public:
     void SolveForwardDynamicMultithread();
     void CheckCollisionMultithread();
     bool SolveForwardDynamic(const Angles &angles);
-
+    void VisualizeMoments(const scalar &dt_millisec)
+    {
+#if WITH_WINDOW
+        for (counter i = 0; i < m_moments_counter; i++)
+        {
+            if (i == 0)
+                m_emulator->moments_window.PrintResult(m_moments_vector[i].tao[0], m_moments_vector[i].tao[1],
+                                                       m_moments_vector[i].tao[2], ToRad(m_moments_vector[i].tao[3]),
+                                                       ToRad(m_moments_vector[i].tao[4]), ToRad(m_moments_vector[i].tao[5]));
+            m_emulator->moments_window.PlotCoordinates(m_moments_vector[i].tao[0], m_moments_vector[i].tao[1],
+                                                       m_moments_vector[i].tao[2], m_moments_vector[i].tao[3],
+                                                       m_moments_vector[i].tao[4], m_moments_vector[i].tao[5], dt_millisec);
+            if (i == m_moments_counter - 1)
+                m_emulator->moments_window.PlotCoordinates(m_moments_vector[i].tao[0], m_moments_vector[i].tao[1],
+                                                           m_moments_vector[i].tao[2], m_moments_vector[i].tao[3],
+                                                           m_moments_vector[i].tao[4], m_moments_vector[i].tao[5], dt_millisec, true);
+        }
+#endif
+    }
     void MoveJ(const Angles &start_angle, const Angles &end_angle, const float &speed, const float &acceleration, const float &dt_millisec)
     {
         scalar dt_s = ToSec(dt_millisec);
@@ -68,6 +86,7 @@ public:
 //        for (int i = 0; i < 6; i++)
 //            pos.q[i] = m_angles_v[0].q[i];
         CheckTime ct;
+        m_angles_v[0] = start_angle;
         for (int i = 0; i < 6; i++)
         {
             size_of_arr = CalcTrajOneJoint(start_angle, end_angle, dt_s, speed, acceleration, i);
@@ -139,14 +158,17 @@ public:
 //                break;
 //        }
 //#endif
+
+        VisualizeMoments(dt_millisec);
 #if WITH_WINDOW
-        m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec, true);
         m_emulator->MoveManipLinear(m_angles_v, m_speed_v, dt_millisec);
 #endif
     };
     int CalcTrajOneJoint(const Angles &start_angle, const Angles &end_angle, const scalar &dt_s, const scalar &angle_max_speed, const scalar &angle_acceleration, const int &element_number)
     {
         //Calculate trajectory for one joint and write result into array
+        if (start_angle.q[element_number] == end_angle.q[element_number])
+            return 0;
         scalar angle_pos = start_angle.q[element_number];
         scalar angle_accel(0);
         scalar angle_speed(0);
@@ -259,6 +281,7 @@ public:
         Vector3 BC2 = (B + C) / 2;
         Vector3 ABn, BCn, O, R, N3,
                 Okr, v, a, n, r;
+        scalar t, t1;
         //Данная конструкция позволяет избежать вырождения решения в случае, когда нормаль
         //окружности не пересекает плоскость, образованную приравниванием одной из осей единице, например (1, y, z).
 //        N = N.Normalize();
@@ -298,8 +321,14 @@ public:
 //        ((N.z * BCn.z + N.x) == 0) ? BCn.y = 0 : BCn.y = -(N.z * BCn.z + N.x) / N.y;
 //        scalar t = (AB2.x * ABn.y + BC2.y - ABn.y * BC2.x - AB2.y) / (ABn.y - BCn.y);
 //        if ()
-        scalar t1 = (N.x * (BC2.y - AB2.y) - N.y *(BC2.x + AB2.x)) / (N.y * N1.x - N1.y * N.x);
-        scalar t  = (N1.x * t1 + BC2.x + AB2.x) / N.x;
+        if (N.x != 0)
+        {
+            t =  (AB2.x * N2.y - AB2.y * N2.x - BC2.x * N2.y + BC2.y * N2.x) / (N1.y * N2.x - N1.x * N2.y);
+            t1 = (AB2.x * N1.y - AB2.y * N1.x - BC2.x * N1.y + BC2.y * N1.x) / (N1.y * N2.x - N1.x * N2.y);
+//            scalar t1 = (N.x * (BC2.y - AB2.y) - N.y *(BC2.x + AB2.x)) / (N1.y * N2.x - N2.y * N1.x);
+//            scalar t  = (N1.x * t1 + BC2.x + AB2.x) / N.x;
+
+        }
         O = Vector3(N.x * t1 + AB2.x, N.y * t1 + AB2.y, N.z * t1 + AB2.z);
 
 //        scalar t1 = BCn.x * t + BC2.x - AB2.x;
@@ -391,11 +420,6 @@ public:
             else
                 cout << "Can't calculate all mesh points for this configuration" << endl;
 #endif
-            for (uint j = 0; j < JOINTS_COUNT; j++)
-            {
-                m_angles_v[size].q_pp[j] = (m_angles_v[size + 1].q[j] - m_angles_v[size].q[j] - m_angles_v[size].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
-                m_angles_v[size + 1].q_p[j] = m_angles_v[size].q_p[j] + m_angles_v[size].q_pp[j] * dt_s;
-            }
 #if !MULTITHREAD
             SolveForwardDynamic(m_angles_v[size]);
             m_moments_vector[size] = m_moments;
