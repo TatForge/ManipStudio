@@ -86,24 +86,39 @@ int main(int argc, char *argv[])
     Polynom result[1000];
 //    scalar v_tcp(2.12);
 //    scalar a_tcp(4);
-    scalar v_tcp(1.12);
+    scalar v_tcp(1);
     scalar a_tcp(2);
+
+    Angles res_buf;
     Angles a1, a2, a3;
-    a1.q[0] = 0.15; a1.q[1] = 0.25; a1.q[2] = 0.35;
-    a1.q[3] = 0.25; a1.q[4] = 0.95; a1.q[5] = 0.67;
+    a1.q[0] = 0.0; a1.q[1] = -M_PI/2; a1.q[2] = +2.6;
+    a1.q[3] = -M_PI; a1.q[4] = -M_PI/2;    a1.q[5] = 0.0;
 //    a2.q[0] = -1.95; a2.q[1] = -0.55; ar2. q[2] = 1.05;
 //    a2.q[3] = 1.43; a2.q[4] = -2.3; a2.q[5] = 1.17;
-    a2.q[0] = 0;      a2.q[1] = 0;            a2.q[2] = 0; a2.q[3] = -M_PI/2;  a2.q[4] = -M_PI/2;      a2.q[5] = 0;
-    a3.q[0] = 0;      a3.q[1] = -M_PI/2;      a3.q[2] = 0; a3.q[3] = -M_PI/2;  a3.q[4] = -M_PI/2;      a3.q[5] = 0;
+    scalar bb(0.475);
+//    bb = 0;
+    a2.q[0] = 0;      a2.q[1] = 0 - bb;        a2.q[2] = 0 + 2*bb;      a2.q[3] = -M_PI/2 - bb;  a2.q[4] = 0;      a2.q[5] = 0;
+    a3.q[0] = 0;      a3.q[1] = -M_PI;       a3.q[2] = -M_PI/2;       a3.q[3] = -M_PI/2;       a3.q[4] = 0;      a3.q[5] = 0;
 //    auto kk = solver.FindAngle(Vector3(1, 2, 3), Vector3(4, 8, 14), Vector3(8, 10, 1));
-//    solver.MoveCircle(Vector3(1, 2, 3), Vector3(2,4,6), Vector3(3, 6, 9), v_tcp, a_tcp, ToSec(10));
-//    solver.MoveCircle(a1, StateVector(Vector3(1, -1, 2), Vector3(0, 0, 0)), StateVector(Vector3(3, -1, 4), Vector3(0, 0, 0)),
-//                      StateVector(Vector3(5, -1, 2), Vector3(0, 0, 0)), v_tcp, a_tcp, 10);
+//    solver.MoveCircle(Vector3(1, 2,  3), Vector3(2,4,6), Vector3(3, 6, 9), v_tcp, a_tcp, ToSec(10));
     CheckTime ct1;
     try {
+        solver.SolveInverseKinematic(StateVector(Vector3(0.3, -0.1, 0.1), Vector3(0, 0, 0)), a1, res_buf);
+//        solver.MoveCircle(angle_start,  StateVector(Vector3(0.2,  0.2,  0.01), Vector3(ToRad(180), 0, 0)),
+//                                        StateVector(Vector3(0.2,  0.3, 0.01),  Vector3(ToRad(180), 0, 0)),
+//                                        StateVector(Vector3(0.3,  0.3, 0.01),   Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 5);
+//        solver.MoveCircle(angle_start,  StateVector(Vector3(0.3,  0.3,  0.01), Vector3(ToRad(180), 0, 0)),
+//                                        StateVector(Vector3(0.3,  0.4, 0.01),  Vector3(ToRad(180), 0, 0)),
+//                                        StateVector(Vector3(0.4,  0.3, 0.01),   Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 5);
+        solver.MoveCircle(angle_start,  StateVector(Vector3(0.4,  0.4, 0.01), Vector3(ToRad(180), 0, 0)),
+                                        StateVector(Vector3(0.2,  0.2, 0.01),   Vector3(ToRad(180), 0, 0)),
+                                        StateVector(Vector3(0.2,  0.3, 0.01),   Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 10);
+//        solver.MoveCircle(angle_start,  StateVector(Vector3(0.4,  0.2,  0.01), Vector3(ToRad(180), 0, 0)),
+//                                        StateVector(Vector3(0.3,  0.1, 0.01),   Vector3(ToRad(180), 0, 0)),
+//                                        StateVector(Vector3(0.2,  0.2,  0.01),   Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 5);
 //        solver.MoveJ(a1, a2, v_tcp, a_tcp, 10);
-        solver.MoveJ(a2, a3,  v_tcp, a_tcp, 10);
-        solver.MoveL(stv,   tarv,  v_tcp, a_tcp, angle_start, res_an, 10, result);
+//        solver.MoveJ(a2, a3,  1.17453, M_PI, 10);
+//        solver.MoveL(stv,   tarv,  v_tcp, a_tcp, angle_start, res_an, 10, result);
 
 //        solver.CalcPolynomLine(tarv,  tarv1, v_tcp, a_tcp, res_an,      res_an, 10, result);
 //        solver.CalcPolynomLine(tarv1, tarv2, v_tcp, a_tcp, res_an,      res_an, 10, result);

@@ -57,6 +57,7 @@ void Emulator::MoveManipLinear(const Angles angles[], size_t size, scalar dt_mse
 {
     t_m = 0;
     bool is_last = false;
+
     for (size_t i = 0; i < size; i++)
     {
         if (angles[i+2].IsNull())
@@ -74,6 +75,7 @@ void Emulator::MoveManipLinear(std::vector<Angles> angles, std::vector<Vector3> 
 {
     t_m = 0;
     bool is_last = false;
+//    m_emu_angles = angles[0];
     for (size_t i = 0; i < angles.size() - 1; i++)
     {
         if (i == angles.size() - 2)
@@ -194,7 +196,7 @@ void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, con
         w.PlotSpeeds(m_emu_angles, is_last);
         if (is_last)
         {
-            w.PrintResult(L(0,3), L(1,3), L(2,3), angles.z, angles.y, angles.x);
+//            w.PrintResult(L(0,3), L(1,3), L(2,3), angles.z, angles.y, angles.x);
         }
 #endif
         t_m += m_delta_t_millisec;

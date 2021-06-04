@@ -30,26 +30,26 @@ Solver::Solver(Robo &manip)
 //    m_inertion[4] = {9.826e-5, 0.000128, 0.000114, -2.74e-9, 4.41e-9,  5.82e-7};
 //    m_inertion[5] = {5.529e-5, 5.359e-5, 8.415e-5, 1.99e-10, 2.53e-9,  1.85e-7};
 
-    m_inertion[0] = {0.0116, 0.0113, 0.0030, 0, 0, 0};
-    m_inertion[1] = {0.0035, 0.2193, 0.2175, 0, 0, -0.0156};
-    m_inertion[2] = {0.0028, 0.0743, 0.0724, 0, 0, 0.0093};
-    m_inertion[3] = {0.0003, 0.0058, 0.0058, 0, 0, 0};
-    m_inertion[4] = {0.0016, 0.0016, 0.003, 0, 0, 0};
-    m_inertion[5] = {0.0001, 0.0001, 0.0001, 0, 0, 0};
+    m_inertion[0] = {0.0120, 0.0117, 0.0032, 0, 0, 0};
+    m_inertion[1] = {0.0055, 0.4014, 0.3983, 0, 0, -0.0276};
+    m_inertion[2] = {0.0050, 0.2629, 0.2596, 0, 0, 0.0228};
+    m_inertion[3] = {0.0007, 0.0127, 0.0126, 0, 0, 0};
+    m_inertion[4] = {0.0033, 0.0033, 0.006, 0, 0, 0};
+    m_inertion[5] = {0.0002, 0.0002, 0.0001, 0, 0, 0};
     scalar m_gruz(5);
-    Vector3 l_gruz(0.0, 0.0, 0.3);
-    m_mass[0] = 2.6444;
-    m_mass[1] = 1.9270;
-    m_mass[2] = 1.4586;
-    m_mass[3] = 0.8013;
-    m_mass[4] = 0.6680;
-    m_mass[5] = 0.1960 + m_gruz;
-    m_cm[0] = Vector({0,       0.0474, -0.0044, 1});
-    m_cm[1] = Vector({0.2838,  0,      -0.0178, 1});
-    m_cm[2] = Vector({0.2018,  0,       0.0242, 1});
-    m_cm[3] = Vector({0.0719,  0,       0.0009, 1});
-    m_cm[4] = Vector({-0.0022, 0,       0.0369, 1});
-    m_cm[5] = Vector({ 0.0001 + l_gruz.x, 0.0 + l_gruz.y, 0.0166 + l_gruz.z, 1});
+    Vector3 l_gruz(0.0, 0.0, 0.0);
+    m_mass[0] = 2.7600;
+    m_mass[1] = 2.9325;
+    m_mass[2] = 2.5773;
+    m_mass[3] = 1.6183;
+    m_mass[4] = 1.3935;
+    m_mass[5] = 0.2498 + m_gruz;
+    m_cm[0] = Vector({0,      -0.0046, -0.0467, 1});
+    m_cm[1] = Vector({0.3251,  0,      -0.0204, 1});
+    m_cm[2] = Vector({0.2869,  0,       0.0235, 1});
+    m_cm[3] = Vector({0.0757,  0,       0.0011, 1});
+    m_cm[4] = Vector({-0.0023, 0,       0.0364, 1});
+    m_cm[5] = Vector({ 0.0001 + l_gruz.x, 0.0 + l_gruz.y, 0.0193 + l_gruz.z, 1});
 
     for (int i = 0; i < JOINTS_COUNT; i++)
     {
@@ -65,7 +65,7 @@ Solver::Solver(Robo &manip)
     m_emulator = new Emulator(manip);
 #endif
     uint vector_size = 500;
-    m_moments_vector.resize(vector_size);
+    m_moments_v.resize(vector_size);
     m_angles_v.resize(vector_size);
     m_speed_v.resize(vector_size);
     m_accel_v.resize(vector_size);
@@ -106,7 +106,7 @@ void Solver::SolveDirectKinematic(const Angles &q, Matrix4x4 TR[], Matrix4x4 *T)
     TR[5] = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
 }
 
-void Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &target, const Angles &curr_angle, Angles &res_angle, IKData *data)
+void Solver::SolveInverseKinematic(const StateVector &target, const Angles &curr_angle, Angles &res_angle, IKData *data)
 {
     if (data == nullptr)
         data = m_main_IKData;
@@ -133,7 +133,7 @@ void Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &ta
     data->delta_s.x = target.x - data->TR[5](0,3);
     data->delta_s.y = target.y - data->TR[5](1,3);
     data->delta_s.z = target.z - data->TR[5](2,3);
-    while ((data->delta_s.Length() > accuracy) || (data->delta_r.Length() > accuracy * 10) || !solved)
+    while ((data->delta_s.Length() > ACCURACY) || (data->delta_r.Length() > ACCURACY * 10) || !solved)
     {
         solved = true;
         for (int i = 0; i < JOINTS_COUNT; i++)
@@ -205,7 +205,7 @@ void Solver::SolveInverseKinematic(const scalar &accuracy, const StateVector &ta
 
 void Solver::MoveL(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &curr_angles, Angles& res_angle, const ushort &dt_millisec, Polynom result[])
 {
-    m_moments_vector.resize(vector_size);
+    m_moments_v.resize(vector_size);
     m_angles_v.resize(vector_size);
     m_speed_v.resize(vector_size);
     m_accel_v.resize(vector_size);
@@ -234,7 +234,7 @@ void Solver::MoveL(const StateVector &start_point, const StateVector &end_point,
     scalar t_stop;
     //__________
 
-    SolveInverseKinematic(ACCURACY, start_point, curr_angles, m_angles_v[0]);
+    SolveInverseKinematic(start_point, curr_angles, m_angles_v[0]);
     SolveDirectKinematic(m_angles_v[0], buff);
 
     uint size(0);
@@ -269,9 +269,9 @@ void Solver::MoveL(const StateVector &start_point, const StateVector &end_point,
         }
         if (breaking)
         {
-            ax = (2 * (end_point.x - x - vx * t_stop) * (1/t_stop/t_stop));// * abs(dist_x_norm);
-            ay = (2 * (end_point.y - y - vy * t_stop) * (1/t_stop/t_stop));// * abs(dist_y_norm);
-            az = (2 * (end_point.z - z - vz * t_stop) * (1/t_stop/t_stop));// * abs(dist_z_norm);
+            ax = (2 * (end_point.x - x - vx * t_stop) / t_stop/t_stop);// * abs(dist_x_norm);
+            ay = (2 * (end_point.y - y - vy * t_stop) / t_stop/t_stop);// * abs(dist_y_norm);
+            az = (2 * (end_point.z - z - vz * t_stop) / t_stop/t_stop);// * abs(dist_z_norm);
         }
         else
         {
@@ -320,7 +320,7 @@ void Solver::MoveL(const StateVector &start_point, const StateVector &end_point,
         if (size + 1 >= m_angles_v.size())
             VectorsResize(size);
 
-        SolveInverseKinematic(ACCURACY, StateVector(x, y, z, rol, pit, yaw), m_angles_v[size], m_angles_v[size+1]);
+        SolveInverseKinematic(StateVector(x, y, z, rol, pit, yaw), m_angles_v[size], m_angles_v[size+1]);
 //        SolveDirectKinematic(m_angles_v[size + 1], buff);
         m_speed_v[size + 1].x = vx;
         m_speed_v[size + 1].y = vy;
@@ -331,10 +331,13 @@ void Solver::MoveL(const StateVector &start_point, const StateVector &end_point,
         size++;
         t+= dt_s;
     }
-    for (uint j = 0; j < JOINTS_COUNT; j++)
+    for (counter i = 0; i < size; i++)
     {
-        m_angles_v[size].q_pp[j] = (m_angles_v[size + 1].q[j] - m_angles_v[size].q[j] - m_angles_v[size].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
-        m_angles_v[size + 1].q_p[j] = m_angles_v[size].q_p[j] + m_angles_v[size].q_pp[j] * dt_s;
+        for (uint j = 0; j < JOINTS_COUNT; j++)
+        {
+            m_angles_v[i].q_pp[j] = (m_angles_v[i + 1].q[j] - m_angles_v[i].q[j] - m_angles_v[i].q_p[j] * dt_s) / (dt_s * dt_s) /*0.1*/;
+            m_angles_v[i + 1].q_p[j] = m_angles_v[i].q_p[j] + m_angles_v[i].q_pp[j] * dt_s;
+        }
     }
     CalcCollisionsDynamics(size, dt_millisec);
     m_angles_v.resize(size + 1);
@@ -635,7 +638,7 @@ bool Solver::SolveForwardDynamic(const Angles &angles)
                         else
                             u_buff = u_buff * m_T[ctr];
                     }
-                    buff += Trace(u_buff * m_ji[i].MultiplyTranspose(U[i*6 + j])) * angles.q_p[i] * angles.q_p[i];
+                    buff += Trace(u_buff * m_ji[i].MultiplyTranspose(U[i*6 + j])) * angles.q_p[k] * angles.q_p[m];
                 }
                 m_moments.hikm[i] += buff;
             }
@@ -650,7 +653,7 @@ bool Solver::SolveForwardDynamic(const Angles &angles)
     return true;
 }
 
-void Solver::VectorsResize(const counter &ctr)
+void Solver::VectorsResize(const counter &size)
 {
 #if MULTITHREAD
     while(1)
@@ -665,10 +668,10 @@ void Solver::VectorsResize(const counter &ctr)
         break;
     }
 #else
-    cout << "VECTOR RESIZE from " << m_angles_v.size() << " to " << 2 * (ctr + 1) << endl;
-    m_moments_vector.resize(2 * (ctr + 1));
-    m_angles_v.resize(2 * (ctr + 1));
-    m_accel_v.resize(2 * (ctr + 1));
-    m_speed_v.resize(2 * (ctr + 1));
+    cout << "VECTOR RESIZE from " << m_angles_v.size() << " to " << 2 * (size + 1) << endl;
+    m_moments_v.resize(2 * (size + 1));
+    m_angles_v.resize(2  * (size + 1));
+    m_accel_v.resize(2   * (size + 1));
+    m_speed_v.resize(2   * (size + 1));
 #endif
 }

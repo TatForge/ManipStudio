@@ -80,7 +80,7 @@ static void BMInverseKinematic(benchmark::State &state)
         Solver s(manipulator);
         for (auto e : state)
         {
-            s.SolveInverseKinematic(10e-5, targets, angles, angles);
+            s.SolveInverseKinematic(targets, angles, angles);
         }
     }  catch (std::string &exception) {
         cout << exception << endl;

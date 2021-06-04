@@ -44,7 +44,7 @@ class Solver
 public:
     Solver(Robo &manip);
     void SolveDirectKinematic(const Angles &q, Matrix4x4 TR[], Matrix4x4 *T = nullptr) noexcept;
-    void SolveInverseKinematic(const scalar &accuracy, const StateVector &target, const Angles &curr_angle, Angles &res_angle, IKData *data  = nullptr);
+    void SolveInverseKinematic(const StateVector &target, const Angles &curr_angle, Angles &res_angle, IKData *data  = nullptr);
     void MoveL(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &start_angles, Angles &res_angle, const ushort &dt_millisec, Polynom result[]);
     bool CheckTrajectoryForLinear(const Polynom &pol, const Vector3 &l1, const Vector3 &l2, const scalar &t_millisec, const scalar &max_delta);
     bool CheckTrajectoryForLinear(const Angles angles, const Vector3 &l1, const Vector3 &l2, const scalar &max_delta);
@@ -60,16 +60,16 @@ public:
         for (counter i = 0; i < m_moments_counter; i++)
         {
             if (i == 0)
-                m_emulator->moments_window.PrintResult(m_moments_vector[i].tao[0], m_moments_vector[i].tao[1],
-                                                       m_moments_vector[i].tao[2], ToRad(m_moments_vector[i].tao[3]),
-                                                       ToRad(m_moments_vector[i].tao[4]), ToRad(m_moments_vector[i].tao[5]));
-            m_emulator->moments_window.PlotCoordinates(m_moments_vector[i].tao[0], m_moments_vector[i].tao[1],
-                                                       m_moments_vector[i].tao[2], m_moments_vector[i].tao[3],
-                                                       m_moments_vector[i].tao[4], m_moments_vector[i].tao[5], dt_millisec);
+                m_emulator->moments_window.PrintResult(m_moments_v[i].tao[0], m_moments_v[i].tao[1],
+                                                       m_moments_v[i].tao[2], ToRad(m_moments_v[i].tao[3]),
+                                                       ToRad(m_moments_v[i].tao[4]), ToRad(m_moments_v[i].tao[5]));
+            m_emulator->moments_window.PlotCoordinates(m_moments_v[i].tao[0], m_moments_v[i].tao[1],
+                                                       m_moments_v[i].tao[2], m_moments_v[i].tao[3],
+                                                       m_moments_v[i].tao[4], m_moments_v[i].tao[5], dt_millisec);
             if (i == m_moments_counter - 1)
-                m_emulator->moments_window.PlotCoordinates(m_moments_vector[i].tao[0], m_moments_vector[i].tao[1],
-                                                           m_moments_vector[i].tao[2], m_moments_vector[i].tao[3],
-                                                           m_moments_vector[i].tao[4], m_moments_vector[i].tao[5], dt_millisec, true);
+                m_emulator->moments_window.PlotCoordinates(m_moments_v[i].tao[0], m_moments_v[i].tao[1],
+                                                           m_moments_v[i].tao[2], m_moments_v[i].tao[3],
+                                                           m_moments_v[i].tao[4], m_moments_v[i].tao[5], dt_millisec, true);
         }
 #endif
     }
@@ -93,7 +93,7 @@ public:
             sizes[i] = size_of_arr;
             if (max_size < size_of_arr)
                 max_size = size_of_arr;
-            if (min_size < size_of_arr)
+            if (min_size > size_of_arr)
                 min_size = size_of_arr;
         }
         m_angles_v.resize(max_size);
@@ -103,11 +103,11 @@ public:
         {
             for (counter j = sizes[i] + 1; j < max_size; j++)
                 m_angles_v[j].q[i] = m_angles_v[sizes[i]].q[i];
-//            std::fill(m_angles_v.begin()->q[i] + sizes[i], m_angles_v.end()->q[i], m_angles_v[sizes[i]].q[i]);
         }
 
         //Коллизии + динамика
         CalcCollisionsDynamics(max_size, dt_millisec);
+
 //#if !MULTITHREAD
 //        for (uint k = 0; k < max_size; k++)
 //        {
@@ -119,9 +119,6 @@ public:
 //#endif
 //            }
 //            SolveForwardDynamic(m_angles_v[k]);
-//            #if WITH_WINDOW
-//            m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec);
-//            #endif
 //        }
 //#endif
 //#if MULTITHREAD
@@ -200,7 +197,6 @@ public:
                     angle_accel = angle_acceleration * direction;
                     angle_speed += angle_accel * dt_s;}
             }
-
             t_stop = abs(angle_speed) / abs(angle_acceleration);
             // сделать отслеживание последней итерации
             angle_pos += angle_speed * dt_s + angle_accel * dt_s * dt_s / 2;
@@ -261,132 +257,166 @@ public:
         Vector3 AB = A - B;
         Vector3 BC = B - C;
         Vector3 AC = A - C;
-        m_moments_vector.resize(vector_size);
+        m_moments_v.resize(vector_size);
         m_angles_v.resize(vector_size);
         m_speed_v.resize(vector_size);
         m_accel_v.resize(vector_size);
         std::vector<Vector3> points;
         points.resize(vector_size);
-        m_angles_v[0] = start_angle;
         points[0] = A;
-        //Проверка точек на нахождение на одной прямой
-        if ((AB.x/AC.x + AB.y/AC.y + AB.z/AC.z) - 3 * (AB.x/AC.x) < 10e-6)
         {
-            cout << "Точки лежат на одной прямой" << endl;
-            return false;
+        //Проверка точек на нахождение на одной прямой
+//        {
+//            Vector3 new_vector(5,5,5);
+//            auto Aa = A - new_vector;
+//            auto Bb = B - new_vector;
+//            auto Cc = C - new_vector;
+//            auto aa = (Bb.x - Aa.x) / (Cc.x - Aa.x);
+//            auto bb = (Bb.y - Aa.y) / (Cc.y - Aa.y);
+//            auto cc = (Bb.z - Aa.z) / (Cc.z - Aa.z);
+//            if (((Bb.x - Aa.x) / (Cc.x - Aa.x) - (Bb.y - Aa.y) / (Cc.y - Aa.y)<= 10e-6) &&
+//                 (Bb.y - Aa.y) / (Cc.y - Aa.y) - (Bb.z - Aa.z) / (Cc.z - Aa.z) <= 10e-6)
+//            {
+//                cout << "Точки лежат на одной прямой" << endl;
+//                return false;
+//            }
+//        }
+//        if ((AB.x/AC.x + AB.y/AC.y + AB.z/AC.z) - 3 * (AB.x/AC.x) < 10e-6)
         }
+
+        SolveInverseKinematic(start_point, start_angle, m_angles_v[0]);
+//        m_angles_v[0] = start_angle;
         //____________________________________________
         Vector3 N = AB * BC;
         Vector3 AB2 = (A + B) / 2;
         Vector3 BC2 = (B + C) / 2;
         Vector3 ABn, BCn, O, R, N3,
-                Okr, v, a, n, r;
+                Okr, v, a, a_ort, n, r;
         scalar t, t1;
         //Данная конструкция позволяет избежать вырождения решения в случае, когда нормаль
         //окружности не пересекает плоскость, образованную приравниванием одной из осей единице, например (1, y, z).
-//        N = N.Normalize();
-//        if (abs(N.y) > 0.1)
-//        {
-//            ABn.x = 1;
-//            ABn.z = (AB.y * N.x - AB.x * N.y) / (AB.z * N.y - AB.y * N.z);
-//            ABn.y = -(N.z * ABn.z + N.x) / N.y;
-//        } else if (abs(N.x) > 0.1)
-//        {
-//            ABn.y = 1;
-//            ABn.z = (AB.x * N.y - AB.y * N.x) / (AB.z * N.x - AB.x * N.z);
-//            ABn.x = -(N.z * ABn.z + N.y) / N.x;
-//        }
-//        else if (abs(N.z) > 0.1)
-//        {
-//            ABn.z = 1;
-//            ABn.y = (AB.x * N.z - AB.z * N.x) / (AB.y * N.x - AB.x * N.y);
-//            ABn.x = -(N.y * ABn.y + N.z) / N.x;
-//        } else
-//            cout << "WTF if going on? N(0, 0, 0)" << endl;
         Vector3 N1 = N * AB;
         Vector3 N2 = N1 * N;
-
-//        if (N.x == 0 && N.y == 0)
-//            ABn.z = 0;
-//        else if (N.x == 0 && N.z == 0)
-//            ABn.y = 0;
-//        else if (N.y == 0 && N.z == 0)
-//            ABn.x = 0;
-
-//        ABn.x = 1;
-//        ((AB.y * N.x - AB.x * N.y) == 0) ? ABn.z = 0 : ABn.z = (AB.y * N.x - AB.x * N.y) / (AB.z * N.y - AB.y * N.z);
-//        (-(N.z * ABn.z + N.x) == 0) ? ABn.y = 0 : ABn.y = -(N.z * ABn.z + N.x) / N.y;
-//        BCn.x = 1;
-//        ((BC.y * N.x - BC.x * N.y) == 0) ? BCn.z = 0 : BCn.z = (BC.y * N.x - BC.x * N.y) / (BC.z * N.y - BC.y * N.z);
-//        ((N.z * BCn.z + N.x) == 0) ? BCn.y = 0 : BCn.y = -(N.z * BCn.z + N.x) / N.y;
-//        scalar t = (AB2.x * ABn.y + BC2.y - ABn.y * BC2.x - AB2.y) / (ABn.y - BCn.y);
-//        if ()
-        if (N.x != 0)
+        scalar l;
+        scalar current_angle;
+        counter size(0);
+        scalar t_stop;
+        scalar distance_angle_to_stop;
+        if ((N1.y * N2.x - N1.x * N2.y) != 0)
         {
             t =  (AB2.x * N2.y - AB2.y * N2.x - BC2.x * N2.y + BC2.y * N2.x) / (N1.y * N2.x - N1.x * N2.y);
             t1 = (AB2.x * N1.y - AB2.y * N1.x - BC2.x * N1.y + BC2.y * N1.x) / (N1.y * N2.x - N1.x * N2.y);
-//            scalar t1 = (N.x * (BC2.y - AB2.y) - N.y *(BC2.x + AB2.x)) / (N1.y * N2.x - N2.y * N1.x);
-//            scalar t  = (N1.x * t1 + BC2.x + AB2.x) / N.x;
-
         }
-        O = Vector3(N.x * t1 + AB2.x, N.y * t1 + AB2.y, N.z * t1 + AB2.z);
+        else if ((N1.z * N2.x - N1.x * N2.z) != 0)
+        {
+            t = (AB2.x * N2.z - AB2.z * N2.x - BC2.x * N2.z + BC2.z * N2.x) / (N1.z * N2.x - N1.x * N2.z);
+            t1 = (N1.x * t + AB2.x - BC2.x ) / N2.x;
+        }//выбрать один из вариантов
+        else if ((N1.z * N2.x - N1.x * N2.z) != 0)
+        {
+            t = (AB2.x * N2.z - AB2.z * N2.x - BC2.x * N2.z + BC2.z * N2.x) / (N1.z * N2.x - N1.x * N2.z);
+            t1 = (AB2.x * N1.z - AB2.z * N1.x - BC2.x * N1.z + BC2.z * N1.x) / (N1.z * N2.x - N1.x * N2.z);
+        }
+        O = Vector3(N1.x * t + AB2.x, N1.y * t + AB2.y, N1.z * t + AB2.z);
 
-//        scalar t1 = BCn.x * t + BC2.x - AB2.x;
-        scalar l;
-        scalar alpha;
-//        O = Vector3(t1 + AB2.x, ABn.y * t1 + AB2.y, ABn.z * t1 + AB2.z);
         R = A - O;
-//        N3;
-        N3.z = (N.y - N.x * ABn.y) / (N.z * ABn.y - ABn.z * N.y);
-        N3.y = (-1 - ABn.z * N3.z) / ABn.y;
-        N3.x = 1;
-//        scalar angle(M_PI/2);
-//        Okr = ABn/ABn.Length() * R * sin(angle) + N3/N3.Length() * R * sin(angle) + O;
-        auto GetPoint = [&](const scalar &ang){return Vector3(ABn/ABn.Length() * R * sin(ang) + N3/N3.Length() * R * sin(ang) + O);};
+        auto kk = N1/N1.Length();
+        auto ll = N2/N2.Length();
+        auto iii = ll.Length();// + ll.Length();
+        auto GetPoint = [&](const scalar &ang){return Vector3(N1/N1.Length() * R.Length() * sin(ang) + N2/N2.Length() * R.Length() * cos(ang) + O);};
+        //Угол между начальной точкой и точкой P
+        auto GetAngle = [&](const Vector3 &P){return (P - O).Angle(A - O);};
         Vector3 P0;
-        P0 = ABn/ABn.Length() * R * sin(0) + N3/N3.Length() * R * sin(0) + O;
-        alpha = (P0 - O).Angle(A - O);
-        counter ctr;
-        while(1)
+        P0 = GetPoint(0);
+        current_angle = (P0 - O).Angle(A - O);
+//        current_angle = (A - O).Angle(B - O);
+//        current_angle = (P0 - O).Angle(C - O);
+        auto ii = GetPoint(0);
+
+        bool breaking(0);
+        scalar end_angle = GetAngle(end_point.GetCoord());
+        scalar current_range = (C - A).Length();
+        short direction(1);
+        auto A1 = GetPoint(current_angle + abs(end_angle - current_angle) / 10);
+        auto A1B = (A1 - B).Length();
+        auto ab  = (A - B).Length();
+//        if ((A1 - B).Length() < (A - B).Length())
+//            direction = 1;
+        //
+//        while((current_angle + direction * (v.Length() * dt_s + a_tcp * dt_s * dt_s / 2) / R.Length()) < end_angle)
+
+        while(current_range > (v.Length() * dt_s + a_tcp * dt_s * dt_s / 2))
+//        while(1)
         {
             Vector3 point;
             r = A;
-            if (v.Length() >= v_tcp)
+            if (breaking) //Режим торможения
             {
-                alpha += (v_tcp * dt_s) / R.Length();
-                point = GetPoint(alpha);
-
-                n = point - points[ctr];
-                a = a.Normalize();
-                v = a * v_tcp;
-                a = 0;
-            } else
+//                a = 2 * (end_angle - current_angle - v.Length() * t_stop) *(1/t_stop/t_stop);
+//                a_ort = (point - points[ctr]).Normalize();
+//            }
+//            else if (v.Length() >= v_tcp)
+//            {
+//                current_angle += 0.1;// (v_tcp * dt_s) / R.Length();
+//                point = GetPoint(current_angle);
+//                a_ort = (point - points[ctr]).Normalize();
+////                a = a.Normalize();
+//                v = a_ort * v_tcp;
+////                a = 0;
+            } else //Режим разгона
             {
-                alpha = +(v.Length() * dt_s + a_tcp * a_tcp * dt_s / 2) / R.Length();
-                point = GetPoint(alpha);
-
-                a = point - points[ctr];
-                a = a.Normalize();
-                a = a * a_tcp;
+                auto ok = (v.Length() * dt_s + a_tcp * dt_s * dt_s / 2) / R.Length();
+                current_angle += direction * (v.Length() * dt_s + a_tcp * dt_s * dt_s / 2) / R.Length();
+                point = GetPoint(current_angle);
+//                current_angle = GetAngle(point);
+                a_ort = (point - points[size]).Normalize();
+                a = a_ort * a_tcp;
                 v += a * dt_s;
+                if (v.Length() > v_tcp)
+                    v = a_ort * v_tcp;
             }
-
-            l = v.Length() * dt_s + a.Length() * a.Length() * dt_s / 2;
-            alpha = l / (2 * M_PI * R.Length());
-//            Point = ;
-            ctr++;
-            points[ctr] = point;
-            Vector3 angles;
-            SolveInverseKinematic(ACCURACY, StateVector(points[ctr], angles), m_angles_v[ctr - 1], m_angles_v[ctr]);
-            m_speed_v[ctr + 1].x = v.x;
-            m_speed_v[ctr + 1].y = v.y;
-            m_speed_v[ctr + 1].z = v.z;
-            m_accel_v[ctr].x = a.x;
-            m_accel_v[ctr].y = a.y;
-            m_accel_v[ctr].z = a.z;
+            current_range = (C - point).Length();
+            auto klo = v.Length() * dt_s + a_tcp * dt_s * dt_s / 2;
+            l = v.Length() * dt_s + a.Length() * dt_s * dt_s / 2;
+            size++;
+            points[size] = point;
+            Vector3 angles(ToRad(180),ToRad(0),ToRad(0));
+            SolveInverseKinematic(StateVector(points[size], angles), m_angles_v[size - 1], m_angles_v[size]);
+//            m_speed_v[size + 1].x = v.x;
+//            m_speed_v[size + 1].y = v.y;
+//            m_speed_v[size + 1].z = v.z;
+//            m_accel_v[size].x = a.x;
+//            m_accel_v[size].y = a.y;
+//            m_accel_v[size].z = a.z;
+            t_stop = v.Length() / a_tcp;
+            distance_angle_to_stop = GetAngle(end_point.GetCoord()) - GetAngle(point);
+            if (distance_angle_to_stop <= v.Length() * t_stop - a.Length() * t_stop * t_stop * 0.5)
+            {
+//                breaking = true;
+//                break;
+            }
+            if (size > 499)
+                    break;
+            if (size + 1 >= m_angles_v.size())
+            {
+                m_angles_v.resize(2 *(size + 1));
+                points.resize(2 * (size + 1));
+            }
+//                VectorsResize(size);
         }
-
-        CalcCollisionsDynamics(ctr, dt_millisec);
+        m_angles_v.resize(size + 1);
+        for (counter i = 0; i < size; i++)
+        {
+            for (uint j = 0; j < JOINTS_COUNT; j++)
+            {
+                m_angles_v[i].q_pp[j] = (m_angles_v[i + 1].q[j] - m_angles_v[i].q[j] - m_angles_v[i].q_p[j] * dt_s) / (dt_s * dt_s);
+                m_angles_v[i + 1].q_p[j] = m_angles_v[i].q_p[j] + m_angles_v[i].q_pp[j] * dt_s;
+            }
+        }
+//        throw std::runtime_error("HOLY SHIT! COLLISION! Between " + to_string(3) + " and " + to_string(6)  /*to_string(cube)*/ + " elements");
+        CalcCollisionsDynamics(size, dt_millisec);
+        m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec, true);
+        m_emulator->MoveManipLinear(m_angles_v, m_speed_v, dt_millisec);
         return true;
     }
     void CalcCollisionsDynamics(const scalar &array_size, const scalar &dt_millisec)
@@ -422,7 +452,7 @@ public:
 #endif
 #if !MULTITHREAD
             SolveForwardDynamic(m_angles_v[size]);
-            m_moments_vector[size] = m_moments;
+            m_moments_v[size] = m_moments;
 #endif
         }
 #if MULTITHREAD && WITH_COLLISIONS
@@ -491,7 +521,7 @@ private:
     vector<Vector3> m_speed_v;
     vector<Vector3> m_accel_v;
     uint vector_size = 500;
-    vector<Robo::Moments> m_moments_vector;
+    vector<Robo::Moments> m_moments_v;
     uint m_moments_counter;
     uint m_collisions_counter;
     IKData *m_main_IKData;

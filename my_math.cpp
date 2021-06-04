@@ -636,12 +636,14 @@ Vector &Vector::operator=(const Vector &v)
     memcpy(m_data, v.m_data, sizeof(scalar) * m_length);
     return *this;
 }
-Vector3 &Vector3::operator/(const scalar &value)
+Vector3 Vector3::operator/(const scalar &value)
 {
-    x /= value;
-    y /= value;
-    z /= value;
-    return *this;
+//    x /= value;//wtf?
+//    y /= value;
+//    z /= value;
+//    return *this;
+    assert(value != 0 && " Error Vector3 / scalar; scalar = 0");
+    return Vector3(x / value, y / value, z / value);
 }
 Vector &Vector::operator=(const double &value)
 {
@@ -760,15 +762,15 @@ Vector3 Vector3::operator=(const Vector &V)
 
 Vector3 Vector3::operator =(const Vector3 &V)
 {
-    this->x = V.x;
-    this->y = V.y;
-    this->z = V.z;
+    x = V.x;
+    y = V.y;
+    z = V.z;
     return *this;
 }
 
 Vector3 Vector3::operator -(const Vector3 &V) const
 {
-    return Vector3(this->x - V.x, this->y - V.y, this->z - V.z);
+    return Vector3(x - V.x, y - V.y, z - V.z);
 }
 
 Vector3 Vector3::operator-() const
@@ -778,23 +780,24 @@ Vector3 Vector3::operator-() const
 
 Vector3 Vector3::operator+(const Vector3 &V) const
 {
-    return Vector3(this->x + V.x, this->y + V.y, this->z + V.z);
+    return Vector3(x + V.x, y + V.y, z + V.z);
 }
 
 Vector3 &Vector3::operator +=(const Vector3 &V)
 {
-    this->x += V.x;
-    this->y += V.y;
-    this->z += V.z;
+    x += V.x;
+    y += V.y;
+    z += V.z;
     return *this;
 }
 
-Vector3 &Vector3::operator*(const scalar &value)
+Vector3 Vector3::operator*(const scalar &value)
 {
-    x *= value;
-    y *= value;
-    z *= value;
-    return *this;
+//    x *= value;
+//    y *= value;
+//    z *= value;
+//    return *this;
+    return Vector3(x * value, y * value, z * value);
 }
 
 bool Vector3::operator <(Vector3 &v)

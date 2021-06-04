@@ -115,7 +115,7 @@ namespace RoboMath
         Vector3(const Vector3 &v) : x(v.x), y(v.y), z(v.z) {};
         void Rotate(const scalar &theta, const RoboMath::Vector3 &V);
         void Clear();
-        inline scalar Length()    const {return sqrt(x * x + y * y + z * z);};
+        inline scalar Length() const {return sqrt(x * x + y * y + z * z);};
         scalar Dot(const Vector3 &v) const;
 
         Vector3 Normalize() const;
@@ -126,8 +126,8 @@ namespace RoboMath
         Vector3 operator+ (const Vector3 &V) const;
         Vector3 operator* (const Vector3 &V) const;
         Vector3 &operator+= (const Vector3 &V);
-        Vector3 &operator* (const scalar &value);
-        Vector3 &operator/(const scalar &value);
+        Vector3 operator* (const scalar &value);
+        Vector3 operator/(const scalar &value);
         inline scalar Angle(const Vector3 &V)
         {
             //Find angle between 2 vectors

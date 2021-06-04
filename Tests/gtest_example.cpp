@@ -73,7 +73,10 @@ TEST(Collision, All)
     mc2.MoveMesh(Quaternion(0.0, 0, 0.707, 0.707), Vector3(2, 2, 0));
     EXPECT_FALSE(mc1.CheckCollision(mc2));
 }
+TEST(Check, moments)
+{
 
+}
 
 
 int main(int argc, char *argv[])

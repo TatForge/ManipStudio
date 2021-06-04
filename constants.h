@@ -12,7 +12,7 @@
 #define WITH_WINDOW     1
 //assertions turn off
 //#define NDEBUG
-#define SMESH +0.65
+#define SMESH +1.65
 #define DT_MILLISEC 10
 //__________________________________
 #define RANGE_TO_PLOT 0.025  // 25 mm
