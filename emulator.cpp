@@ -166,7 +166,7 @@ void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, con
 {
     for(int i = 0; i < dt_msec/m_delta_t_millisec; i++)
     {
-        this_thread::sleep_for(std::chrono::microseconds(1000));
+        this_thread::sleep_for(std::chrono::microseconds(2000));
         for (int j = 0; j < JOINTS_COUNT; j++)
         {
             m_emu_angles.q[j]    = interpolate(angle1.q[j],    angle2.q[j], (scalar(i) / scalar(dt_msec/m_delta_t_millisec)));

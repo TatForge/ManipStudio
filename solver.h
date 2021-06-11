@@ -264,44 +264,34 @@ public:
         std::vector<Vector3> points;
         points.resize(vector_size);
         points[0] = A;
-        {
+
         //Проверка точек на нахождение на одной прямой
-//        {
-//            Vector3 new_vector(5,5,5);
-//            auto Aa = A - new_vector;
-//            auto Bb = B - new_vector;
-//            auto Cc = C - new_vector;
-//            auto aa = (Bb.x - Aa.x) / (Cc.x - Aa.x);
-//            auto bb = (Bb.y - Aa.y) / (Cc.y - Aa.y);
-//            auto cc = (Bb.z - Aa.z) / (Cc.z - Aa.z);
-//            if (((Bb.x - Aa.x) / (Cc.x - Aa.x) - (Bb.y - Aa.y) / (Cc.y - Aa.y)<= 10e-6) &&
-//                 (Bb.y - Aa.y) / (Cc.y - Aa.y) - (Bb.z - Aa.z) / (Cc.z - Aa.z) <= 10e-6)
-//            {
-//                cout << "Точки лежат на одной прямой" << endl;
-//                return false;
-//            }
-//        }
-//        if ((AB.x/AC.x + AB.y/AC.y + AB.z/AC.z) - 3 * (AB.x/AC.x) < 10e-6)
-        }
+//        auto lol = abs(0.5 * AB.TriangleS(AC));
+        if (abs(0.5 * AB.TriangleS(AC)) < 10e-10)
+            throw std::runtime_error ("Три точки лежат на одной прямой, измените точки");
 
         SolveInverseKinematic(start_point, start_angle, m_angles_v[0]);
-//        m_angles_v[0] = start_angle;
         //____________________________________________
         Vector3 N = AB * BC;
         Vector3 AB2 = (A + B) / 2;
         Vector3 BC2 = (B + C) / 2;
-        Vector3 ABn, BCn, O, R, N3,
-                Okr, v, a, a_ort, n, r;
-        scalar t, t1;
+        Vector3 ABn, BCn, O, R, N3, angle_range,
+                Okr, v, a, a_ort, n, angles;
+        scalar t, t1, v_s, a_s;
         //Данная конструкция позволяет избежать вырождения решения в случае, когда нормаль
         //окружности не пересекает плоскость, образованную приравниванием одной из осей единице, например (1, y, z).
         Vector3 N1 = N * AB;
-        Vector3 N2 = N1 * N;
+        Vector3 N2 = N * BC;
+        N3 = N1 * N;
+        Vector3 N4 = N3 * N1;
+        N4 = N4 / N4.Length();
         scalar l;
-        scalar current_angle;
         counter size(0);
         scalar t_stop;
         scalar distance_angle_to_stop;
+        scalar end_angle, current_range,
+               current_angle, start_angle_range;
+        short direction(1);
         if ((N1.y * N2.x - N1.x * N2.y) != 0)
         {
             t =  (AB2.x * N2.y - AB2.y * N2.x - BC2.x * N2.y + BC2.y * N2.x) / (N1.y * N2.x - N1.x * N2.y);
@@ -309,65 +299,87 @@ public:
         }
         else if ((N1.z * N2.x - N1.x * N2.z) != 0)
         {
-            t = (AB2.x * N2.z - AB2.z * N2.x - BC2.x * N2.z + BC2.z * N2.x) / (N1.z * N2.x - N1.x * N2.z);
-            t1 = (N1.x * t + AB2.x - BC2.x ) / N2.x;
-        }//выбрать один из вариантов
-        else if ((N1.z * N2.x - N1.x * N2.z) != 0)
-        {
-            t = (AB2.x * N2.z - AB2.z * N2.x - BC2.x * N2.z + BC2.z * N2.x) / (N1.z * N2.x - N1.x * N2.z);
+            t  = (AB2.x * N2.z - AB2.z * N2.x - BC2.x * N2.z + BC2.z * N2.x) / (N1.z * N2.x - N1.x * N2.z);
             t1 = (AB2.x * N1.z - AB2.z * N1.x - BC2.x * N1.z + BC2.z * N1.x) / (N1.z * N2.x - N1.x * N2.z);
         }
-        O = Vector3(N1.x * t + AB2.x, N1.y * t + AB2.y, N1.z * t + AB2.z);
+        else if ((N1.z * N2.y - N1.y * N2.z) != 0)
+        {
+            t  = (AB2.y * N2.z - AB2.z * N2.y - BC2.y * N2.z + BC2.z * N2.y) / (N1.z * N2.y - N1.y * N2.z);
+            t1 = (AB2.y * N1.z - AB2.z * N1.y - BC2.y * N1.z + BC2.z * N1.y) / (N1.z * N2.y - N1.y * N2.z);
+        }
 
+        O = Vector3(N1.x * t + AB2.x, N1.y * t + AB2.y, N1.z * t + AB2.z);
         R = A - O;
-        auto kk = N1/N1.Length();
-        auto ll = N2/N2.Length();
-        auto iii = ll.Length();// + ll.Length();
-        auto GetPoint = [&](const scalar &ang){return Vector3(N1/N1.Length() * R.Length() * sin(ang) + N2/N2.Length() * R.Length() * cos(ang) + O);};
+        auto GetPoint = [&](const scalar &ang){return Vector3(N1/N1.Length() * R.Length() * sin(ang) + N3/N3.Length() * R.Length() * cos(ang) + O);};
         //Угол между начальной точкой и точкой P
-        auto GetAngle = [&](const Vector3 &P){return (P - O).Angle(A - O);};
         Vector3 P0;
         P0 = GetPoint(0);
-        current_angle = (P0 - O).Angle(A - O);
-//        current_angle = (A - O).Angle(B - O);
-//        current_angle = (P0 - O).Angle(C - O);
-        auto ii = GetPoint(0);
-
+        auto GetAngle = [&](const Vector3 &V){
+//            auto ch = P0.x * V.x + P0.y * V.y + P0.z * V.z;
+//            auto zn = P0.x * V.y * N4.z + V.x * N4.y * P0.z +
+//                      N4.x * P0.y * V.z - P0.z * V.y * N4.x -
+//                      V.z * N4.y * P0.x - N4.z * P0.y * V.x;
+//            auto lol = atan2(zn, ch);
+//            auto VO = V - O;
+//            auto PO = P0 - O;
+            scalar angle = (V - O).Angle(P0 - O);
+            if ((GetPoint(angle) - V).Length() > 10e-8)
+                angle *= -1;
+            return angle;};//(V - O).Angle(P0 - O);};/*atan2(zn, ch);};/*
+/*                                                                                  P0.x * V.y * N4.z + V.x * N4.y * P0.x +
+                                                                                    N4.x * P0.x * V.z - P0.z * V.y * N4.x -
+                                                                                    V.z * N4.y * P0.x - N4.z * P0.y * V.x);};
+                                                                                    */
+//        scalar Pop = GetAngle(P0);
+        current_angle = GetAngle(A);
+//        current_angle = GetAngle(P0);
+//        auto ii = GetPoint(current_angle);
+//        auto i1 = GetPoint(0.1);
+//        auto i2 = GetPoint(0.2);
+//        auto i3 = GetPoint(0.3);
+//        auto i4 = GetPoint(0.4);
+//        auto i5 = GetPoint(0.5);
+//        auto i6 = GetPoint(0.6);
+//        auto i7 = GetPoint(0.7);
+//        auto i8 = GetPoint(0.8);
+//        auto i9 = GetPoint(0.9);
+//        auto i10 = GetPoint(1.0);
+//        auto i11 = GetPoint(1.1);
+//        auto i12 = GetPoint(1.2);
+//        auto i13 = GetPoint(1.3);
+//        auto k1 = GetAngle(i13);
+//        auto aa = GetPoint(current_angle) - A;
+        if ((GetPoint(current_angle) - A).Length() < 10e-6)
+            direction = 1;
+        else
+            direction = -1;
         bool breaking(0);
-        scalar end_angle = GetAngle(end_point.GetCoord());
-        scalar current_range = (C - A).Length();
-        short direction(1);
-        auto A1 = GetPoint(current_angle + abs(end_angle - current_angle) / 10);
-        auto A1B = (A1 - B).Length();
-        auto ab  = (A - B).Length();
-//        if ((A1 - B).Length() < (A - B).Length())
-//            direction = 1;
-        //
-//        while((current_angle + direction * (v.Length() * dt_s + a_tcp * dt_s * dt_s / 2) / R.Length()) < end_angle)
-
-        while(current_range > (v.Length() * dt_s + a_tcp * dt_s * dt_s / 2))
-//        while(1)
+//        scalar end_angle = GetAngle(end_point.GetCoord());
+        angle_range = (start_point.GetAngles() - end_point.GetAngles());
+        current_range = (C - A).Length();
+        end_angle = GetAngle(end_point.GetCoord());
+        start_angle_range = (end_point.GetCoord() - O).Angle(A - O);
+        auto llk = v.Length() * dt_s + a_tcp * dt_s * dt_s / 2;
+        while(current_range > (v.Length() * dt_s - a_tcp * dt_s * dt_s / 2))
         {
+            auto llk = v.Length() * dt_s - a_tcp * dt_s * dt_s / 2;
             Vector3 point;
-            r = A;
             if (breaking) //Режим торможения
             {
-//                a = 2 * (end_angle - current_angle - v.Length() * t_stop) *(1/t_stop/t_stop);
-//                a_ort = (point - points[ctr]).Normalize();
-//            }
-//            else if (v.Length() >= v_tcp)
-//            {
-//                current_angle += 0.1;// (v_tcp * dt_s) / R.Length();
-//                point = GetPoint(current_angle);
-//                a_ort = (point - points[ctr]).Normalize();
-////                a = a.Normalize();
-//                v = a_ort * v_tcp;
-////                a = 0;
+                a_ort = (points[size] - points[size - 1]).Normalize();
+                a_s = /*-a_ort * a_tcp;//*/(2 * (distance_angle_to_stop - v.Length() * t_stop) /t_stop/t_stop);
+//                a_s = -a_ort * a_tcp;
+                a = a_ort * a_tcp;
+                current_angle += direction * (v.Length() * dt_s - a.Length() * dt_s * dt_s / 2) / R.Length();
+//                v += a * dt_s;
+                v_s -= a_tcp * dt_s;
+                v = a_ort * v_s;
+                point = GetPoint(direction * current_angle);
             } else //Режим разгона
             {
                 auto ok = (v.Length() * dt_s + a_tcp * dt_s * dt_s / 2) / R.Length();
                 current_angle += direction * (v.Length() * dt_s + a_tcp * dt_s * dt_s / 2) / R.Length();
-                point = GetPoint(current_angle);
+                point = GetPoint(direction * current_angle);
 //                current_angle = GetAngle(point);
                 a_ort = (point - points[size]).Normalize();
                 a = a_ort * a_tcp;
@@ -375,28 +387,24 @@ public:
                 if (v.Length() > v_tcp)
                     v = a_ort * v_tcp;
             }
+            distance_angle_to_stop = (end_point.GetCoord() - O).Angle(point - O);
+            angles = start_point.GetAngles() + angle_range * ((distance_angle_to_stop - start_angle_range) / start_angle_range);
             current_range = (C - point).Length();
-            auto klo = v.Length() * dt_s + a_tcp * dt_s * dt_s / 2;
             l = v.Length() * dt_s + a.Length() * dt_s * dt_s / 2;
             size++;
             points[size] = point;
-            Vector3 angles(ToRad(180),ToRad(0),ToRad(0));
             SolveInverseKinematic(StateVector(points[size], angles), m_angles_v[size - 1], m_angles_v[size]);
-//            m_speed_v[size + 1].x = v.x;
-//            m_speed_v[size + 1].y = v.y;
-//            m_speed_v[size + 1].z = v.z;
-//            m_accel_v[size].x = a.x;
-//            m_accel_v[size].y = a.y;
-//            m_accel_v[size].z = a.z;
             t_stop = v.Length() / a_tcp;
-            distance_angle_to_stop = GetAngle(end_point.GetCoord()) - GetAngle(point);
-            if (distance_angle_to_stop <= v.Length() * t_stop - a.Length() * t_stop * t_stop * 0.5)
+            auto kok = GetAngle(point);
+//            distance_angle_to_stop = abs(end_angle + direction * GetAngle(point));
+            if ((distance_angle_to_stop <= (v.Length() * t_stop - a.Length() * t_stop * t_stop * 0.5) / R.Length()) && !breaking)
             {
-//                breaking = true;
+                breaking = true;
+                v_s = v.Length();
 //                break;
             }
-            if (size > 499)
-                    break;
+            if (size > 1000)
+                throw std::runtime_error("Cant solve MoveC task with 1000 iterations");
             if (size + 1 >= m_angles_v.size())
             {
                 m_angles_v.resize(2 *(size + 1));
@@ -404,7 +412,8 @@ public:
             }
 //                VectorsResize(size);
         }
-        m_angles_v.resize(size + 1);
+        SolveInverseKinematic(end_point, m_angles_v[size], m_angles_v[size + 1]);
+        m_angles_v.resize(size + 2);
         for (counter i = 0; i < size; i++)
         {
             for (uint j = 0; j < JOINTS_COUNT; j++)

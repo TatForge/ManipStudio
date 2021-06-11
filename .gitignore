@@ -3,4 +3,8 @@
 *.autosave
 build/*
 TestRobo/*
- 
+stl_reader.h
+stl_reader.cpp
+stlreader.h
+stlreader.cpp
+

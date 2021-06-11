@@ -738,9 +738,9 @@ void Vector3::Clear()
     this->z = 0;
 }
 
-scalar Vector3::Dot(const Vector3 &v) const
+scalar Vector3::Dot(const Vector3 &V) const
 {
-    return (x * v.x + y * v.y + z * v.z);
+    return (x * V.x + y * V.y + z * V.z);
 }
 
 Vector3 Vector3::Normalize() const
@@ -798,6 +798,14 @@ Vector3 Vector3::operator*(const scalar &value)
 //    z *= value;
 //    return *this;
     return Vector3(x * value, y * value, z * value);
+}
+
+scalar Vector3::TriangleS(const Vector3 &V)
+{
+//    scalar a1 = y * V.z - z * V.y;
+//    scalar a2 = z * V.x - x * V.z;
+//    scalar a3 = x * V.y - y * V.x;
+    return sqrt(pow((y * V.z - z * V.y), 2) + pow((z * V.x - x * V.z), 2) + pow((x * V.y - y * V.x), 2));
 }
 
 bool Vector3::operator <(Vector3 &v)

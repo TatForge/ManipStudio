@@ -50,6 +50,7 @@ inline scalar ToMillisec(scalar seconds) {return floor(seconds * 1000.0 + 0.5);}
 const scalar damping_constant = 0.1;
 const scalar damping_constant_sq = damping_constant * damping_constant;
 const scalar MaxAngleDls = ToRad(45.0);
+
 //_____________________________
 //______Solver constants_____          //Включение BENCHMARK отключает показ окна для эмулятора
 #define DELTA_T_FOR_LINE_CHECK 10  //дельта времени, через которую траектория проверяется на удаленность от прямой ms

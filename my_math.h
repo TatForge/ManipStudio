@@ -116,7 +116,7 @@ namespace RoboMath
         void Rotate(const scalar &theta, const RoboMath::Vector3 &V);
         void Clear();
         inline scalar Length() const {return sqrt(x * x + y * y + z * z);};
-        scalar Dot(const Vector3 &v) const;
+        scalar Dot(const Vector3 &V) const;
 
         Vector3 Normalize() const;
         Vector3 operator= (const Vector &V);
@@ -126,16 +126,25 @@ namespace RoboMath
         Vector3 operator+ (const Vector3 &V) const;
         Vector3 operator* (const Vector3 &V) const;
         Vector3 &operator+= (const Vector3 &V);
+        Vector3 &operator-= (const Vector3 &V)
+        {
+            x += V.x;
+            y += V.y;
+            z += V.z;
+            return *this;
+        }
         Vector3 operator* (const scalar &value);
+        scalar TriangleS(const Vector3 &V);
         Vector3 operator/(const scalar &value);
         inline scalar Angle(const Vector3 &V)
         {
-            //Find angle between 2 vectors
-//            Vector3 A0O;
-//            Vector3 PO;
-//            A0O = A - O;
-//            PO = *this - O;
-            return acos(this->Dot(V) / (this->Length() * V.Length()));
+//            auto a = Dot(V);
+//            auto b = Length();
+//            auto c = V.Length();
+            scalar var = Dot(V) / (Length() * V.Length());
+            if ((abs(1 - abs(var)) < 10e-8) && (abs(var) > 1))
+                var = std::ceil(var);
+            return acos(var);
         }
         bool operator< (Vector3 &v);
         bool operator!= (Vector3 &v)

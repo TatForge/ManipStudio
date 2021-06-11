@@ -71,7 +71,6 @@ add_executable(MainKinematic
     solver.h
     constants.h
     meshcollider.h
-    stlreader.h
 #    stl_reader.h
     sharedmem.h
     sysvsharedmemory.h
@@ -88,7 +87,6 @@ add_executable(MainKinematic
     solver.cpp
     sharedmem.cpp
     sysvsharedmemory.cpp
-    stlreader.cpp
     meshcollider.cpp
     ${CUDA_OBJECTS}
     Tests/test_my_math.cpp
