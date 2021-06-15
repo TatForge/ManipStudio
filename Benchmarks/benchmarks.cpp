@@ -122,14 +122,14 @@ static void BMCalcPolynomLine(benchmark::State &state)
     StateVector tarv(0.1, 0.2, 0.05, ToRad(179), ToRad(45), ToRad(0));
     Angles start_an;
     Angles res_an;
-    Polynom result[1000];
+    vector<float> result;
     Robo manipulator(6);
     manipulator.LoadManip();
     Solver solver(manipulator);
     for (auto e : state)
     {
         try {
-            solver.MoveL(stv, tarv, 1, 0.5,  start_an, res_an, 10, result);
+            solver.MoveL(stv, tarv, 1, 0.5,  start_an, 10, result);
         }  catch (std::runtime_error &exc_str) {
             cout << exc_str.what() << endl;
         }

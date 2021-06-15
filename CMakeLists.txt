@@ -71,6 +71,7 @@ add_executable(MainKinematic
     solver.h
     constants.h
     meshcollider.h
+    physicslib.h
 #    stl_reader.h
     sharedmem.h
     sysvsharedmemory.h
@@ -82,6 +83,7 @@ add_executable(MainKinematic
     my_math.cpp
     robo.cpp
 #    some_trash.cpp
+    physicslib.cpp
     emulator.cpp
     mainwindow.cpp
     solver.cpp

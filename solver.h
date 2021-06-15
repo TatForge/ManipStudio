@@ -42,10 +42,10 @@ struct IKData
 class Solver
 {
 public:
-    Solver(Robo &manip);
+    Solver(Robo &robot);
     void SolveDirectKinematic(const Angles &q, Matrix4x4 TR[], Matrix4x4 *T = nullptr) noexcept;
     void SolveInverseKinematic(const StateVector &target, const Angles &curr_angle, Angles &res_angle, IKData *data  = nullptr);
-    void MoveL(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &start_angles, Angles &res_angle, const ushort &dt_millisec, Polynom result[]);
+    void MoveL(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &start_angles, const ushort &dt_millisec, vector<float> results);
     bool CheckTrajectoryForLinear(const Polynom &pol, const Vector3 &l1, const Vector3 &l2, const scalar &t_millisec, const scalar &max_delta);
     bool CheckTrajectoryForLinear(const Angles angles, const Vector3 &l1, const Vector3 &l2, const scalar &max_delta);
     bool MoveMeshes(const Matrix4x4 TR[]) noexcept;
@@ -73,7 +73,23 @@ public:
         }
 #endif
     }
-    void MoveJ(const Angles &start_angle, const Angles &end_angle, const float &speed, const float &acceleration, const float &dt_millisec)
+    inline void AnglesVectorToVector(const int size, vector<float> &results)
+    {
+        results.clear();
+        results.resize(size * sizeof(Angles) / sizeof(scalar));
+        int s = sizeof(Angles) / sizeof(scalar);
+        for (counter i = 0; i < size; i++)
+        {
+            for (counter j = 0; j < 6; j++)
+            {
+                results[i * s + j]       = m_angles_v[i].q[j];
+                results[i * s + j + 6]   = m_angles_v[i].q_p[j];
+                results[i * s + j + 12]  = m_angles_v[i].q_pp[j];
+            }
+        }
+    }
+
+    void MoveJ(const Angles &start_angle, const Angles &end_angle, const float &speed, const float &acceleration, const float &dt_millisec, vector<float> &results)
     {
         scalar dt_s = ToSec(dt_millisec);
         Matrix4x4 buff[6];
@@ -97,16 +113,21 @@ public:
                 min_size = size_of_arr;
         }
         m_angles_v.resize(max_size);
-        m_speed_v.resize(max_size);
-        m_accel_v.resize(max_size);
+//        m_speed_v.resize(max_size);
+//        m_accel_v.resize(max_size);
         for (counter i = 0; i < 6; i++)
         {
             for (counter j = sizes[i] + 1; j < max_size; j++)
                 m_angles_v[j].q[i] = m_angles_v[sizes[i]].q[i];
         }
-
         //Коллизии + динамика
         CalcCollisionsDynamics(max_size, dt_millisec);
+        AnglesVectorToVector(max_size, results);
+//        memcpy(results.data(), m_angles_v.data(),  0 /*max_size*/ /** sizeof(Angles)*/);
+//        for (int i = 0; i < m_angles_v; i++)
+//        {
+
+//        }
 
 //#if !MULTITHREAD
 //        for (uint k = 0; k < max_size; k++)
@@ -248,7 +269,7 @@ public:
             }
         }
     }
-    bool MoveCircle(const Angles &start_angle, const StateVector &start_point, const StateVector &mid_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const scalar &dt_millisec)
+    bool MoveCircle(const Angles &start_angle, const StateVector &start_point, const StateVector &mid_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const scalar &dt_millisec, vector<float> &results)
     {
         scalar dt_s = ToSec(dt_millisec);
         Vector3 A = start_point.GetCoord();
@@ -422,8 +443,10 @@ public:
                 m_angles_v[i + 1].q_p[j] = m_angles_v[i].q_p[j] + m_angles_v[i].q_pp[j] * dt_s;
             }
         }
+
 //        throw std::runtime_error("HOLY SHIT! COLLISION! Between " + to_string(3) + " and " + to_string(6)  /*to_string(cube)*/ + " elements");
         CalcCollisionsDynamics(size, dt_millisec);
+        AnglesVectorToVector(size, results);
         m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec, true);
         m_emulator->MoveManipLinear(m_angles_v, m_speed_v, dt_millisec);
         return true;

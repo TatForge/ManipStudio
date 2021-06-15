@@ -1,9 +1,9 @@
 #include "solver.h"
 
 
-Solver::Solver(Robo &manip)
+Solver::Solver(Robo &robot)
 {
-    manip_config = new Matrix(*manip.state_matrix);
+    manip_config = new Matrix(*robot.state_matrix);
     m_meshes.resize(9);
     m_mass.resize(6);
     m_main_IKData = new IKData;
@@ -62,7 +62,7 @@ Solver::Solver(Robo &manip)
     m_collisions_counter = 0;
 
 #if !WITH_BENCHMARK
-    m_emulator = new Emulator(manip);
+    m_emulator = new Emulator(robot);
 #endif
     uint vector_size = 500;
     m_moments_v.resize(vector_size);
@@ -203,7 +203,8 @@ void Solver::SolveInverseKinematic(const StateVector &target, const Angles &curr
     SolveDirectKinematic(res_angle, TRR);
 }
 
-void Solver::MoveL(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &curr_angles, Angles& res_angle, const ushort &dt_millisec, Polynom result[])
+void Solver::MoveL(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &curr_angles,
+                   /*Angles& res_angle,*/ const ushort &dt_millisec, vector<float> results)
 {
     m_moments_v.resize(vector_size);
     m_angles_v.resize(vector_size);
@@ -363,7 +364,7 @@ void Solver::MoveL(const StateVector &start_point, const StateVector &end_point,
 #if WITH_WINDOW
     m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec, true);
     m_emulator->MoveManipLinear(m_angles_v, m_speed_v, dt_millisec);
-    res_angle = m_angles_v.back();
+//    res_angle = m_angles_v.back();
 #endif
 #endif
 }
