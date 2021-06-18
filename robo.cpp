@@ -558,17 +558,17 @@ void Robo::LoadSettingsFromFile()
     std::ifstream settings_file;
     settings_file.open("ManipulatorSettigns.ini");
     if (!settings_file.is_open())
-        throw std::string("can't find settings file");
+        throw runtime_error("can't find settings file");
     settings_file.close();
     manip_settings = new QSettings("ManipulatorSettigns.ini", QSettings::IniFormat);
     if (!manip_settings->contains("denavita-hartenberg"))
-        throw std::string("no denavita-hartenberg array in settings file");
+        throw runtime_error("no denavita-hartenberg array in settings file");
     if (!manip_settings->contains("mass array"))
-        throw std::string("no mass array in settings file");
+        throw runtime_error("no mass array in settings file");
     if (!manip_settings->contains("center of mass"))
-        throw std::string("no center of mass array in settings file");
+        throw runtime_error("no center of mass array in settings file");
     if (!manip_settings->contains("inertions"))
-        throw std::string("no inertions array in settings file");
+        throw runtime_error("no inertions array in settings file");
     //        manip_settings->value("joints count", 6);
     int size = manip_settings->beginReadArray("denavita-hartenberg");
     for (int i = 0; i < size; i++)
@@ -670,6 +670,7 @@ bool Robo::CheckTrajectoryForLinear(const Polynom pol, Vector3 l1, Vector3 l2, c
 bool Robo::LoadManip()
 {
     LoadSettingsFromFile();
+
     dt = 0.01;
     for (int i = 0; i < number_of_elements; i++)
     {
@@ -687,30 +688,7 @@ bool Robo::LoadManip()
                    {m_mass[i] * m_cm[i](0),  m_mass[i] * m_cm[i](1), m_mass[i] * m_cm[i](2), m_mass[i]}};
 //            m_ji[i].MatrixCout("m_ji");
     }
-    void UpdateTMatrix(RoboMath::Vector *delta_thetas);
-
-    //            Elem *robo_it = robot;
-    //            auto robo_list_it = robo_list.begin();
-    //            for (counter i = 0; i < number_of_elements; i++)
-    //            {
-    //                *robo_it = *robo_list_it;
-    //                if (i > 0)
-    //                {
-    //                    robo_it->SetPositionLocal(Vector3({robo_it->GetPosition().x - (robo_it - 1)->GetPosition().x,
-    //                                                  robo_it->GetPosition().y - (robo_it - 1)->GetPosition().y,
-    //                                                  robo_it->GetPosition().z - (robo_it - 1)->GetPosition().z}));
-    //                }
-    //                robo_it->SetRotationAxisLocal(robo_it->GetRotationAxis());
-    //                ++robo_it;
-    //                ++robo_list_it;
-    //            }
-    //            effector.SetRotation(Quaternion(Vector3(1, 0, 0), ToRad(90)));
-    //            (robot + number_of_elements - 1)->GetRotationAxisLocal();
-    //            effector.SetRotationAxis((robot + number_of_elements - 1)->GetRotationAxisLocal());
-    //            effector.SetRotationAxisLocal((robot + number_of_elements - 1)->GetRotationAxisLocal());
-    //            effector.SetPosition((robot + number_of_elements - 1)->GetPosition());
-    //            effector.SetPositionLocal(Vector3(0, 0, 0));
-
+    UpdateTMatrix();
     return true;
 }
 
@@ -1002,3 +980,14 @@ void Elem::AddDeltaTheta(const scalar &theta_add){
 }
 
 
+
+void Robo::Moments::MakeNull()
+{
+    for (uint i = 0; i < JOINTS_COUNT; i++)
+    {
+        tao[i]  = 0;
+        p[i]    = 0;
+        hikm[i] = 0;
+        dv[i]   = 0;
+    }
+}

@@ -2,7 +2,6 @@
 #define MY_MATH_H
 
 
-#include <initializer_list>
 #include <vector>
 #include <iostream>
 #include <iomanip>
@@ -243,44 +242,25 @@ namespace RoboMath
         Vector MultiplyTranspose(const Vector &v) noexcept;
         bool operator == (const Matrix4x4 &m) const noexcept;
         void operator=(const Matrix &m) noexcept;
-//        void operator=(const Matrix &&m)
+//        void SelfMultipl(const Matrix4x4 &m1, const Matrix4x4 &m2)
 //        {
-//            a[0]  = std::move(m.at(0,0));
-//            a[1]  = std::move(m.at(0,1));
-//            a[2]  = std::move(m.at(0,2));
-//            a[3]  = std::move(m.at(0,3));
-//            a[4]  = std::move(m.at(1,0));
-//            a[5]  = std::move(m.at(1,1));
-//            a[6]  = std::move(m.at(1,2));
-//            a[7]  = std::move(m.at(1,3));
-//            a[8]  = std::move(m.at(2,0));
-//            a[9]  = std::move(m.at(2,1));
-//            a[10] = std::move(m.at(2,2));
-//            a[11] = std::move(m.at(2,3));
-//            a[12] = std::move(m.at(3,0));
-//            a[13] = std::move(m.at(3,1));
-//            a[14] = std::move(m.at(3,2));
-//            a[15] = std::move(m.at(3,3));
+////            //this * m1 * m2
+////            Matrix4x4 buff;
+////            for (int i = 0; i < 4; i++)
+////            {
+////                for (int j = 0; j < 4; j++)
+////                {
+////                    buff.a[i * 4 + j] = m1.a[i * 4] * m2.a[j] + m1.a[i*4 + 1] * m2.a[4 + j] + m1.a[i*4 + 2] * m2.a[8 + j] + m1.a[i*4 + 3] * m2.a[12 + j];
+////                }
+////            }
+////            for (int i = 0; i < 4; i++)
+////            {
+////                for (int j = 0; j < 4; j++)
+////                {
+////                    a[i * 4 + j] = a[i * 4] * m1.a[j] + a[i*4 + 1] * m1.a[4 + j] + a[i*4 + 2] * m1.a[8 + j] + a[i*4 + 3] * m1.a[12 + j];
+////                }
+////            }
 //        };
-        void SelfMultipl(const Matrix4x4 &m1, const Matrix4x4 &m2)
-        {
-//            //this * m1 * m2
-//            Matrix4x4 buff;
-//            for (int i = 0; i < 4; i++)
-//            {
-//                for (int j = 0; j < 4; j++)
-//                {
-//                    buff.a[i * 4 + j] = m1.a[i * 4] * m2.a[j] + m1.a[i*4 + 1] * m2.a[4 + j] + m1.a[i*4 + 2] * m2.a[8 + j] + m1.a[i*4 + 3] * m2.a[12 + j];
-//                }
-//            }
-//            for (int i = 0; i < 4; i++)
-//            {
-//                for (int j = 0; j < 4; j++)
-//                {
-//                    a[i * 4 + j] = a[i * 4] * m1.a[j] + a[i*4 + 1] * m1.a[4 + j] + a[i*4 + 2] * m1.a[8 + j] + a[i*4 + 3] * m1.a[12 + j];
-//                }
-//            }
-        };
         void operator*=(const scalar &sc) noexcept;
         scalar &operator()(const int &row, const int &col) noexcept;
         scalar at(const int &row, const int &col) const noexcept;

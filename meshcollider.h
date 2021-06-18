@@ -29,31 +29,7 @@ public:
     void operator= (const MeshCollider &mc);
     ushort Size() const;
     Vector3 point(const ushort &elem) const;
-    bool CheckCollision(const MeshCollider &mesh)
-    {
-//        cout << "Check collision started" << endl;
-        Vector3 support = Support(mesh, Vector3(1, 0, 0));
-        Simplex simplex;
-        simplex.PushFront(support);
-        Vector3 direction = - support;
-        while (true)
-        {
-            support = Support(mesh, direction);
-            //if <= than two objects not collide if one point of them in one place(like obj1 point in (2,2) &
-            //obj2 point in (2,2)
-            if (support.Dot(direction) < 0)
-            {
-//                cout << "Check collision ended" << endl;
-                return false;
-            }
-            simplex.PushFront(support);
-            if (NextSimplex(simplex, direction))
-            {
-//                cout << "Check collision ended" << endl;
-                return true;
-            }
-        }
-    }
+    bool CheckCollision(const MeshCollider &mesh);
 private:
     vector<Vector3> m_mesh;
     ushort m_size;

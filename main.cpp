@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 //        solver.MoveCircle(angle_start,  StateVector(Vector3(0.3,  0.3,  0.01), Vector3(ToRad(180), 0, 0)),
 //                                        StateVector(Vector3(0.3,  0.4, 0.01),  Vector3(ToRad(180), 0, 0)),
 //                                        StateVector(Vector3(0.4,  0.3, 0.01),   Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 5);
-        solver.MoveCircle(angle_start, StateVector(Vector3(0.3, -0.2, 0.01),   Vector3(ToRad(180), 0, 0)),
+        solver.MoveC(angle_start, StateVector(Vector3(0.3, -0.2, 0.01),   Vector3(ToRad(180), 0, 0)),
                                        StateVector(Vector3(0.4, -0.2, 0.01),  Vector3(ToRad(180), 0, 0)),
                                        StateVector(Vector3(0.4, -0.4, 0.21),  Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 10, vr);
 //        solver.MoveCircle(angle_start,  StateVector(Vector3(1,  3,  4), Vector3(ToRad(180), 0, 0)),

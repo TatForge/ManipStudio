@@ -2,11 +2,6 @@
 
 //static Vector3 current_range(0, 0, 0);
 
-Emulator::Emulator()
-{
-
-}
-
 Emulator::Emulator(const Robo &manip)
 {
 //#if !BENCHMARK

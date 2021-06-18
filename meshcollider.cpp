@@ -45,10 +45,9 @@ bool MeshCollider::ReadStl(const string &filename)
     if (mesh_file.is_open())
     {
         mesh_file.read(header_info, 80);
-//        cout << "header: " << header_info << endl;
     }
     else
-        throw (std::string("can't open mesh ") + std::string(filename) + char('"'));
+        throw std::runtime_error("can't open mesh " + std::string(filename) + char('"'));
 
     if (mesh_file.is_open())
     {
@@ -134,6 +133,32 @@ ushort MeshCollider::Size() const
 Vector3 MeshCollider::point(const ushort &elem) const
 {
     return m_mesh.at(elem);
+}
+
+bool MeshCollider::CheckCollision(const MeshCollider &mesh)
+{
+    //        cout << "Check collision started" << endl;
+    Vector3 support = Support(mesh, Vector3(1, 0, 0));
+    Simplex simplex;
+    simplex.PushFront(support);
+    Vector3 direction = - support;
+    while (true)
+    {
+        support = Support(mesh, direction);
+        //if <= than two objects not collide if one point of them in one place(like obj1 point in (2,2) &
+        //obj2 point in (2,2)
+        if (support.Dot(direction) < 0)
+        {
+            //                cout << "Check collision ended" << endl;
+            return false;
+        }
+        simplex.PushFront(support);
+        if (NextSimplex(simplex, direction))
+        {
+            //                cout << "Check collision ended" << endl;
+            return true;
+        }
+    }
 }
 
 

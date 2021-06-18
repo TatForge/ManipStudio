@@ -24,6 +24,7 @@ find_package(Qt5 COMPONENTS Widgets REQUIRED)
 find_package(benchmark REQUIRED)
 find_package(CUDA QUIET)
 find_package(GTest REQUIRED)
+include_directories(${Qt5Widgets_INCLUDE_DIRS})
 
 enable_testing(true)
 
@@ -49,7 +50,7 @@ enable_testing(true)
 
 if (CUDA_FOUND AND CUDA_REQUIRED)
     include_directories(${CUDA_INCLUDE_DIRS} ${CUDART_INCLUDE_DIRS}
-        ${QTEST_INCLUDE_DIRS})
+                        ${QTEST_INCLUDE_DIRS})
     set(CMAKE_CUDA_ARCHITECTURES 50)
     set(CMAKE_CXX_FLAGS "-L/opt/cuda/lib64")
     file(GLOB CUDA_FILES "./" *.cu)
@@ -97,8 +98,8 @@ add_executable(MainKinematic
 
     mainwindow.ui
 )
-target_link_libraries(MainKinematic Qt5::Core Qt5Test benchmark::benchmark benchmark::benchmark_main GTest::gtest)
 
+target_link_libraries(MainKinematic Qt5Core Qt5Test benchmark::benchmark benchmark::benchmark_main GTest::gtest)
 message(STATUS "Architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
 if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
@@ -121,6 +122,18 @@ add_custom_command(TARGET MainKinematic POST_BUILD COMMAND ${CMAKE_COMMAND} -E c
                    ${CMAKE_SOURCE_DIR}/ManipulatorSettigns.ini $<TARGET_FILE_DIR:MainKinematic>/)
 add_custom_command(TARGET MainKinematic POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory
                   ${CMAKE_SOURCE_DIR}/STLmodels/ $<TARGET_FILE_DIR:MainKinematic>/STLmodels)
+
+
+add_library(physicslib SHARED
+    physicslib.h
+    physicslib.cpp
+    solver.cpp
+    robo.h
+    robo.cpp
+    emulator.cpp
+    my_math.cpp
+    meshcollider.cpp)
+target_link_libraries(physicslib PRIVATE Qt5::Widgets)
 #Test target
 #add_executable(
 #    Tests

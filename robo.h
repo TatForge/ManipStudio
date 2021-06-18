@@ -2,11 +2,8 @@
 #define ROBO_H
 
 #include <iostream>
-#include <QSettings>
+#include <qsettings.h>
 #include "my_math.h"
-
-
-
 
 using namespace std;
 namespace rm = RoboMath;
@@ -58,16 +55,7 @@ public:
         scalar p[JOINTS_COUNT];
         scalar hikm[JOINTS_COUNT];
         scalar dv[JOINTS_COUNT];
-        void MakeNull()
-        {
-            for (uint i = 0; i < JOINTS_COUNT; i++)
-            {
-                tao[i]  = 0;
-                p[i]    = 0;
-                hikm[i] = 0;
-                dv[i]   = 0;
-            }
-        }
+        void MakeNull();
     };
 
     Robo();
@@ -107,9 +95,6 @@ public:
     rm::Vector3 GetDeltaS() const;
     const Elem *GetEffector() const;
     const Elem *GetElem(int number) const;
-
-    //maybe trash
-
 private:
     Elem *robot;
 

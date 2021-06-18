@@ -42,7 +42,6 @@ class Emulator
 public:
     int iter;
 public:
-    Emulator();
     Emulator(const Robo &manip);
     ~Emulator();
     void MoveManipPolynom(Polynom polynom_in, int moving_time_millisec);
