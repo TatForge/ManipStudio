@@ -363,6 +363,11 @@ void Robo::DeltaThetasCout()
     }
 }
 
+vector<scalar> Robo::GetMaxJointMoments()
+{
+    return max_joint_moments;
+}
+
 void Robo::SolveForwardDynamic()
 {
     CalcUMatrix();
@@ -509,7 +514,7 @@ void Robo::WriteSettingsToFile()
     manip_settings = new QSettings("ManipulatorSettigns.ini", QSettings::IniFormat);
     manip_settings->setValue("denavita-hartenberg", 1);
     manip_settings->beginWriteArray("denavita-hartenberg");
-    for (int i = 0; i < 6; i++)
+    for (counter i = 0; i < 6; i++)
     {
         manip_settings->setArrayIndex(i);
         manip_settings->setValue("a", state_matrix->operator()(i, 0));
@@ -520,7 +525,7 @@ void Robo::WriteSettingsToFile()
     manip_settings->endArray();
     manip_settings->setValue("mass array", 1);
     manip_settings->beginWriteArray("mass array");
-    for (int i = 0; i < 6; i++)
+    for (counter i = 0; i < 6; i++)
     {
         manip_settings->setArrayIndex(i);
         manip_settings->setValue(QString::number(i), m_mass[i]);;
@@ -528,7 +533,7 @@ void Robo::WriteSettingsToFile()
     manip_settings->endArray();
     manip_settings->setValue("center of mass", 1);
     manip_settings->beginWriteArray("centers of mass");
-    for (int i = 0; i < 6; i++)
+    for (counter i = 0; i < 6; i++)
     {
         manip_settings->setArrayIndex(i);
         manip_settings->setValue("0", m_cm[i].at(0));
@@ -539,7 +544,7 @@ void Robo::WriteSettingsToFile()
     manip_settings->endArray();
     manip_settings->setValue("inertions", 1);
     manip_settings->beginWriteArray("inertions");
-    for (int i = 0; i < 6; i++)
+    for (counter i = 0; i < 6; i++)
     {
         manip_settings->setArrayIndex(i);
         manip_settings->setValue("0", m_i[i].xx());
@@ -548,6 +553,13 @@ void Robo::WriteSettingsToFile()
         manip_settings->setValue("3", m_i[i].xy());
         manip_settings->setValue("4", m_i[i].xz());
         manip_settings->setValue("5", m_i[i].yz());
+    }
+    manip_settings->endArray();
+    manip_settings->beginWriteArray("max moments", 1);
+    for (counter i = 0; i < 6; i++)
+    {
+        manip_settings->setArrayIndex(i);
+        manip_settings->setValue(QString::number(i), max_joint_moments.at(i));
     }
     manip_settings->endArray();
     manip_settings->sync();
@@ -609,6 +621,13 @@ void Robo::LoadSettingsFromFile()
                                    manip_settings->value("5").toDouble()});
     }
     manip_settings->endArray();
+    manip_settings->beginReadArray("max joint moments");
+    for (counter i = 0; i < 6; i++)
+    {
+//        max_joint_moments.at(i) = manip_settings->value(QString::number(i)).toDouble();
+    }
+    manip_settings->endArray();
+
 }
 
 void Robo::UpdateTMatrix()

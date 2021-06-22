@@ -645,6 +645,14 @@ Vector3 Vector3::operator/(const scalar &value)
     assert(value != 0 && " Error Vector3 / scalar; scalar = 0");
     return Vector3(x / value, y / value, z / value);
 }
+
+scalar Vector3::Angle(const Vector3 &V)
+{
+    scalar var = Dot(V) / (Length() * V.Length());
+    if ((abs(1 - abs(var)) < 10e-8) && (abs(var) > 1))
+        var = std::ceil(var);
+    return acos(var);
+}
 Vector &Vector::operator=(const double &value)
 {
     for (int i = 0; i < this->m_length; i++)
@@ -791,12 +799,20 @@ Vector3 &Vector3::operator +=(const Vector3 &V)
     return *this;
 }
 
+Vector3 &Vector3::operator-=(const Vector3 &V)
+{
+    x += V.x;
+    y += V.y;
+    z += V.z;
+    return *this;
+}
+
 Vector3 Vector3::operator*(const scalar &value)
 {
-//    x *= value;
-//    y *= value;
-//    z *= value;
-//    return *this;
+    //    x *= value;
+    //    y *= value;
+    //    z *= value;
+    //    return *this;
     return Vector3(x * value, y * value, z * value);
 }
 
@@ -813,6 +829,11 @@ bool Vector3::operator <(Vector3 &v)
     return ((x < v.x) ||
             ((x == v.x) && (y < v.y)) ||
             ((x == v.x) && (y == v.y) && (z < v.z)));
+}
+
+bool Vector3::operator!=(Vector3 &v)
+{
+    return (x != v.x) || (y != v.y) || (z != v.z);
 }
 
 Vector3 Vector3::operator*(const Vector3 &V) const

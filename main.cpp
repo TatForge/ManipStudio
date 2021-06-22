@@ -112,13 +112,13 @@ int main(int argc, char *argv[])
 //        solver.MoveCircle(angle_start,  StateVector(Vector3(0.3,  0.3,  0.01), Vector3(ToRad(180), 0, 0)),
 //                                        StateVector(Vector3(0.3,  0.4, 0.01),  Vector3(ToRad(180), 0, 0)),
 //                                        StateVector(Vector3(0.4,  0.3, 0.01),   Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 5);
-        solver.MoveC(angle_start, StateVector(Vector3(0.3, -0.2, 0.01),   Vector3(ToRad(180), 0, 0)),
-                                       StateVector(Vector3(0.4, -0.2, 0.01),  Vector3(ToRad(180), 0, 0)),
-                                       StateVector(Vector3(0.4, -0.4, 0.21),  Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 10, vr);
+//        solver.MoveC(angle_start, StateVector(Vector3(0.3, -0.2, 0.01),   Vector3(ToRad(180), 0, 0)),
+//                                       StateVector(Vector3(0.4, -0.2, 0.01),  Vector3(ToRad(180), 0, 0)),
+//                                       StateVector(Vector3(0.4, -0.4, 0.21),  Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 10, vr);
 //        solver.MoveCircle(angle_start,  StateVector(Vector3(1,  3,  4), Vector3(ToRad(180), 0, 0)),
 //                                        StateVector(Vector3(-2, 5,  2),   Vector3(ToRad(180), 0, 0)),
 //                                        StateVector(Vector3(5,  -3, 6),   Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 5);
-        solver.MoveJ(a1, a2, v_tcp, a_tcp, 10, vr);
+//        solver.MoveJ(a1, a2, v_tcp, a_tcp, 10, vr);
 //        solver.MoveJ(a2, a3,  1.17453, M_PI, 10);
 
 //        solver.CalcPolynomLine(tarv,  tarv1, v_tcp, a_tcp, res_an,      res_an, 10, result);

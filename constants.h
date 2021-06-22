@@ -8,8 +8,8 @@
 #define WITH_GTESTS     0
 #define WITH_QTESTS     0
 #define WITH_COLLISIONS 1
-#define MULTITHREAD     0
-#define WITH_WINDOW     0
+#define MULTITHREAD     1
+#define WITH_WINDOW     1
 //assertions turn off
 //#define NDEBUG
 #define SMESH +1.65
@@ -57,7 +57,6 @@ const scalar MaxAngleDls = ToRad(45.0);
 #define DELTA_RANGE 0.0001         //дельта метров, на которые эффектор манипулятора может отклониться от прямой
 #define MAX_KINEMATIC_ITERS 100
 #define ACCURACY 10e-8
-
 //_____________________________
 
 

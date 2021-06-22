@@ -46,9 +46,6 @@ private:
 class Robo
 {
 public:
-    friend class Emulator;
-    friend class Solver;
-    friend class Trajectory;
     struct Moments
     {
         scalar tao[JOINTS_COUNT];
@@ -57,73 +54,75 @@ public:
         scalar dv[JOINTS_COUNT];
         void MakeNull();
     };
+    friend class Emulator;
+    friend class Solver;
+    friend class Trajectory;
 
     Robo();
-    Robo(int number_of_elements);
     Robo(initializer_list<Elem> &robo_list);
+    Robo(int number_of_elements);
     ~Robo();
-    void RoboCout();
-    void CalculateJacobian();
-    void CalculateDeltaThetas();
-    void CalculateCurrentPosition();
-    void CalculateDeltaS(rm::Vector3 target);
-    void CalculateDeltaR(rm::Vector3 target_r);
-    void AddDeltaThetas();
-    void ComputeJointsPosition();
-    rm::StateVector SolveForwardKinematic(const rm::Angles &a, rm::Matrix * const state_matrix);
+
+    bool CheckTrajectoryForLinear(const rm::Polynom pol, rm::Vector3 l1, rm::Vector3 l2, const scalar &t, const scalar &delta_t, const scalar &delta_r);
+    void CalcPolynomCurve(const rm::Angles *angle_0, const rm::Angles *angle_1, const rm::Angles *angle2, const rm::Angles *angle3);
+    void CalcPolynomLine(const rm::Angles *angle_start, const rm::Angles *angle_stop, const scalar t, RoboMath::Polynom &result);
+    void CalcPolynom(const rm::Angles *angle_start, const rm::Angles *angle_stop, const scalar t, RoboMath::Polynom &result);
     void SolveInverseKinematic(const scalar &accuracy, const rm::Vector3 &target, const rm::Vector3 &target_r);
-    void DeltaThetasCout();
+    void SimulateManipPolinoms(RoboMath::Polynom pol, const scalar t);
+    void CalculateDeltaR(rm::Vector3 target_r);
+    void CalculateDeltaS(rm::Vector3 target);
+    void CalculateCurrentPosition();
+    void ComputeJointsPosition();
+    void LoadSettingsFromFile();
+    void CalculateDeltaThetas();
     void SolveForwardDynamic();
     void SolveInverseDynamic();
-    void CalcPolynom(const rm::Angles *angle_start, const rm::Angles *angle_stop, const scalar t, RoboMath::Polynom &result);
-    void CalcPolynomLine(const rm::Angles *angle_start, const rm::Angles *angle_stop, const scalar t, RoboMath::Polynom &result);
-    void CalcPolynomCurve(const rm::Angles *angle_0, const rm::Angles *angle_1, const rm::Angles *angle2, const rm::Angles *angle3);
     void WriteSettingsToFile();
-    void LoadSettingsFromFile();
+    void CalculateJacobian();
+    void DeltaThetasCout();
+    void AddDeltaThetas();
     void UpdateTMatrix();
-    bool CheckTrajectoryForLinear(const rm::Polynom pol, rm::Vector3 l1, rm::Vector3 l2, const scalar &t, const scalar &delta_t, const scalar &delta_r);
     bool LoadManip();
-    Moments *GetMoments();
-    rm::Angles *GetAngles();
+    void RoboCout();
+    rm::StateVector SolveForwardKinematic(const rm::Angles &a, rm::Matrix * const state_matrix);
+    vector<scalar> GetMaxJointMoments();
     scalar GetTheta(const int &i);
-    void SimulateManipPolinoms(RoboMath::Polynom pol, const scalar t);
+    rm::Angles *GetAngles();
+    Moments *GetMoments();
 
+    rm::Quaternion GetEffectorRotationQuat() const;
     rm::Vector3 GetEffectorPosition() const;
     rm::Vector3 GetEffectorRotation() const;
-    rm::Quaternion GetEffectorRotationQuat() const;
+    const Elem *GetElem(int number) const;
+    const Elem *GetEffector() const;
     rm::Vector3 GetDeltaR() const;
     rm::Vector3 GetDeltaS() const;
-    const Elem *GetEffector() const;
-    const Elem *GetElem(int number) const;
 private:
-    Elem *robot;
-
-    rm::Matrix *jacobian;
-    rm::Matrix4x4 T[JOINTS_COUNT];
-    rm::Matrix4x4 T0[JOINTS_COUNT];
-    rm::Vector *delta_thetas;
-    rm::Vector3 delta_s;
-    rm::Vector3 delta_r;
-    Effector effector;
-
-    scalar m_mass[JOINTS_COUNT];
-
-    rm::Angles m_angles;
-    Moments m_moments;
-
-    rm::Matrix4x4 U[36];
-    array<rm::Vector, JOINTS_COUNT> m_cm;
-    array<rm::Tensor, JOINTS_COUNT> m_i;
-    array<rm::Matrix4x4, JOINTS_COUNT> m_ji;
-
+    QSettings *manip_settings;
     rm::Matrix *state_matrix;
     rm::Vector *theta_vector;
-    QSettings *manip_settings;
+    rm::Vector *delta_thetas;
+    rm::Matrix *jacobian;
+    rm::Vector3 delta_s;
+    rm::Vector3 delta_r;
+    rm::Angles m_angles;
+    rm::Matrix4x4 U[36];
+    Effector effector;
+    Moments m_moments;
+    Elem *robot;
+    vector<scalar> max_joint_moments;
+    array<rm::Matrix4x4, JOINTS_COUNT> m_ji;
+    array<rm::Vector, JOINTS_COUNT> m_cm;
+    array<rm::Tensor, JOINTS_COUNT> m_i;
+    rm::Matrix4x4 T0[JOINTS_COUNT];
+    rm::Matrix4x4 T[JOINTS_COUNT];
+    scalar m_mass[JOINTS_COUNT];
+    void AllocateForNewRobot();
     void RoboSettingsInit();
     void CalcUMatrix();
+
     int number_of_elements;
     float dt;
-    void AllocateForNewRobot();
 };
 
 

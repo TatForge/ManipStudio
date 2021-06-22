@@ -59,7 +59,8 @@ if (CUDA_FOUND AND CUDA_REQUIRED)
     target_link_libraries(MainKinematic cudart)
 endif()
 
-#set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O0")
+
 
 #Main target
 add_executable(MainKinematic

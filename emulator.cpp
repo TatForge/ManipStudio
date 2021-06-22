@@ -47,6 +47,9 @@ Emulator::Emulator(const Robo &manip)
 Emulator::~Emulator()
 {
     delete state_matrix;
+    delete shared_manip;
+    delete shared_points;
+    delete shared_meshes;
 }
 void Emulator::MoveManipLinear(const Angles angles[], size_t size, scalar dt_msec, const Vector3 accel[])
 {
@@ -172,7 +175,7 @@ void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, con
         SolveDirectKinematic();
         FillManipPositionData();
 #ifdef VREMENNO_DLYA_VISUALKI
-        MoveThatShit();
+        MoveMeshes();
 #endif
 //        SendDataToShared(MANIP, manip_to_visual, 18);
 //        SendDataToShared(POINTS, points_to_visual, shared_points->GetSize() - 4);
@@ -269,7 +272,7 @@ void Emulator::FillManipPositionData()
     }
 }
 
-void Emulator::MoveThatShit()
+void Emulator::MoveMeshes()
 {
     for (uint i = 0; i < 999; i++)
     {

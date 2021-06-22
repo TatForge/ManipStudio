@@ -21,8 +21,8 @@ public:
     ~MainWindow();
 
     void PlotCoordinates(double value_x, double value_y, double value_z, double yaw, double pitch, double roll, double dt, bool is_last = false);
-    void PlotSpeeds(rm::Angles speeds, bool is_last = false);
     void PrintResult(double x, double y, double z, double yaw, double pitch, double roll);
+    void PlotSpeeds(rm::Angles speeds, bool is_last = false);
 
 private slots:
     void on_pushButton_clicked();
