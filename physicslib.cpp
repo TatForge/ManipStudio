@@ -58,11 +58,11 @@ PhysicsLib::~PhysicsLib()
 void PhysicsLib::Initialize(){
     lib_data = new LibData;
     lib_data->manipulator = make_unique<Robo>(6);
-    try {
+//    try {
         lib_data->manipulator->LoadManip();
-    }  catch (runtime_error &err) {
-        cout << err.what() << endl;
-    }
+//    }  catch (runtime_error &err) {
+//        cout << err.what() << endl;
+//    }
     lib_data->solver = make_unique<Solver>(*lib_data->manipulator);
     m_usable = true;
 }
@@ -111,6 +111,6 @@ void PhysicsLib::InverseKinematic(const fvector &target, const fvector &curr_ang
     //input
     auto t = target;
     Angles res_angle_a;
-    lib_data->solver->SolveInverseKinematic(StateVector(t[0], t[1], t[2], t[3], t[4], t[5]), VectorToAngle(curr_angle), res_angle_a);
+    lib_data->solver->SolveInverseKinematic(StateVector(t[0], t[1], t[2], ToRad(t[3]), ToRad(t[4]), ToRad(t[5])), VectorToAngle(curr_angle), res_angle_a);
     res_angle = AngleToVector(res_angle_a);
 }

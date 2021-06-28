@@ -5,11 +5,7 @@
 
 using namespace RoboMath;
 
-
 Vector gv{0, 0, -g, 0};
-
-
-
 
 Robo::Robo()
 {
@@ -555,13 +551,19 @@ void Robo::WriteSettingsToFile()
         manip_settings->setValue("5", m_i[i].yz());
     }
     manip_settings->endArray();
-    manip_settings->beginWriteArray("max moments", 1);
+    max_joint_moments[0] = 180;
+    max_joint_moments[1] = 180;
+    max_joint_moments[2] = 120;
+    max_joint_moments[3] = 120;
+    max_joint_moments[4] = 60;
+    max_joint_moments[5] = 60;
+    manip_settings->setValue("moments", 1);
+    manip_settings->beginGroup("max moments");
     for (counter i = 0; i < 6; i++)
     {
-        manip_settings->setArrayIndex(i);
         manip_settings->setValue(QString::number(i), max_joint_moments.at(i));
     }
-    manip_settings->endArray();
+    manip_settings->endGroup();
     manip_settings->sync();
 }
 
@@ -574,14 +576,15 @@ void Robo::LoadSettingsFromFile()
     settings_file.close();
     manip_settings = new QSettings("ManipulatorSettigns.ini", QSettings::IniFormat);
     if (!manip_settings->contains("denavita-hartenberg"))
-        throw runtime_error("no denavita-hartenberg array in settings file");
+        throw runtime_error("no denavita-hartenberg data in settings file");
     if (!manip_settings->contains("mass array"))
-        throw runtime_error("no mass array in settings file");
+        throw runtime_error("no mass data in settings file");
     if (!manip_settings->contains("center of mass"))
-        throw runtime_error("no center of mass array in settings file");
+        throw runtime_error("no center of mass data in settings file");
     if (!manip_settings->contains("inertions"))
-        throw runtime_error("no inertions array in settings file");
-    //        manip_settings->value("joints count", 6);
+        throw runtime_error("no inertions data in settings file");
+    if (!manip_settings->contains("moments"))
+        throw runtime_error("no max moments data in settings file");
     int size = manip_settings->beginReadArray("denavita-hartenberg");
     for (int i = 0; i < size; i++)
     {
@@ -621,12 +624,12 @@ void Robo::LoadSettingsFromFile()
                                    manip_settings->value("5").toDouble()});
     }
     manip_settings->endArray();
-    manip_settings->beginReadArray("max joint moments");
+    manip_settings->beginGroup("max moments");
     for (counter i = 0; i < 6; i++)
     {
-//        max_joint_moments.at(i) = manip_settings->value(QString::number(i)).toDouble();
+        max_joint_moments.at(i) = manip_settings->value(QString::number(i)).toDouble();
     }
-    manip_settings->endArray();
+    manip_settings->endGroup();
 
 }
 
@@ -898,6 +901,7 @@ void Robo::AllocateForNewRobot()
     state_matrix = new Matrix(number_of_elements, 4);
     delta_thetas = new Vector(number_of_elements);
     theta_vector = new Vector(number_of_elements);
+    max_joint_moments.resize(6);
     if (number_of_elements > 0)
         robot = new Elem [number_of_elements];
 }

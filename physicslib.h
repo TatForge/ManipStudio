@@ -33,6 +33,7 @@ public:
      * @param p3 - std::vector<float> [6] mirror of StateVector structure (x, y, z, roll, pitch, yaw) of third point;
      * @param v_tcp - move speed of TCP;
      * @param a_tcp - acceleration of TCP;
+     * @return std::vector<float> size * [18](q, q_p, q_pp)
      */
     void MoveC(const fvector &start_angle, const fvector &p1, const fvector &p2, const fvector &p3, const float &v_tcp, const float &a_tcp, fvector &results);
     /**

@@ -8,8 +8,8 @@
 #define WITH_GTESTS     0
 #define WITH_QTESTS     0
 #define WITH_COLLISIONS 1
-#define MULTITHREAD     1
-#define WITH_WINDOW     1
+#define MULTITHREAD     0
+#define WITH_WINDOW     0
 //assertions turn off
 //#define NDEBUG
 #define SMESH +1.65

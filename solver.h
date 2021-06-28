@@ -43,29 +43,23 @@ class Solver
 {
 public:
     Solver(Robo &robot);
-    ~Solver()
-    {
-        delete manip_config;
-        delete m_main_IKData;
-        delete m_emulator;
-
-#if MULTITHREAD
-        delete m_dynamic_IKData;
-        m_closing = 1;
-        m_collision_cv.notify_all();
-        m_dynamic_cv.notify_all();
-#endif
-    }
-    void SolveDirectKinematic(const Angles &q, Matrix4x4 TR[], Matrix4x4 *T = nullptr) noexcept;
-    void SolveInverseKinematic(const StateVector &target, const Angles &curr_angle, Angles &res_angle, IKData *data  = nullptr);
-    void MoveL(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &start_angles, const ushort &dt_millisec, vector<float> &results);
-    void MoveJ(const Angles &start_angle, const Angles &end_angle, const float &speed, const float &acceleration, const float &dt_millisec, vector<float> &results);;
-    bool MoveC(const Angles &start_angle, const StateVector &start_point, const StateVector &mid_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const scalar &dt_millisec, vector<float> &results);
+    ~Solver();
+    void MoveL(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp,
+               const Angles &start_angles, const ushort &dt_millisec, vector<float> &results);
+    void MoveJ(const Angles &start_angle, const Angles &end_angle, const float &speed, const float &acceleration,
+               const float &dt_millisec, vector<float> &results);
+    bool MoveC(const Angles &start_angle, const StateVector &start_point, const StateVector &mid_point, const StateVector &end_point,
+               const scalar &v_tcp, const scalar &a_tcp, const scalar &dt_millisec, vector<float> &results);
+    int CalcTrajOneJoint(const Angles &start_angle, const Angles &end_angle, const scalar &dt_s, const scalar &angle_max_speed,
+                         const scalar &angle_acceleration, const int &element_number);
     bool CheckTrajectoryForLinear(const Polynom &pol, const Vector3 &l1, const Vector3 &l2, const scalar &t_millisec, const scalar &max_delta);
+    void SolveInverseKinematic(const StateVector &target, const Angles &curr_angle, Angles &res_angle, IKData *data  = nullptr);
     bool CheckTrajectoryForLinear(const Angles angles, const Vector3 &l1, const Vector3 &l2, const scalar &max_delta);
+    void SolveDirectKinematic(const Angles &q, Matrix4x4 TR[], Matrix4x4 *T = nullptr) noexcept;
     bool MoveMeshes(const Matrix4x4 TR[]) noexcept;
     void CalcUMatrix() noexcept;
     void CalcUMatrix(const Angles &a);
+    bool CheckMaxMoments();
     //Multithread
     void SolveForwardDynamicMultithread();
     void CheckCollisionMultithread();
@@ -73,7 +67,6 @@ public:
     void VisualizeMoments(const scalar &dt_millisec);
     inline void AnglesVectorToVector(const int size, vector<float> &results);
 
-    int CalcTrajOneJoint(const Angles &start_angle, const Angles &end_angle, const scalar &dt_s, const scalar &angle_max_speed, const scalar &angle_acceleration, const int &element_number);
     void VectorsResize(const counter &ctr);
     void CheckCollision(const uint *elem_number = nullptr);
     void CalcCollisionsDynamics(const scalar &array_size, const scalar &dt_millisec);
@@ -101,7 +94,7 @@ private:
     array<rm::Matrix4x4, JOINTS_COUNT> m_ji;
     array<rm::Vector, JOINTS_COUNT> m_cm;
     array<rm::Tensor, JOINTS_COUNT> m_i;
-    vector<scalar> max_joint_moments[6];
+    vector<scalar> max_joint_moments;
     vector<Angles>  m_angles_v;
     vector<Vector3> m_speed_v;
     vector<Vector3> m_accel_v;

@@ -4,11 +4,10 @@
 Solver::Solver(Robo &robot)
 {
     manip_config = new Matrix(*robot.state_matrix);
-    std::copy(robot.GetMaxJointMoments().begin(), robot.GetMaxJointMoments().end(), max_joint_moments->begin());
+    max_joint_moments = robot.GetMaxJointMoments();
     m_meshes.resize(9);
     m_mass.resize(6);
     m_main_IKData = new IKData;
-    m_closing = 0;
     m_meshes[0].ReadStl("STLmodels/base.stl");
     m_meshes[1].ReadStl("STLmodels/joint2.stl");
     m_meshes[2].ReadStl("STLmodels/link3.stl");
@@ -23,7 +22,7 @@ Solver::Solver(Robo &robot)
 //    m_inertion[0] = {0.000588, 0.000587, 0.000929, -1.299e-8, 2.44e-8, 1.79e-6};
 //    m_inertion[1] = {0.000928, 0.001512, 0.000937, 1.86e-5,  1.55e-10, 5.34e-12};
 //    m_inertion[2] = {0.001759, 0.000747, 0.001913, 2.32e-8,  6.37e-9,  1.68e-6};
-//    m_inertion[3] = {0.000198, 0.000479, 0.002059, 3.16e-11, 5.59e-10, 1.59e-7};
+//    m_inertion[3] = {0.000198, 0.000479, 0.002059, 3.16e-11, 5.59e-10, 1.59e-7};ы
 //    m_inertion[4] = {9.826e-5, 0.000128, 0.000114, -2.74e-9, 4.41e-9,  5.82e-7};
 //    m_inertion[5] = {5.529e-5, 5.359e-5, 8.415e-5, 1.99e-10, 2.53e-9,  1.85e-7};
 
@@ -67,11 +66,27 @@ Solver::Solver(Robo &robot)
     m_speed_v.resize(vector_size);
     m_accel_v.resize(vector_size);
 #if MULTITHREAD
+
+    m_closing = 0;
     m_dynamic_IKData = new IKData;
     m_dynamic_thread = new thread(&Solver::SolveForwardDynamicMultithread, this);
     m_collision_thread = new thread(&Solver::CheckCollisionMultithread, this);
     m_dynamic_thread->detach();
     m_collision_thread->detach();
+#endif
+}
+
+Solver::~Solver()
+{
+    delete manip_config;
+    delete m_main_IKData;
+    delete m_emulator;
+
+#if MULTITHREAD
+    delete m_dynamic_IKData;
+    m_closing = 1;
+    m_collision_cv.notify_all();
+    m_dynamic_cv.notify_all();
 #endif
 }
 void Solver::SolveDirectKinematic(const Angles &q, Matrix4x4 TR[], Matrix4x4 *T) noexcept
@@ -81,7 +96,7 @@ void Solver::SolveDirectKinematic(const Angles &q, Matrix4x4 TR[], Matrix4x4 *T)
         T = m_T;
 
 #if MULTITHREAD
-//    Matrix4x4 T[6];
+    //    Matrix4x4 T[6];
 #endif
     T[0] = {{         cos(q.q[0]),         -sin(q.q[0]),       0,           A.at(0,0)},
             {sin(q.q[0]) * cos(0), cos(q.q[0]) * cos(0), -sin(0), -sin(0) * A.at(0,2)},
@@ -180,14 +195,10 @@ void Solver::SolveInverseKinematic(const StateVector &target, const Angles &curr
         if (data->ctr > MAX_KINEMATIC_ITERS)
         {
             solved = false;
-            std::exception exc;
-            std::string str;
-            str = "Точка недостижима: x(" + to_string(target.x) + ") y(" + to_string(target.y) + ") z(" + to_string(target.z)
-                    + ") roll(" + to_string(ToDeg(target.roll)) + ") pitch(" + to_string(ToDeg(target.pitch )) + ") yaw(" + to_string(ToDeg(target.yaw)) + ")";
 #if WITH_BENCHMARK
             cout << " cant move to this point" << endl;
 #else
-            throw std::runtime_error("Точка недостижима: x(" + to_string(target.x) + ") y(" + to_string(target.y) +
+            throw std::runtime_error("<<InverseKinematic>> Точка недостижима: x(" + to_string(target.x) + ") y(" + to_string(target.y) +
                                      ") z(" + to_string(target.z) + ") roll(" + to_string(ToDeg(target.roll)) + ") pitch("
                                      + to_string(ToDeg(target.pitch)) + ") yaw(" + to_string(ToDeg(target.yaw)) + ")");
 #endif
@@ -450,6 +461,39 @@ void Solver::CalcUMatrix(const Angles &a)
                   {sin(a.q[i]) * sin(A.at(i-1,1)), cos(a.q[i]) * sin(A.at(i-1,1)),  cos(A.at(i-1,1)),  cos(A.at(i-1,1)) * A.at(i,2)},
                   {                              0,                               0,                 0,                            1}};
     }
+    for (counter k = 0; k < 6; k++)
+    {
+        for (counter j = k; j < 6; j++)
+        {
+            U[k*6 + j].MakeIdentity();
+            //Считается Ujk для конкретного i,j,k
+            for (int ctr = 0; ctr <= j; ctr++)
+            {
+                if (ctr == k)
+                    U[k*6 + j] = U[k*6 + j] * m_T[ctr] * cq;
+                else
+                {
+                    U[k*6 + j] = U[k*6 + j] * m_T[ctr];
+                }
+            }
+        }
+    }
+}
+
+bool Solver::CheckMaxMoments()
+{
+    for (int joint_number = 0; joint_number < 6; joint_number++)
+    {
+        if (abs(m_moments.tao[joint_number]) > max_joint_moments[joint_number])
+        {
+#if WITH_WINDOW
+            m_emulator->OneIterMoveLinear(m_angles_v[m_moments_counter], m_angles_v[m_moments_counter],  DT_MILLISEC, true, m_accel_v[m_collisions_counter]);
+#endif
+            throw std::runtime_error("Calculated moment of the " + to_string(joint_number) + "'s engine is greated than the maximum possible[" + to_string(max_joint_moments[joint_number]) + "]");
+            return true;
+        }
+    }
+    return false;
 }
 
 void Solver::SolveForwardDynamicMultithread()
@@ -457,8 +501,6 @@ void Solver::SolveForwardDynamicMultithread()
 #if MULTITHREAD
     //    cout << "Solve Forward Dynamic started" << endl;
     unique_lock<mutex> lock(m_dynamic_mtx);
-    //    Matrix4x4 T[6];
-    //    Matrix4x4 U[36];
     while(!m_closing)
     {
         while(!m_dynamic_notified)
@@ -565,12 +607,7 @@ bool Solver::SolveForwardDynamic(const Angles &angles)
         m_moments.tao[i] = m_moments.p[i] + m_moments.dv[i] + m_moments.hikm[i];
     }
     m_moments_counter++;
-    //Проверка моментов
-    for (counter joint_number = 0; joint_number < 6; joint_number++)
-    {
-//        if (m_moments.tao[joint_number] > max_joint_moments
-    }
-    //-----------------
+    CheckMaxMoments();
     return true;
 }
 

@@ -103,6 +103,7 @@ int main(int argc, char *argv[])
 //    solver.MoveCircle(Vector3(1, 2,  3), Vector3(2,4,6), Vector3(3, 6, 9), v_tcp, a_tcp, ToSec(10));
     CheckTime ct1;
     vector<float> vr;
+    vector<float> t1{0.4, 0.241, 0.1, 180, 45, 0};
     try {
         solver.SolveInverseKinematic(StateVector(Vector3(0.3, -0.1, 0.1), Vector3(0, 0, 0)), a1, res_buf);
         solver.MoveL(stv, tarv, v_tcp, a_tcp, angle_start, 10, vr);
