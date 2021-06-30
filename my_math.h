@@ -285,7 +285,7 @@ namespace RoboMath
     {
         if ((t1 < 0 && t2 < 0) || (t1 > 0 && t2 > 0))
             return true;
-        else if ((t1 < 0 && t2 > 0) || (t2 > 0 && t1 < 0))
+        else if ((t1 < 0 && t2 > 0) || (t1 > 0 && t2 < 0))
             return false;
         return true;
     }

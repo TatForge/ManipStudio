@@ -5,9 +5,12 @@
 #include "robo.h"
 #include "thread"
 #include "mutex"
-#include "mainwindow.h"
 #include "sharedmem.h"
-#include "sysvsharedmemory.h"
+//#include "sysvsharedmemory.h"
+
+#if WITH_WINDOW
+#include "mainwindow.h"
+#endif
 
 #define VREMENNO_DLYA_VISUALKI
 

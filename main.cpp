@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     Polynom result[1000];
 //    scalar v_tcp(2.12);
 //    scalar a_tcp(4);
-    scalar v_tcp(2);
+    scalar v_tcp(4);
     scalar a_tcp(2);
 
     Angles res_buf;
@@ -106,16 +106,19 @@ int main(int argc, char *argv[])
     vector<float> t1{0.4, 0.241, 0.1, 180, 45, 0};
     try {
         solver.SolveInverseKinematic(StateVector(Vector3(0.3, -0.1, 0.1), Vector3(0, 0, 0)), a1, res_buf);
-        solver.MoveL(stv, tarv, v_tcp, a_tcp, angle_start, 10, vr);
+//        solver.MoveL(StateVector(Vector3(0.3, 0.2, 0.21),Vector3(ToRad(180), 0, 0)), StateVector(Vector3(0.3, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, angle_start, 10, vr);
+        solver.MoveL(StateVector(Vector3(0.3, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), StateVector(Vector3(0.3, -0.2, 0.01),Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, angle_start, 10, vr);
+//        solver.MoveL(StateVector(Vector3(0.3, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), StateVector(Vector3(0.3, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, angle_start, 10, vr);
 //        solver.MoveCircle(angle_start,  StateVector(Vector3(0.2,  0.2,  0.01), Vector3(ToRad(180), 0, 0)),
 //                                        StateVector(Vector3(0.2,  0.3, 0.01),  Vector3(ToRad(180), 0, 0)),
 //                                        StateVector(Vector3(0.3,  0.3, 0.01),   Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 5);
 //        solver.MoveCircle(angle_start,  StateVector(Vector3(0.3,  0.3,  0.01), Vector3(ToRad(180), 0, 0)),
 //                                        StateVector(Vector3(0.3,  0.4, 0.01),  Vector3(ToRad(180), 0, 0)),
 //                                        StateVector(Vector3(0.4,  0.3, 0.01),   Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 5);
-//        solver.MoveC(angle_start, StateVector(Vector3(0.3, -0.2, 0.01),   Vector3(ToRad(180), 0, 0)),
-//                                       StateVector(Vector3(0.4, -0.2, 0.01),  Vector3(ToRad(180), 0, 0)),
-//                                       StateVector(Vector3(0.4, -0.4, 0.21),  Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 10, vr);
+        solver.MoveC(angle_start,      StateVector(Vector3(0.3, -0.2, 0.21),  Vector3(ToRad(180), 0, 0)),
+                                       StateVector(Vector3(0.4, -0.3, 0.21),  Vector3(ToRad(180), 0, 0)),
+                                       StateVector(Vector3(0.2, -0.3, 0.21),  Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 10, vr);
+        solver.MoveL(StateVector(Vector3(0.2, -0.3, 0.21),  Vector3(ToRad(180), 0, 0)), StateVector(Vector3(-0.3, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, angle_start, 10, vr);
 //        solver.MoveCircle(angle_start,  StateVector(Vector3(1,  3,  4), Vector3(ToRad(180), 0, 0)),
 //                                        StateVector(Vector3(-2, 5,  2),   Vector3(ToRad(180), 0, 0)),
 //                                        StateVector(Vector3(5,  -3, 6),   Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 5);

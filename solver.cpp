@@ -269,7 +269,8 @@ void Solver::MoveL(const StateVector &start_point, const StateVector &end_point,
                                                                   y + vy * dt_s + ay*dt_s*dt_s/2,
                                                                   z + vz * dt_s + az*dt_s*dt_s/2,
                                                                   rol + 0, pit + 0, yaw + 0));
-        if (!sign(vy + ay * dt_s, vy))
+        auto as = vz + az * dt_s;
+        if (!sign(vx + ax * dt_s, vx) || !sign(vy + ay * dt_s, vy) || !sign(vz + az * dt_s, vz))
             is_last = true;
         //Режим торможения (если расстояние < Sтормож)
         if (distance_next_step <= (v_curr * t_stop - a_curr * t_stop * t_stop * 0.5) && !breaking)
@@ -489,7 +490,7 @@ bool Solver::CheckMaxMoments()
 #if WITH_WINDOW
             m_emulator->OneIterMoveLinear(m_angles_v[m_moments_counter], m_angles_v[m_moments_counter],  DT_MILLISEC, true, m_accel_v[m_collisions_counter]);
 #endif
-            throw std::runtime_error("Calculated moment of the " + to_string(joint_number) + "'s engine is greated than the maximum possible[" + to_string(max_joint_moments[joint_number]) + "]");
+            throw std::runtime_error("Calculated moment of the " + to_string(joint_number) + "'s engine (" + to_string(m_moments.tao[joint_number]) + ")is greated than the maximum possible[" + to_string(max_joint_moments[joint_number]) + "]");
             return true;
         }
     }

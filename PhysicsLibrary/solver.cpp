@@ -489,7 +489,7 @@ bool Solver::CheckMaxMoments()
 #if WITH_WINDOW
             m_emulator->OneIterMoveLinear(m_angles_v[m_moments_counter], m_angles_v[m_moments_counter],  DT_MILLISEC, true, m_accel_v[m_collisions_counter]);
 #endif
-            throw std::runtime_error("Calculated moment of the " + to_string(joint_number) + "'s engine is greated than the maximum possible[" + to_string(max_joint_moments[joint_number]) + "]");
+            throw std::runtime_error("Calculated moment of the " + to_string(joint_number) + "'s engine (" + to_string(m_moments.tao[joint_number]) + ")is greated than the maximum possible[" + to_string(max_joint_moments[joint_number]) + "]");
             return true;
         }
     }
