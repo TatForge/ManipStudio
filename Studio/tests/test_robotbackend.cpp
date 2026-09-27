@@ -99,6 +99,46 @@ private slots:
             QVERIFY2(qAbs(At(m_backend->joints(), i) - At(target, i)) < 1e-3, qPrintable(QString::number(i)));
     }
 
+    void moveJReportsTcpPathFromStartToTarget()
+    {
+        const QVariantList start = m_backend->tcp();
+        QSignalSpy finished(m_backend.get(), &RobotBackend::motionFinished);
+        m_backend->moveJ({20, -40, 60, 10, 45, -30}, 90, 180);
+        QVERIFY(finished.wait(kTimeoutMs));
+        WaitPose();
+        const QVariantList path = m_backend->tcpPath();
+        QCOMPARE(path.size(), m_backend->sampleCount());
+        const QVector3D first = path.first().value<QVector3D>(), last = path.last().value<QVector3D>();
+        const QVariantList end = m_backend->tcp();
+        QVERIFY((first - QVector3D(At(start, 0), At(start, 1), At(start, 2))).length() < 1e-4);
+        QVERIFY((last - QVector3D(At(end, 0), At(end, 1), At(end, 2))).length() < 1e-4);
+    }
+
+    void scenePartsFollowThePose()
+    {
+        const QVariantList parts = m_backend->meshParts();
+        QCOMPARE(parts.size(), 9);
+        for (const QVariant &p : parts)
+            QVERIFY(QFile::exists(p.toMap()[QStringLiteral("source")].toUrl().toLocalFile()));
+        QVERIFY(parts.last().toMap()[QStringLiteral("obstacle")].toBool());
+        QCOMPARE(m_backend->meshPoses().size(), 9);
+
+        // the last joint part sits at frame 4, the tool frame at the flange (TCP)
+        const QVariantMap tool = m_backend->toolPose();
+        const QVector3D flange = tool[QStringLiteral("position")].value<QVector3D>();
+        const QVariantList tcp = m_backend->tcp();
+        QVERIFY((flange - QVector3D(At(tcp, 0), At(tcp, 1), At(tcp, 2))).length() < 1e-5);
+
+        const QVector3D before = m_backend->meshPoses()[7].toMap()[QStringLiteral("position")].value<QVector3D>();
+        m_backend->setJoint(0, 90);
+        WaitPose();
+        const QVector3D after = m_backend->meshPoses()[7].toMap()[QStringLiteral("position")].value<QVector3D>();
+        // base rotation by 90 deg: (x, y) -> (-y, x)
+        QVERIFY(qAbs(after.x() + before.y()) < 1e-4);
+        QVERIFY(qAbs(after.y() - before.x()) < 1e-4);
+        QVERIFY(qAbs(after.z() - before.z()) < 1e-4);
+    }
+
     void moveJOutsideLimitsReportsError()
     {
         QSignalSpy errors(m_backend.get(), &RobotBackend::errorOccurred);

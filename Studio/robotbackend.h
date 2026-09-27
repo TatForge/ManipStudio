@@ -8,6 +8,7 @@
 #include <QThread>
 #include <QTimer>
 #include <QVariantList>
+#include <QVariantMap>
 
 // The single object QML talks to. Angles are in degrees on this side,
 // radians on the solver side. Heavy work runs in SolverWorker's thread;
@@ -22,6 +23,11 @@ class RobotBackend : public QObject
     Q_PROPERTY(QVariantList tcp READ tcp NOTIFY poseChanged)
     Q_PROPERTY(QVariantList frames READ frames NOTIFY poseChanged)
     Q_PROPERTY(QVariantList limits READ limits NOTIFY readyChanged)
+    Q_PROPERTY(double floorZ READ floorZ NOTIFY readyChanged)
+    Q_PROPERTY(QVariantList meshParts READ meshParts NOTIFY readyChanged)
+    Q_PROPERTY(QVariantList meshPoses READ meshPoses NOTIFY poseChanged)
+    Q_PROPERTY(QVariantMap toolPose READ toolPose NOTIFY poseChanged)
+    Q_PROPERTY(QVariantList tcpPath READ tcpPath NOTIFY trajectoryChanged)
     Q_PROPERTY(double progress READ progress NOTIFY progressChanged)
     Q_PROPERTY(double duration READ duration NOTIFY trajectoryChanged)
     Q_PROPERTY(int sampleCount READ sampleCount NOTIFY trajectoryChanged)
@@ -39,6 +45,15 @@ public:
     // origins of the joint frames (QVector3D, metres), base to flange
     QVariantList frames() const;
     QVariantList limits() const;
+    double floorZ() const { return m_floor_z; }
+    // {name, source (file URL), obstacle} of every STL part, see MeshLayout
+    QVariantList meshParts() const;
+    // {position (QVector3D, m), rotation (QQuaternion)} of every part for the current pose
+    QVariantList meshPoses() const;
+    // flange frame {position, rotation}
+    QVariantMap toolPose() const;
+    // flange positions (QVector3D, m) along the last planned trajectory
+    QVariantList tcpPath() const;
     double progress() const;
     double duration() const;
     int sampleCount() const;
@@ -73,7 +88,7 @@ signals:
 private:
     void OnInitialized(const QVector<double> &lo, const QVector<double> &hi, double floor_z);
     void OnPose(const ArmPose &pose);
-    void OnTrajectory(const QVector<float> &samples, double dt_ms);
+    void OnTrajectory(const QVector<float> &samples, double dt_ms, const QVector<QVector3D> &tcp_path);
     void OnFailed(const QString &what, const QString &message);
     void OnPlayTick();
     void ShowSample(int index);
@@ -90,6 +105,8 @@ private:
     QVector<double> m_target_rad;       // latest commanded angles
     ArmPose m_pose;                     // latest computed pose
     QVector<float> m_samples;
+    QVector<QVector3D> m_tcp_path;
+    double m_floor_z = 0;
     double m_dt_ms = 0;
     int m_sample = 0;
     QTimer m_play_timer;

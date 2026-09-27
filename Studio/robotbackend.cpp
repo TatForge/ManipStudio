@@ -1,6 +1,10 @@
 #include "robotbackend.h"
 
+#include "meshlayout.h"
+
 #include <QDir>
+#include <QQuaternion>
+#include <QUrl>
 #include <QtMath>
 
 #include <algorithm>
@@ -10,6 +14,12 @@ namespace
 constexpr int kJoints = 6;
 constexpr double kTrajectoryDtMs = 10;
 constexpr int kPlayIntervalMs = 16;
+
+QVariantMap ToNodePose(const QMatrix4x4 &m)
+{
+    return {{QStringLiteral("position"), QVariant::fromValue(m.column(3).toVector3D())},
+            {QStringLiteral("rotation"), QVariant::fromValue(QQuaternion::fromRotationMatrix(m.toGenericMatrix<3, 3>()))}};
+}
 
 QVariantList ToDegList(const QVector<double> &rad)
 {
@@ -70,6 +80,37 @@ QVariantList RobotBackend::frames() const
     QVariantList out;
     for (const QMatrix4x4 &m : m_pose.frames)
         out.append(QVariant::fromValue(m.column(3).toVector3D()));
+    return out;
+}
+
+QVariantList RobotBackend::meshParts() const
+{
+    QVariantList out;
+    for (const MeshLayout::Part &p : MeshLayout::Parts())
+        out.append(QVariantMap{{QStringLiteral("name"), p.name},
+                               {QStringLiteral("source"), QUrl::fromLocalFile(QDir(m_data_dir).filePath(p.file))},
+                               {QStringLiteral("obstacle"), p.obstacle}});
+    return out;
+}
+
+QVariantList RobotBackend::meshPoses() const
+{
+    QVariantList out;
+    for (const QMatrix4x4 &m : MeshLayout::Placements(m_pose.frames))
+        out.append(ToNodePose(m));
+    return out;
+}
+
+QVariantMap RobotBackend::toolPose() const
+{
+    return m_pose.frames.isEmpty() ? QVariantMap() : ToNodePose(m_pose.frames.last());
+}
+
+QVariantList RobotBackend::tcpPath() const
+{
+    QVariantList out;
+    for (const QVector3D &p : m_tcp_path)
+        out.append(QVariant::fromValue(p));
     return out;
 }
 
@@ -162,6 +203,7 @@ void RobotBackend::OnInitialized(const QVector<double> &lo, const QVector<double
 {
     m_lo = lo;
     m_hi = hi;
+    m_floor_z = floor_z;
     m_ready = true;
     SetBusy(false);
     SetStatus(tr("Model loaded, floor at z = %1 m").arg(floor_z));
@@ -175,10 +217,11 @@ void RobotBackend::OnPose(const ArmPose &pose)
     emit poseChanged();
 }
 
-void RobotBackend::OnTrajectory(const QVector<float> &samples, double dt_ms)
+void RobotBackend::OnTrajectory(const QVector<float> &samples, double dt_ms, const QVector<QVector3D> &tcp_path)
 {
     SetBusy(false);
     m_samples = samples;
+    m_tcp_path = tcp_path;
     m_dt_ms = dt_ms;
     m_sample = 0;
     emit trajectoryChanged();

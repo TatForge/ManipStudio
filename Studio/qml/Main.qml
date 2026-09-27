@@ -68,7 +68,7 @@ ApplicationWindow {
             }
         }
 
-        ViewportPlaceholder {
+        RobotView {
             Layout.fillWidth: true
             Layout.fillHeight: true
         }

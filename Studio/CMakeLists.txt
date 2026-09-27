@@ -36,6 +36,8 @@ set_target_properties(manip_core PROPERTIES AUTOMOC OFF)
 add_library(studio_backend STATIC
     solverworker.h
     solverworker.cpp
+    meshlayout.h
+    meshlayout.cpp
     robotbackend.h
     robotbackend.cpp)
 target_include_directories(studio_backend PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -45,7 +47,7 @@ target_link_libraries(studio_backend PUBLIC manip_core Qt6::Core Qt6::Gui)
 set(MANIP_DATA_DIR ${MANIP_SRC_DIR} CACHE PATH "Directory with ManipulatorSettigns.ini and STLmodels/")
 
 qt_add_executable(ManipStudio main.cpp)
-set(STUDIO_QML Main.qml Theme.qml Card.qml JointPanel.qml MovePanel.qml PosePanel.qml ViewportPlaceholder.qml)
+set(STUDIO_QML Main.qml Theme.qml Card.qml JointPanel.qml MovePanel.qml PosePanel.qml RobotView.qml AxisLines.qml)
 set(STUDIO_QML_FILES)
 foreach(f ${STUDIO_QML})
     # served at qrc:/Studio/<f>, next to the module's qmldir, so that the
@@ -58,7 +60,8 @@ set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 qt_add_qml_module(ManipStudio
     URI Studio
     VERSION 1.0
-    QML_FILES ${STUDIO_QML_FILES})
+    QML_FILES ${STUDIO_QML_FILES}
+    SOURCES scenegeometry.h scenegeometry.cpp)
 # Qt 6.4's AOT compiler spins forever on singleton lookups (Theme.*); bytecode only.
 set_target_properties(ManipStudio PROPERTIES QT_QMLCACHEGEN_ARGUMENTS "--only-bytecode")
 target_compile_definitions(ManipStudio PRIVATE MANIP_DATA_DIR="${MANIP_DATA_DIR}")
@@ -71,3 +74,9 @@ target_compile_definitions(StudioTests PRIVATE MANIP_DATA_DIR="${MANIP_DATA_DIR}
 target_link_libraries(StudioTests PRIVATE studio_backend Qt6::Test)
 add_test(NAME StudioTests COMMAND StudioTests)
 set_tests_properties(StudioTests PROPERTIES LABELS "studio" ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+add_executable(StudioSceneTests tests/test_meshlayout.cpp)
+target_compile_definitions(StudioSceneTests PRIVATE MANIP_DATA_DIR="${MANIP_DATA_DIR}")
+target_link_libraries(StudioSceneTests PRIVATE studio_backend Qt6::Test)
+add_test(NAME StudioSceneTests COMMAND StudioSceneTests)
+set_tests_properties(StudioSceneTests PROPERTIES LABELS "studio")

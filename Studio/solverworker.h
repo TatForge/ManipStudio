@@ -4,6 +4,7 @@
 #include <QMatrix4x4>
 #include <QObject>
 #include <QString>
+#include <QVector3D>
 #include <QVector>
 
 #include <memory>
@@ -42,7 +43,8 @@ public slots:
 signals:
     void Initialized(const QVector<double> &limits_min_rad, const QVector<double> &limits_max_rad, double floor_z);
     void PoseReady(const ArmPose &pose);
-    void TrajectoryReady(const QVector<float> &samples, double dt_ms);
+    // tcp_path: flange origin (m) of every sample
+    void TrajectoryReady(const QVector<float> &samples, double dt_ms, const QVector<QVector3D> &tcp_path);
     void Failed(const QString &what, const QString &message);
 
 private:

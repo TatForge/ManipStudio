@@ -105,8 +105,20 @@ void SolverWorker::MoveJ(const QVector<double> &from_rad, const QVector<double> 
         return;
     }
     std::vector<float> results;
-    if (Guarded(this, QStringLiteral("MoveJ"), [&] {
+    if (!Guarded(this, QStringLiteral("MoveJ"), [&] {
             m_solver->MoveJ(ToAngles(from_rad), ToAngles(to_rad), float(speed_rad_s), float(accel_rad_s2), float(dt_ms), results);
         }))
-        emit TrajectoryReady(QVector<float>(results.begin(), results.end()), dt_ms);
+        return;
+    QVector<QVector3D> path;
+    Matrix4x4 TR[JOINTS_COUNT];
+    for (size_t k = 0; k + SampleStride <= results.size(); k += SampleStride)
+    {
+        Angles a;
+        for (int i = 0; i < JOINTS_COUNT; i++)
+            a.q[i] = results[k + i];
+        m_solver->SolveDirectKinematic(a, TR);
+        const Matrix4x4 &t = TR[JOINTS_COUNT - 1];
+        path.append(QVector3D(float(t.at(0, 3)), float(t.at(1, 3)), float(t.at(2, 3))));
+    }
+    emit TrajectoryReady(QVector<float>(results.begin(), results.end()), dt_ms, path);
 }
