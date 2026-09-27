@@ -3,8 +3,8 @@
 // Conventions from physicslib.h: joint states are 18 floats
 // (q[6], q_p[6], q_pp[6]); Cartesian points are 6 floats
 // (x, y, z, roll, pitch, yaw). MoveL / MoveC / InverseKinematic take the
-// angles of a point in DEGREES (they apply ToRad), DirectKinematic returns
-// what Quaternion::GetEulerAngles gives (radians).
+// angles of a point in DEGREES (they apply ToRad), and DirectKinematic
+// returns the TCP angles in degrees too.
 
 #include "gtest/gtest.h"
 #include "physicslib.h"
@@ -91,9 +91,8 @@ protected:
 
 TEST(PhysicsLibLifecycle, NotUsableBeforeInitialize)
 {
-    // Intentionally leaked: see DestroyingUninitializedLibraryIsSafe.
-    PhysicsLib *lib = new PhysicsLib;
-    EXPECT_FALSE(lib->m_usable);
+    PhysicsLib lib;
+    EXPECT_FALSE(lib.m_usable);
 }
 
 TEST_F(PhysicsLibTest, InitializeMakesLibraryUsable)
@@ -115,14 +114,14 @@ TEST(PhysicsLibLifecycle, InitializeThrowsWithoutSettingsFile)
             }
             catch (const std::runtime_error &)
             {
-                std::exit(0); // skip destructors: see the lifecycle notes below
+                std::exit(0);
             }
             std::exit(1);
         },
         ::testing::ExitedWithCode(0), "");
 }
 
-// Documents a real bug: the constructor never initialises lib_data, and the
+// Regression test for a fixed bug: the constructor never initialises lib_data, and the
 // destructor deletes it whenever it is not null -- destroying a PhysicsLib
 // on which Initialize() was never called (or failed) deletes a garbage
 // pointer. Constructed over a 0xAB-filled buffer to make it deterministic.
@@ -161,7 +160,7 @@ TEST_F(PhysicsLibTest, DirectKinematicReturnsTcpOrientation)
         fvector T(6);
         lib->DirectKinematic(ToVec(q), T);
         Quaternion got, expected;
-        got.EulerToQuat(Vector3(T[3], T[4], T[5]));
+        got.EulerToQuat(Vector3(ToRad(T[3]), ToRad(T[4]), ToRad(T[5])));
         expected.EulerToQuat(ReferenceEuler(q));
         for (const auto &v : {unit_x, unit_y, unit_z})
             EXPECT_VEC3_NEAR(got.RotateVector(v), expected.RotateVector(v), 1e-5)
@@ -187,9 +186,9 @@ TEST_F(PhysicsLibTest, InverseKinematicReturnsJointAngles)
 }
 
 // The natural round trip through the public API: InverseKinematic(
-// DirectKinematic(q)) must lead back to the same TCP pose. Fails because
-// DirectKinematic reports roll/pitch/yaw in radians while InverseKinematic
-// expects degrees: the position is reached, the tool orientation is not.
+// DirectKinematic(q)) must lead back to the same TCP pose, including the
+// tool orientation (regression test: DirectKinematic used to report radians
+// while InverseKinematic expects degrees).
 TEST_F(PhysicsLibTest, InverseOfDirectKinematicRoundTrips)
 {
     Angles q = MakeAngles({-0.4, -0.6, 1.2, -0.3, 0.7, 0.5});
@@ -228,7 +227,7 @@ TEST(PhysicsLibConversions, AngleVectorRoundTrip)
         EXPECT_FLOAT_EQ(back[i], v[i]) << "i = " << i;
 }
 
-// Documents a real bug: VectorToAngle() fills q_pp from v[i + 6] (the q_p
+// Regression test for a fixed bug: VectorToAngle() fills q_pp from v[i + 6] (the q_p
 // block) instead of v[i + 12].
 TEST(PhysicsLibConversions, VectorToAngleReadsAccelerationsFromLastBlock)
 {
@@ -420,7 +419,7 @@ TEST_F(PhysicsLibVsSolver, DirectKinematicIsIdentical)
     Matrix4x4 TR[6];
     solver->SolveDirectKinematic(FromApiAngles(ToVec(kWork)), TR);
     Vector3 rpy = TR[5].ConvertToQuaternion().GetEulerAngles();
-    const double expected[6] = {TR[5].at(0, 3), TR[5].at(1, 3), TR[5].at(2, 3), rpy.x, rpy.y, rpy.z};
+    const double expected[6] = {TR[5].at(0, 3), TR[5].at(1, 3), TR[5].at(2, 3), ToDeg(rpy.x), ToDeg(rpy.y), ToDeg(rpy.z)};
     for (int i = 0; i < 6; i++)
         EXPECT_FLOAT_EQ(T[i], float(expected[i])) << "i = " << i;
 }

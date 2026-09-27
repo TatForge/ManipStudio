@@ -48,7 +48,8 @@ public:
     /**
     * @brief Convert manipulator's angle position to TCP position;
     * @param &angle std::vector<float> [18] mirror of Angles structure (q[6], q_p[6], q_pp[6]) of angle, which need to be recalculated to the TCP position;
-    * @param &T     std::vector<float> [6] - result of angle calculation;
+    * @param &T     std::vector<float> [6] - TCP pose (x, y, z, roll, pitch, yaw), angles in DEGREES
+    *               (same convention as the points taken by MoveL / MoveC / InverseKinematic);
     */
     void DirectKinematic(const fvector &angle, fvector &T);
     /**

@@ -82,7 +82,6 @@ namespace RoboMath
         Vector& operator=(const Vector &v);
         Vector  operator-(const Vector &v);
         scalar& at(const counter &number);
-        Vector operator*(const Vector &v);
         scalar MaxAbs();
     protected:
         void dataNewMemory(const int &length);

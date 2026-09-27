@@ -20,13 +20,11 @@ public:
         {
             sh_m->detach();
         }
-        if (!sh_m->create(sizeof(float) * m_size))
+        //create() attaches on success; otherwise the segment may already exist
+        if (!sh_m->create(sizeof(float) * m_size) && !sh_m->attach())
         {
-            std::cout << sh_m->errorString().toStdString() << std::endl;
-        }
-        if (!sh_m->attach())
-        {
-            std::cout << "can't attach" << std::endl;
+            std::cout << "can't create or attach shared memory " << m_key.toStdString() << ": "
+                      << sh_m->errorString().toStdString() << std::endl;
         }
     };
     ~SharedMem()
@@ -34,10 +32,13 @@ public:
         delete [] m_data;
         if (sh_m->detach())
             std::cout << "Shared memory " << m_key.toStdString() << " detached " << std::endl;
+        delete sh_m;
     }
     bool SendData(float *data_ptr, size_t size)
     {
-        //sends data from data_ptr, size = m_size
+        //sends `size` bytes from data_ptr
+        if (!sh_m->isAttached() || size > size_t(sh_m->size()))
+            return false;
         if (sh_m->lock())
         {
 //            auto ptr = sh_m->data();

@@ -37,19 +37,19 @@ TEST(RoboMoments, MakeNullZeroesAllFields)
     }
 }
 
-// NOTE (not a live test): Robo(int) allocates state_matrix/jacobian/etc via
-// AllocateForNewRobot() but never initializes manip_settings. Only
-// LoadManip()/WriteSettingsToFile() ever assign it. ~Robo() unconditionally
-// does `delete manip_settings`, so destroying a Robo that never loaded or
-// saved settings deletes a garbage pointer -- confirmed by reading
-// robo.cpp/robo.h. This is genuinely undefined behaviour (not a deterministic
-// out-of-bounds access like the MeshCollider empty-mesh case in Phase 1): an
-// EXPECT_DEATH attempt around `Robo r(6);` sometimes crashes and sometimes
-// doesn't depending on what garbage bit pattern the heap happens to leave in
-// that pointer slot, so it can't be asserted reliably here without making
-// this suite flaky. Every other Robo test below therefore always calls
-// LoadManip() before letting its Robo object go out of scope, specifically
-// to avoid tripping this bug.
+// Regression test for a fixed bug: ~Robo() used to delete the never
+// initialised manip_settings pointer when no settings were loaded or saved.
+TEST(RoboLifecycle, RobotWithoutSettingsIsSafeToDestroy)
+{
+    EXPECT_EXIT(
+        {
+            {
+                Robo r(6);
+            }
+            std::exit(0);
+        },
+        ::testing::ExitedWithCode(0), "");
+}
 
 TEST_F(RoboTest, LoadManipSucceeds)
 {
@@ -57,7 +57,7 @@ TEST_F(RoboTest, LoadManipSucceeds)
     EXPECT_TRUE(r.LoadManip());
 }
 
-// Documents a real, high-impact bug: AllocateForNewRobot() allocates
+// Regression test for a fixed high-impact bug: AllocateForNewRobot() allocates
 // delta_thetas via `new Vector(n)`, which leaves its data uninitialized
 // (garbage). LoadManip() correctly reads theta=0,0,0,0,0,1 from
 // ManipulatorSettigns.ini into state_matrix, but then unconditionally calls
@@ -66,8 +66,7 @@ TEST_F(RoboTest, LoadManipSucceeds)
 // column. Every LoadManip() call (the normal startup path used throughout
 // the app, e.g. main.cpp) corrupts the robot's joint angles with garbage.
 // The exact garbage value differs run to run (uninitialized memory), but
-// this test deterministically fails either way. Expected to FAIL until
-// fixed (e.g. by zero-initializing delta_thetas in AllocateForNewRobot()).
+// this test deterministically fails either way.
 TEST_F(RoboTest, LoadManipReadsRealDHThetasFromIniFile)
 {
     Robo r(6);
@@ -137,7 +136,7 @@ TEST_F(RoboTest, SolveForwardKinematicSingleLinkMatchesHandComputedTransform)
     EXPECT_NEAR(result.z, 0.2325, 1e-9);
 }
 
-// Documents a real bug: under the CALC_INVERSE_MATRIX build path (defined
+// Regression test for a fixed bug: under the CALC_INVERSE_MATRIX build path (defined
 // unconditionally at the top of robo.cpp), ComputeJointsPosition()'s code
 // that updates the `effector` member's position is compiled out (wrapped in
 // #ifndef CALC_INVERSE_MATRIX), and neither LoadManip() nor UpdateTMatrix()
@@ -146,7 +145,7 @@ TEST_F(RoboTest, SolveForwardKinematicSingleLinkMatchesHandComputedTransform)
 // regardless of the robot's actual configuration, while the *real* forward
 // kinematics result (independently computed here via the already-verified
 // SolveForwardKinematic, using the same DH table LoadManip() reads) is a
-// meaningfully different, non-zero position. Expected to FAIL until fixed.
+// meaningfully different, non-zero position.
 TEST_F(RoboTest, GetEffectorPositionReflectsActualForwardKinematics)
 {
     Robo r(6);
@@ -217,10 +216,9 @@ TEST_F(RoboTest, SolveForwardDynamicProducesFiniteMoments)
     }
 }
 
-// Every mass in ManipulatorSettigns.ini is loaded as exactly 0 (see the
-// LoadSettingsFromFile "mass" vs "mass array" key bug), so the gravity
-// moment term (-m_mass[j] * ...) is exactly zero for every joint.
-TEST_F(RoboTest, SolveForwardDynamicGravityMomentIsZeroDueToMassBug)
+// ManipulatorSettigns.ini stores 0 for every link mass (the Solver keeps
+// its own masses), so Robo's gravity moment term is exactly zero.
+TEST_F(RoboTest, SolveForwardDynamicGravityMomentIsZeroForZeroIniMasses)
 {
     Robo r(6);
     ASSERT_TRUE(r.LoadManip());

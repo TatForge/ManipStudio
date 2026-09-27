@@ -25,7 +25,6 @@ protected:
             ScopedSilence quiet;
             emu = std::make_unique<Emulator>(*robot);
         }
-        emu->iter = 0; // see IterStartsAtZero
     }
     void TearDown() override
     {
@@ -54,7 +53,7 @@ const Angles kB = MakeAngles({-0.4, -0.7, 1.3, -0.2, 0.5, 0.6});
 
 } // namespace
 
-// Documents a real bug: the public member `iter` (write index into the TCP
+// Regression test for a fixed bug: the public member `iter` (write index into the TCP
 // trace buffer) is never initialised by the constructor. The first
 // FillManipPositionData() then indexes points_to_visual with garbage.
 // Constructed over a 0xAB-filled buffer to make the check deterministic.
@@ -125,7 +124,7 @@ TEST_F(EmulatorTest, TcpTraceRecordsPointsEveryRangeToPlot)
     }
 }
 
-// Documents a real bug: FillManipPositionData() appends to the fixed
+// Regression test for a fixed bug: FillManipPositionData() appends to the fixed
 // 999-float points_to_visual buffer without any bound check, so a long
 // enough session (here the arm swings back and forth 30 times) writes past
 // the end of the buffer into the neighbouring members.
@@ -150,7 +149,7 @@ TEST_F(EmulatorTest, SendDataToSharedPublishesManipulatorPose)
         EXPECT_FLOAT_EQ(got[i], emu->manip_to_visual[i]) << "i = " << i;
 }
 
-// Documents a real bug: OneIterMoveLinear interpolates with fractions
+// Regression test for a fixed bug: OneIterMoveLinear interpolates with fractions
 // 0, 1/n, ..., (n-1)/n and never reaches the end angle of a segment, so after
 // replaying a whole trajectory the emulated arm stops one sub-step short of
 // the trajectory's final sample.

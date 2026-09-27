@@ -113,7 +113,7 @@ TEST_F(MoveJSingleJoint, StartsAtStartAngles)
     }
 }
 
-// Documents a real bug: CalcTrajOneJoint writes the final (end) sample at
+// Regression test for a fixed bug: CalcTrajOneJoint writes the final (end) sample at
 // index sizes[i], but MoveJ then truncates m_angles_v to max_size elements
 // (indices 0..max_size-1), so the last sample of the slowest joint -- the
 // one that actually reaches end_angle with zero speed -- is dropped. The
@@ -155,7 +155,7 @@ TEST_F(MoveJSingleJoint, RespectsSpeedLimit)
         EXPECT_LE(std::abs(traj.samples[k].q[0] - traj.samples[k - 1].q[0]) / kDt, kV * 1.01) << "sample " << k;
 }
 
-// Documents a real bug: in braking mode CalcTrajOneJoint recomputes the
+// Regression test for a fixed bug: in braking mode CalcTrajOneJoint recomputes the
 // deceleration every step from the remaining distance, which exceeds the
 // requested limit (up to ~2.2 rad/s^2 for a 2 rad/s^2 limit).
 TEST_F(MoveJSingleJoint, RespectsAccelerationLimit)
@@ -223,6 +223,41 @@ TEST_F(MoveJTest, MultiJointMoveReachesEveryTargetAndHolds)
             EXPECT_NEAR(t.samples[k].q_p[j], 0, 1e-9) << "joint " << j << " sample " << k;
         }
     }
+}
+
+// Synchronous PTP: all joints start and stop together and every sample lies
+// on the straight joint-space line between start and end; the joint with
+// the largest travel runs the time-optimal profile.
+TEST_F(MoveJTest, JointsMoveSynchronously)
+{
+    Angles from = WorkPose(), to = WorkPose();
+    to.q[0] += 0.8; // largest travel -> leads
+    to.q[1] -= 0.2;
+    to.q[3] += 0.5;
+    to.q[5] -= 0.05;
+    std::vector<float> flat;
+    ASSERT_TRUE(Run(from, to, 1.0f, 2.0f, flat));
+    auto s = Samples(flat);
+    ASSERT_GT(s.size(), 2u);
+    for (size_t k = 0; k < s.size(); k++)
+    {
+        const double u = (s[k].q[0] - from.q[0]) / (to.q[0] - from.q[0]);
+        for (int j = 1; j < JOINTS_COUNT; j++)
+        {
+            const double delta = to.q[j] - from.q[j];
+            EXPECT_NEAR(s[k].q[j], from.q[j] + delta * u, 1e-6) << "joint " << j << " sample " << k;
+            EXPECT_LE(std::abs(s[k].q_p[j]), 1.0 * 1.001) << "joint " << j << " sample " << k;
+        }
+    }
+    for (int j = 0; j < JOINTS_COUNT; j++)
+    {
+        EXPECT_NEAR(s.back().q[j], to.q[j], 1e-6) << "joint " << j;
+        EXPECT_NEAR(s.back().q_p[j], 0, 1e-9) << "joint " << j;
+        // nobody arrives early
+        EXPECT_GT(std::abs(s[s.size() - 2].q[j] - to.q[j]) + (to.q[j] == from.q[j]), 0) << "joint " << j;
+    }
+    // duration of the leading joint alone: 0.8 rad at v = 1, a = 2 -> 1.3 s
+    EXPECT_NEAR((s.size() - 1) * kDt, 0.8 / 1.0 + 1.0 / 2.0, 0.02);
 }
 
 TEST_F(MoveJTest, ThrowsWhenStartEqualsEnd)
@@ -316,7 +351,7 @@ TEST_F(MoveLStraight, StartsAtStartPoint)
         EXPECT_NEAR(traj.samples.front().q[j], start.q[j], 1e-5) << "joint " << j;
 }
 
-// Documents a real bug (same pattern as MoveJ): the last computed sample
+// Regression test for a fixed bug (same pattern as MoveJ): the last computed sample
 // m_angles_v[size] -- the one placed exactly at end_point -- is not copied
 // to the output (AnglesVectorToVector(size, ...) writes indices 0..size-1).
 TEST_F(MoveLStraight, EndsAtEndPoint)
@@ -424,7 +459,7 @@ TEST_F(MoveLTest, InterpolatesOrientationAndReachesTarget)
 }
 
 // Scenario: the documented start pose GetInternalPosition(), 5 cm along +X.
-// Fails because of the wrong start orientation at this pose (see
+// Used to fail because of the wrong start orientation at this pose (see
 // SolverTest.ReportedOrientationOfPredefinedPosesIsCorrect): the first IK
 // step jumps to another arm configuration (joint 3 moves ~5 rad in 10 ms)
 // and the dynamics check throws with a ~1600 Nm moment on joint 0.
@@ -950,7 +985,7 @@ TEST_F(MoveCArc, SlowArcBeyondInitialBuffer)
         ::testing::ExitedWithCode(0), "");
 }
 
-// Documents a limitation: MoveC throws "Cant solve MoveC task with 1000
+// Regression test for a removed limitation: MoveC throws "Cant solve MoveC task with 1000
 // iterations" for any arc that takes longer than 1000 steps (10 s at 10 ms),
 // e.g. this 16 s half circle -- MoveL/MoveJ have no such limit.
 TEST_F(MoveCArc, VerySlowArcIsNotLimitedTo1000Steps)

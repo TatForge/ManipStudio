@@ -15,7 +15,7 @@ Angles VectorToAngle(const fvector &v)
     {
         a.q[i]    = v.at(i);
         a.q_p[i]  = v.at(i + JOINTS_COUNT);
-        a.q_pp[i] = v.at(i + JOINTS_COUNT);
+        a.q_pp[i] = v.at(i + 2 * JOINTS_COUNT);
     }
     return a;
 }
@@ -25,9 +25,9 @@ vector<float> AngleToVector(const Angles &a)
     v.resize(18);
     for (counter i = 0; i < JOINTS_COUNT; i++)
     {
-        v[i + 0 * 3] = a.q[i];
-        v[i + 1 * 3] = a.q_p[i];
-        v[i + 2 * 3] = a.q_pp[i];
+        v[i + 0 * JOINTS_COUNT] = a.q[i];
+        v[i + 1 * JOINTS_COUNT] = a.q_p[i];
+        v[i + 2 * JOINTS_COUNT] = a.q_pp[i];
     }
     return v;
 }
@@ -47,15 +47,16 @@ Matrix4x4 VectorToMatrix4x4(const fvector &v)
 PhysicsLib::PhysicsLib()
 {
     m_usable = false;
+    lib_data = nullptr;
 }
 
 PhysicsLib::~PhysicsLib()
 {
-    if (lib_data != nullptr)
-        delete lib_data;
+    delete lib_data;
 }
 
 void PhysicsLib::Initialize(){
+    delete lib_data;
     lib_data = new LibData;
     lib_data->manipulator = make_unique<Robo>(6);
 //    try {
@@ -98,12 +99,16 @@ void PhysicsLib::DirectKinematic(const fvector &angle, fvector &T)
 {
     Matrix4x4 TR[6];
     lib_data->solver->SolveDirectKinematic(VectorToAngle(angle), TR);
+    if (T.size() < 6)
+        T.resize(6);
     T[0] = TR[5].ConvertToVector3().x;
     T[1] = TR[5].ConvertToVector3().y;
     T[2] = TR[5].ConvertToVector3().z;
-    T[3] = TR[5].ConvertToQuaternion().GetEulerAngles().x;
-    T[4] = TR[5].ConvertToQuaternion().GetEulerAngles().y;
-    T[5] = TR[5].ConvertToQuaternion().GetEulerAngles().z;
+    //degrees, like the angles MoveL / MoveC / InverseKinematic take
+    Vector3 rpy = TR[5].ConvertToQuaternion().GetEulerAngles();
+    T[3] = ToDeg(rpy.x);
+    T[4] = ToDeg(rpy.y);
+    T[5] = ToDeg(rpy.z);
 }
 
 void PhysicsLib::InverseKinematic(const fvector &target, const fvector &curr_angle, fvector &res_angle)

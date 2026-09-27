@@ -4,6 +4,11 @@ MeshCollider::MeshCollider()
 {
 
 }
+
+MeshCollider::MeshCollider(const std::string &filename)
+{
+    ReadStl(filename);
+}
 MeshCollider MeshCollider::MoveMesh(const Quaternion &rotation, const Vector3 &position) const
 {
     MeshCollider mc;
@@ -85,6 +90,12 @@ bool MeshCollider::RemoveDublicateVertexes()
 //    {
 //        cout << m_mesh[i].x << " " << m_mesh[i].y << " " << m_mesh[i].z << endl;
 //    }
+    if (m_size == 0 || m_mesh.empty())
+    {
+        m_mesh.clear();
+        m_size = 0;
+        return true;
+    }
     sort(m_mesh.begin(), m_mesh.end());
 //    for (uint i = 0; i < m_size; i++)
 //    {
@@ -231,7 +242,7 @@ bool MeshCollider::Triangle(Simplex &simplex, Vector3 &direction)
         if (SameDirection(ac, ao))
         {
             simplex = {a, c};
-            direction = ab * ao * ab;
+            direction = ac * ao * ac;
         }
         else return Line(simplex = {a, b}, direction);
     }
@@ -301,6 +312,7 @@ Simplex &Simplex::operator =(std::initializer_list<Vector3> input)
         points[i] = el;
         i++;
     }
+    size = i;
     return *this;
 }
 

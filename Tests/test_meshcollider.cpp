@@ -131,7 +131,7 @@ MeshCollider MovedCopy(const MeshCollider &mc, const Quaternion &rot, const Vect
 // Two axis-aligned 2 m cubes overlap exactly when every centre offset
 // component is below 2 m. Checked on a grid of offsets (avoiding the exact
 // touching boundary, where the answer is a matter of convention).
-// Currently fails for offset (0.4, -2.6, -1.5): the cubes are 0.6 m apart
+// Used to fail for offset (0.4, -2.6, -1.5): the cubes are 0.6 m apart
 // in Y, yet GJK reports a collision (false positive in the simplex
 // handling).
 TEST(MeshColliderGjk, AxisAlignedCubesMatchAnalyticOverlap)
@@ -207,17 +207,16 @@ TEST(MeshCollider, RemoveDublicateVertexesRemovesRepeats)
     EXPECT_EQ(mc.Size(), 8);
 }
 
-// Documents a real bug: RemoveDublicateVertexes computes `m_size - 1` where
-// m_size is an unsigned ushort. On an empty mesh (m_size == 0) this
-// underflows to a huge value, and the subsequent vector access is out of
-// bounds. EXPECT_DEATH runs the call in a forked subprocess so a crash here
-// doesn't take down the rest of the test suite.
-TEST(MeshColliderDeathTest, RemoveDublicateVertexesOnEmptyMeshIsUnsafe)
+// Regression test for a fixed bug: RemoveDublicateVertexes computed
+// `m_size - 1` on an unsigned ushort, so an empty mesh underflowed and read
+// out of bounds. Run in a child process in case it regresses into a crash.
+TEST(MeshColliderDeathTest, RemoveDublicateVertexesOnEmptyMeshIsSafe)
 {
-    EXPECT_DEATH(
+    EXPECT_EXIT(
         {
             MeshCollider mc;
             mc.RemoveDublicateVertexes();
+            std::exit(mc.Size() == 0 ? 0 : 1);
         },
-        "");
+        ::testing::ExitedWithCode(0), "");
 }

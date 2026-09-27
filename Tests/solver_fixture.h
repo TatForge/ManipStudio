@@ -52,10 +52,6 @@ protected:
             ScopedSilence quiet; // SharedMem prints "can't attach" on every construction
             s = std::make_unique<Solver>(*robot);
         }
-        // Workaround: Emulator::iter is never initialised (see
-        // EmulatorTest.IterStartsAtZero); the Solver calls into the emulator
-        // when it detects a collision, which then crashes on the garbage index.
-        s->m_emulator->iter = 0;
         return s;
     }
 

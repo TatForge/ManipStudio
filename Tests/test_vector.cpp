@@ -81,10 +81,10 @@ TEST(Vector, MaxAbs)
     EXPECT_DOUBLE_EQ(v.MaxAbs(), 8);
 }
 
-// Documents a real bug: operator-(Vector) in my_math.cpp hardcodes indices
+// Regression test for a fixed bug: operator-(Vector) in my_math.cpp hardcodes indices
 // 0..2 (ignoring the actual vector length) and computes v - this instead of
 // this - v. This test expects correct, length-independent left-minus-right
-// semantics and is expected to FAIL until fixed.
+// semantics.
 TEST(Vector, OperatorMinusComputesLeftMinusRight)
 {
     Vector a({10, 20, 30});

@@ -225,7 +225,7 @@ TEST_F(SolverDynamics, InertialTermIsLinearInAcceleration)
         EXPECT_NEAR(mab.dv[i], 2 * ma.dv[i] - 3 * mb.dv[i], 1e-9);
 }
 
-// Documents a real bug: the D term uses the pseudo-inertia of link k
+// Regression test for a fixed bug: the D term uses the pseudo-inertia of link k
 // (m_ji[k]) instead of link j (m_ji[j]) inside the sum over j, which makes
 // the inertia matrix non-symmetric (a symmetric D is a fundamental property
 // of any mechanical system).
@@ -306,7 +306,7 @@ TEST_F(SolverDynamics, VelocityTermVanishesAtRestAndIsQuadraticInSpeed)
         EXPECT_NEAR(m2.hikm[i], 4 * m1.hikm[i], 1e-9 + 1e-9 * std::abs(m1.hikm[i])) << "joint " << i;
 }
 
-// Documents real bugs in the h (Coriolis/centrifugal) term: it uses the
+// Regression test for fixed bugs in the h (Coriolis/centrifugal) term: it uses the
 // pseudo-inertia of link i instead of link j, builds the second derivative
 // of T0j with the classic-DH form (Q * T) while the kinematics are modified
 // DH (T * Q, as CalcUMatrix correctly does), and stops the product one
@@ -325,7 +325,7 @@ TEST_F(SolverDynamics, VelocityTermMatchesLagrangianReference)
     }
 }
 
-// Documents a design bug: SolveForwardDynamic(angles) takes the joint
+// Regression test for a fixed design bug: SolveForwardDynamic(angles) takes the joint
 // *positions* from m_T -- whatever the last SolveDirectKinematic() call left
 // there -- and only uses `angles` for q' and q''. Asking for the torques of
 // pose B right after a kinematics call for pose A silently returns pose A's

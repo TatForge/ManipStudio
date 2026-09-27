@@ -309,7 +309,22 @@ TEST_F(SolverTest, PredefinedPositions)
     }
 }
 
-// NOTE (not tested): Solver::FindAngle is declared `inline` in solver.h but
-// only defined in solver.cpp, so it cannot be linked from any other
-// translation unit. BoxAABB's constructor and Solver::CheckAABB are declared
-// but never defined at all.
+// Regression test: FindAngle used to be declared `inline` but defined only in
+// solver.cpp, so it could not be linked from other translation units.
+TEST_F(SolverTest, FindAngleBetweenRays)
+{
+    Vector3 O(1, 1, 1);
+    EXPECT_NEAR(solver->FindAngle(O, O + Vector3(1, 0, 0), O + Vector3(0, 2, 0)), M_PI / 2, 1e-12);
+    EXPECT_NEAR(solver->FindAngle(O, O + Vector3(1, 0, 0), O + Vector3(-1, 1, 0)), 3 * M_PI / 4, 1e-12);
+}
+
+// Regression test: BoxAABB's constructor and CheckAABB used to be declared
+// without a definition.
+TEST_F(SolverTest, CheckAABBDetectsOverlap)
+{
+    BoxAABB a(0, 0, 0, 1, 1, 1);
+    EXPECT_TRUE(solver->CheckAABB(a, BoxAABB(0.5, 0.5, 0.5, 2, 2, 2)));
+    EXPECT_TRUE(solver->CheckAABB(a, BoxAABB(1, 0, 0, 2, 1, 1))); // touching faces
+    EXPECT_FALSE(solver->CheckAABB(a, BoxAABB(1.1, 0, 0, 2, 1, 1)));
+    EXPECT_FALSE(solver->CheckAABB(a, BoxAABB(0, 0, -2, 1, 1, -0.1)));
+}

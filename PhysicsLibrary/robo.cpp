@@ -10,8 +10,12 @@ Vector gv{0, 0, -g, 0};
 Robo::Robo()
 {
     number_of_elements = 0;
+    manip_settings = nullptr;
+    state_matrix = nullptr;
+    theta_vector = nullptr;
     jacobian = nullptr;
     delta_thetas = nullptr;
+    robot = nullptr;
 }
 
 Robo::Robo(int number_of_elements)
@@ -52,6 +56,8 @@ Robo::~Robo()
 {
     delete jacobian;
     delete delta_thetas;
+    delete theta_vector;
+    delete state_matrix;
     delete manip_settings;
     delete[] robot;
 }
@@ -366,42 +372,32 @@ vector<scalar> Robo::GetMaxJointMoments()
 
 void Robo::SolveForwardDynamic()
 {
+    //Lagrange-Euler, same model as Solver::SolveForwardDynamic
     CalcUMatrix();
-    int ctr(0);
+    m_moments.MakeNull();
     scalar buff(0);
     for (counter i = 0; i < 6; i++)
     {
         for (counter j = i; j < 6; j++)
         {
-//            U[i*6 + j].MatrixCout("U");
-//            m_cm[j].VectorCout("m_cm");
             m_moments.p[i] += - m_mass[j] * gv.MultiplyTranspose(U[i*6 + j].MultiplyTranspose(m_cm[j]));
         }
-        ctr++;
     }
 
     //Расчет D для i-го элемента манипулятора
     for (counter i = 0; i < 6; i++)
     {
-        for (counter k = i; k < 6; k++)
+        for (counter k = 0; k < 6; k++)
         {
+            buff = 0;
             for (counter j = RoboMath::max(i, k); j < 6; j++)
             {
-                buff += Trace(U[k*6 + j] * m_ji[k].MultiplyTranspose(U[i*6 + j]));
+                buff += Trace(U[k*6 + j] * m_ji[j].MultiplyTranspose(U[i*6 + j]));
             }
-            buff *= m_angles.q_pp[k];
-            m_moments.dv[i] += buff;
+            m_moments.dv[i] += buff * m_angles.q_pp[k];
         }
     }
 
-    //    for (int i = 5; i < 6; i++)
-    //        for (int j = i; j < 6; j++)
-    //        {
-    //            std::cout << "U " << i << j << std::endl;
-    //            U[i*6 + j].MatrixCout("U");
-    //        }
-
-    scalar hikm_buff(0);
     Matrix4x4 u_buff;
     for (counter i = 0; i < 6; i++)
     {
@@ -409,28 +405,28 @@ void Robo::SolveForwardDynamic()
         {
             for (counter m = 0; m < 6; m++)
             {
-                hikm_buff = 0;
-                for (counter j = i; j < 6; j++)
+                if (m_angles.q_p[k] == 0 || m_angles.q_p[m] == 0)
+                    continue;
+                buff = 0;
+                for (counter j = RoboMath::max(i, RoboMath::max(k, m)); j < 6; j++)
                 {
                     u_buff.MakeIdentity();
-                    for (counter ctr = 0; ctr < j; ctr++)
+                    for (counter ctr = 0; ctr <= j; ctr++)
                     {
-                        if (ctr == k && ctr == m)
-                            u_buff = u_buff * cq_sq * T[ctr];
-                        else if (ctr == k || ctr == m)
-                            u_buff = u_buff * cq * T[ctr];
-                        else
-                            u_buff = u_buff * T[ctr];
+                        u_buff = u_buff * T[ctr];
+                        if (ctr == k)
+                            u_buff = u_buff * cq;
+                        if (ctr == m)
+                            u_buff = u_buff * cq;
                     }
-                    hikm_buff += Trace(u_buff * m_ji[i].MultiplyTranspose(U[i*6 + j])) * m_angles.q_p[i] * m_angles.q_p[i];
+                    buff += Trace(u_buff * m_ji[j].MultiplyTranspose(U[i*6 + j]));
                 }
-                m_moments.hikm[i] += hikm_buff;
+                m_moments.hikm[i] += buff * m_angles.q_p[k] * m_angles.q_p[m];
             }
         }
     }
     for ( int i = 0; i < 6; i++)
         m_moments.tao[i] = m_moments.p[i] + m_moments.dv[i] + m_moments.hikm[i];
-    
 }
 
 void Robo::SolveInverseDynamic()
@@ -507,6 +503,7 @@ void Robo::CalcPolynomLine(const rm::Angles *angle_start, const rm::Angles *angl
 
 void Robo::WriteSettingsToFile()
 {
+    delete manip_settings;
     manip_settings = new QSettings("ManipulatorSettigns.ini", QSettings::IniFormat);
     manip_settings->setValue("denavita-hartenberg", 1);
     manip_settings->beginWriteArray("denavita-hartenberg");
@@ -574,6 +571,7 @@ void Robo::LoadSettingsFromFile()
     if (!settings_file.is_open())
         throw runtime_error("can't find settings file");
     settings_file.close();
+    delete manip_settings;
     manip_settings = new QSettings("ManipulatorSettigns.ini", QSettings::IniFormat);
     if (!manip_settings->contains("denavita-hartenberg"))
         throw runtime_error("no denavita-hartenberg data in settings file");
@@ -599,7 +597,7 @@ void Robo::LoadSettingsFromFile()
     for (int i = 0; i < size; i++)
     {
         manip_settings->setArrayIndex(i);
-        m_mass[i] = manip_settings->value("mass").toDouble();
+        m_mass[i] = manip_settings->value(QString::number(i)).toDouble();
     }
     manip_settings->endArray();
     manip_settings->beginReadArray("centers of mass");
@@ -639,6 +637,7 @@ void Robo::UpdateTMatrix()
     for (int i = 0; i < number_of_elements; i++)
     {
         A(i, 3) += delta_thetas->at(i);
+        delta_thetas->at(i) = 0; //each IK step is applied exactly once
     }
 //    delta_thetas->VectorCout("delta_theta");
 //    A.MatrixCout("A matrix");
@@ -659,6 +658,8 @@ void Robo::UpdateTMatrix()
     T0[3] = T[0] * T[1] * T[2] * T[3];
     T0[4] = T[0] * T[1] * T[2] * T[3] * T[4];
     T0[5] = T[0] * T[1] * T[2] * T[3] * T[4] * T[5];
+    effector.SetPosition(Vector3(T0[5](0,3), T0[5](1,3), T0[5](2,3)));
+    effector.SetRotation(T0[5].ConvertToQuaternion());
 }
 
 bool Robo::CheckTrajectoryForLinear(const Polynom pol, Vector3 l1, Vector3 l2, const scalar &t, const scalar &delta_t, const scalar &delta_r)
@@ -897,13 +898,15 @@ void Robo::CalcUMatrix()
 
 void Robo::AllocateForNewRobot()
 {
+    manip_settings = nullptr;
     jacobian     = new Matrix(EFFECTOR_DEGREE_OF_FREEDOM, number_of_elements);
     state_matrix = new Matrix(number_of_elements, 4);
-    delta_thetas = new Vector(number_of_elements);
-    theta_vector = new Vector(number_of_elements);
+    delta_thetas = new Vector(number_of_elements, 0);
+    theta_vector = new Vector(number_of_elements, 0);
+    jacobian->MakeZero();
+    state_matrix->MakeZero();
     max_joint_moments.resize(6);
-    if (number_of_elements > 0)
-        robot = new Elem [number_of_elements];
+    robot = number_of_elements > 0 ? new Elem [number_of_elements] : nullptr;
 }
 
 void Elem::SetPosition(const Vector3 &V)

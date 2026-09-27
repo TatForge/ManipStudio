@@ -131,9 +131,9 @@ TEST(Vector3, OperatorPlusEquals)
     EXPECT_DOUBLE_EQ(a.z, 4);
 }
 
-// Documents a real bug: operator-= is copy-pasted from operator+= and adds
+// Regression test for a fixed bug: operator-= is copy-pasted from operator+= and adds
 // instead of subtracting (my_math.cpp, Vector3::operator-=). This test
-// expects correct subtraction semantics and is expected to FAIL until fixed.
+// expects correct subtraction semantics.
 TEST(Vector3, OperatorMinusEqualsSubtracts)
 {
     Vector3 a(5, 5, 5);

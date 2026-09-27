@@ -79,7 +79,7 @@ TEST(SharedMem, LoadDataSizeRejectsOversizedHeader)
     EXPECT_THROW(writer->LoadDataSize(), QString);
 }
 
-// Documents a real bug: SendData() memcpy()s `size` bytes into the segment
+// Regression test for a fixed bug: SendData() memcpy()s `size` bytes into the segment
 // without checking it against the segment size, so an oversized write
 // silently runs past the end of the shared memory block.
 TEST(SharedMem, SendDataRejectsMoreBytesThanTheSegmentHolds)
@@ -89,7 +89,7 @@ TEST(SharedMem, SendDataRejectsMoreBytesThanTheSegmentHolds)
     EXPECT_FALSE(shm->SendData(data, sizeof(data)));
 }
 
-// Documents a (minor) bug: QSharedMemory::create() already attaches, so the
+// Regression test for a fixed (minor) bug: QSharedMemory::create() already attaches, so the
 // constructor's unconditional attach() afterwards always fails and prints
 // "can't attach" for every successfully created segment.
 TEST(SharedMem, ConstructionReportsNoError)

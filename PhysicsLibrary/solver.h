@@ -70,7 +70,7 @@ public:
     void VectorsResize(const counter &ctr);
     void CheckCollision(const uint *elem_number = nullptr);
     void CalcCollisionsDynamics(const scalar &array_size, const scalar &dt_millisec);
-    inline scalar FindAngle(const Vector3 &O, const Vector3 &A0, const Vector3 P);
+    scalar FindAngle(const Vector3 &O, const Vector3 &A0, const Vector3 P);
     Angles GetExtarnalPosition();
     Angles GetInternalPosition();
     Angles GetZeroPosition();

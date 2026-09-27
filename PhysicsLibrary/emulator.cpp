@@ -4,6 +4,7 @@
 
 Emulator::Emulator(const Robo &manip)
 {
+    iter = 0;
 //#if !BENCHMARK
 #if WITH_WINDOW
     w.show();
@@ -38,8 +39,8 @@ Emulator::Emulator(const Robo &manip)
         meshes[8].ReadStl("STLmodels/cube0.5m.stl");
         meshes[8].MoveMesh(Quaternion(0, 0, 0, 1), Vector3(SMESH, SMESH, 0));
         meshes_buff = meshes;
-    }  catch (std::string &exc) {
-        cout << exc << endl;
+    }  catch (std::exception &exc) {
+        cout << exc.what() << endl;
     }
 #endif
 }
@@ -56,9 +57,9 @@ void Emulator::MoveManipLinear(const Angles angles[], size_t size, scalar dt_mse
     t_m = 0;
     bool is_last = false;
 
-    for (size_t i = 0; i < size; i++)
+    for (size_t i = 0; i + 1 < size; i++)
     {
-        if (angles[i+2].IsNull())
+        if (i + 2 >= size || angles[i+2].IsNull())
             is_last = true;
         OneIterMoveLinear(angles[i], angles[i + 1], dt_msec, is_last, accel[i]);
         if (is_last)
@@ -162,7 +163,8 @@ void Emulator::OneIterMove(bool is_last = false)
 
 void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, const int &dt_msec, bool is_last, Vector3 accel)
 {
-    for(int i = 0; i < dt_msec/m_delta_t_millisec; i++)
+    const int sub_steps = dt_msec / m_delta_t_millisec;
+    for(int i = 0; i < sub_steps + (is_last ? 1 : 0); i++)
     {
         this_thread::sleep_for(std::chrono::microseconds(1000));
         for (int j = 0; j < JOINTS_COUNT; j++)
@@ -215,7 +217,7 @@ void Emulator::OneIterMoveLinear(const Angles &angle1, const Angles &angle2, con
 
 void Emulator::SendDataToShared(SharedMemKey skey, float *data_ptr, size_t size)
 {
-    data_to_shared_mutex.lock();
+    std::lock_guard<std::mutex> lock(data_to_shared_mutex);
     switch (skey)
     {
     case 1:
@@ -230,7 +232,8 @@ void Emulator::SendDataToShared(SharedMemKey skey, float *data_ptr, size_t size)
         if (!shared_meshes->SendData(data_ptr, size))
             throw (QString("can't send data to shared memory(shared_meshes)"));
         break;
-    }/*
+    }
+    /*
     if (skey == 1)
     {
         if (!shared_manip->SendData(data_ptr, size))
@@ -241,7 +244,6 @@ void Emulator::SendDataToShared(SharedMemKey skey, float *data_ptr, size_t size)
         if (!shared_points->SendData(data_ptr, size))
             throw (QString("can't send data to shared memory(shared_points)"));
     }*/
-    data_to_shared_mutex.unlock();
 }
 
 void Emulator::FillManipPositionData()
@@ -254,6 +256,13 @@ void Emulator::FillManipPositionData()
         manip_to_visual[i * 3 + 0] = T_b(0, 3);
         manip_to_visual[i * 3 + 1] = T_b(1, 3);
         manip_to_visual[i * 3 + 2] = T_b(2, 3);
+    }
+    const int capacity = (sizeof(points_to_visual) / sizeof(float)) / 3 * 3;
+    if (iter + 3 > capacity)
+    {
+        //trace buffer full: drop the oldest point
+        memmove(points_to_visual, points_to_visual + 3, sizeof(float) * (capacity - 3));
+        iter = capacity - 3;
     }
     if (iter == 0)
     {

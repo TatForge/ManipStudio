@@ -172,10 +172,10 @@ TEST(Matrix, OperatorStarComputesProduct)
     EXPECT_TRUE(result == Matrix({{4, 4}, {10, 8}}));
 }
 
-// Documents a real bug: the single-argument Multiply(matrix2, ret_matrix)
+// Regression test for a fixed bug: the single-argument Multiply(matrix2, ret_matrix)
 // ignores *this entirely and computes matrix2 * matrix2 instead of
 // (*this) * matrix2 (my_math.cpp uses matrix2.at(...) where this->at(...)
-// was intended). Expected to FAIL until fixed.
+// was intended).
 TEST(Matrix, MultiplySingleArgComputesThisTimesArg)
 {
     Matrix a{{1, 2}, {3, 4}};
@@ -210,10 +210,10 @@ TEST(Matrix, OperatorStarScalar)
     EXPECT_TRUE(result == Matrix({{2, 4}, {6, 8}}));
 }
 
-// Documents a real bug: operator+ writes the right-hand operand's data into
+// Regression test for a fixed bug: operator+ writes the right-hand operand's data into
 // *this's own storage (instead of into the freshly-constructed result), so
 // it both mutates the left operand and returns an unpopulated result.
-// Expected to FAIL until fixed.
+//
 TEST(Matrix, OperatorPlusAddsCorrectly)
 {
     Matrix a{{1, 2}, {3, 4}};
@@ -309,7 +309,7 @@ TEST(Matrix, SolveGaussPivotsOnFirstColumn)
     EXPECT_NEAR(x.at(2), 3, 1e-9);
 }
 
-// Documents a real bug: SolveGauss only searches for a pivot in column 0 of
+// Regression test for a fixed bug: SolveGauss only searches for a pivot in column 0 of
 // the *original* rows (`m_data_ptr + m_cols * j`) instead of the current
 // column below the current diagonal element. After the first elimination
 // step that column is all zeros, so no row swap ever happens again and a
@@ -380,7 +380,7 @@ TEST(Matrix, SizeReturnsBytes)
     EXPECT_EQ(m.Size(), sizeof(scalar) * 15);
 }
 
-// Documents a real bug: the bounds asserts in Matrix::operator()/at use
+// Regression test for a fixed bug: the bounds asserts in Matrix::operator()/at use
 // `col <= m_cols` / `row <= m_rows`, so an index equal to the dimension (one
 // past the end) is accepted silently instead of tripping the assert.
 TEST(MatrixDeathTest, AccessOnePastLastColumnAsserts)

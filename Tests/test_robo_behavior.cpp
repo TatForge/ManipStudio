@@ -314,7 +314,7 @@ TEST_F(RoboBehavior, CalcPolynomLineMatchesBothBoundaryStates)
     }
 }
 
-// Documents a real bug: SolveForwardDynamic accumulates into m_moments.p /
+// Regression test for a fixed bug: SolveForwardDynamic accumulates into m_moments.p /
 // dv / hikm with `+=` but never resets them (and `buff` in the D-term loop is
 // never reset between k iterations), so calling it twice for the same state
 // doubles the result.
@@ -398,7 +398,7 @@ TEST_F(RoboSettingsRoundTrip, CentersOfMassAndInertiaSurvive)
     }
 }
 
-// Documents a real bug: WriteSettingsToFile() stores each link mass under
+// Regression test for a fixed bug: WriteSettingsToFile() stores each link mass under
 // the key "<i>" inside the "mass array", but LoadSettingsFromFile() reads the
 // key "mass", which never exists -- every mass loads as 0 (which is also why
 // ManipulatorSettigns.ini itself contains only zero masses).
@@ -426,15 +426,14 @@ TEST(RoboSettings, LoadManipThrowsWhenSectionMissing)
     // is safe to destroy.
 }
 
-// Documents a real bug: when the settings file is missing, LoadManip() throws
-// (correctly) *before* manip_settings is assigned, and ~Robo() then deletes
-// that uninitialised pointer. The robot is intentionally leaked here to keep
-// the test process alive; see the note at the top of test_robo.cpp.
+// Regression test for a fixed bug: when the settings file is missing,
+// LoadManip() throws *before* manip_settings is assigned, and ~Robo() used to
+// delete that uninitialised pointer afterwards.
 TEST(RoboSettings, LoadManipThrowsWhenFileMissing)
 {
     QTemporaryDir dir;
     ASSERT_TRUE(dir.isValid());
     ScopedChdir guard(dir.path().toStdString());
-    Robo *r = new Robo(6);
-    EXPECT_THROW(r->LoadManip(), std::runtime_error);
+    Robo r(6);
+    EXPECT_THROW(r.LoadManip(), std::runtime_error);
 }

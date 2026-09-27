@@ -68,8 +68,8 @@ Matrix::~Matrix()
 
 scalar &Matrix::at(const int &row, const int &col) const
 {
-    assert(col >= 0 && col <= m_cols);
-    assert(row >= 0 && row <= m_rows);
+    assert(col >= 0 && col < m_cols);
+    assert(row >= 0 && row < m_rows);
     return *(m_data_ptr + index(row, col));
 }
 
@@ -94,14 +94,17 @@ Matrix Matrix::Multuply(const Matrix &matrix1, const Matrix &matrix2) const
 
 void Matrix::Multiply(const Matrix &matrix2, Matrix *ret_matrix) const
 {
+    //ret_matrix = this * matrix2
+    assert(m_cols == matrix2.m_rows);
+    assert(ret_matrix->m_rows == m_rows && ret_matrix->m_cols == matrix2.m_cols);
     scalar buff = 0;
-    for (counter i = 0; i < matrix2.m_rows; i++)
+    for (counter i = 0; i < m_rows; i++)
     {
         for (counter j = 0 ; j < matrix2.m_cols; j++)
         {
-            for (counter k = 0; k < matrix2.m_cols; k++)
+            for (counter k = 0; k < m_cols; k++)
             {
-                buff += matrix2.at(i, k) * matrix2.at(k, j);
+                buff += at(i, k) * matrix2.at(k, j);
             }
             ret_matrix->at(i, j) = buff;
             buff = 0;
@@ -231,69 +234,36 @@ void Matrix::SetSubColumn(const Vector3 &v, const int ColNumber, const int RowNu
 
 void Matrix::SolveGauss()
 {
-    int num_iter = min(m_cols, m_rows); // почему берется min, а не rows, ведь проверка по столбцам??
-    // num_iter = rows;
-    //First of all find maximum element in first col
-    scalar *main_elem_ptr = m_data_ptr;
-    scalar *max_row_ptr = nullptr;
-    scalar *to = nullptr;
-    scalar *from = nullptr;
-    double alpha = 0.0;
-    int row_length = m_cols;
-
-    int diagonal_step = m_cols + 1;
-    for (; num_iter > 1; num_iter--)
+    //Forward elimination with partial pivoting on the augmented matrix [A | b]:
+    //afterwards A is upper triangular and GetTheRoots() does back substitution.
+    const int n = min(m_rows, m_cols);
+    for (int c = 0; c < n - 1; c++)
     {
-
-        scalar *row_for_swap(0);
-        scalar max_abs = fabs(*main_elem_ptr);
-        max_row_ptr = main_elem_ptr;
-        //Find row with maximum (abs) element value
-        for (counter j = 1; j < num_iter; j++)
+        //row with the largest |element| in column c, at or below the diagonal
+        int pivot = c;
+        scalar max_abs = fabs(at(c, c));
+        for (int r = c + 1; r < m_rows; r++)
         {
-            if (*(m_data_ptr + m_cols * j) > max_abs)
+            if (fabs(at(r, c)) > max_abs)
             {
-                max_abs = *(m_data_ptr + m_cols * j);
-                max_row_ptr = m_data_ptr + m_cols * j;
-            }
-            else if ( - *(m_data_ptr + m_cols * j) > max_abs)
-            {
-                max_abs = -*(m_data_ptr + m_cols * j);
-                max_row_ptr = m_data_ptr + m_cols * j;
+                max_abs = fabs(at(r, c));
+                pivot = r;
             }
         }
-        //swap elements
-        if (max_row_ptr != main_elem_ptr)
+        if (pivot != c)
         {
-            scalar *temp_ptr = main_elem_ptr;
-            for (counter i = 0; i < row_length; i++)
-            {
-                scalar temp = *temp_ptr;
-                *temp_ptr = *max_row_ptr;
-                *max_row_ptr  = temp;
-                temp_ptr ++;
-                max_row_ptr  ++;
-            }
+            for (int k = 0; k < m_cols; k++)
+                std::swap(at(c, k), at(pivot, k));
         }
-//        this->MatrixCout();
-        //subtrack
-        row_for_swap = main_elem_ptr;
-        for (counter i = 0; i < (num_iter - 1); i++)
+        if (at(c, c) == 0)
+            continue; //singular column, nothing to eliminate
+        for (int r = c + 1; r < m_rows; r++)
         {
-            row_for_swap += m_cols;
-            to = row_for_swap;
-            from = main_elem_ptr;
-            alpha = (*to)/(*from);
-            *to = 0.0;
-            for(counter j = 0; j < (row_length - 1); j++)
-            {
-                ++to;
-                ++from;
-                *to -= (*from) * alpha;
-            }
+            scalar alpha = at(r, c) / at(c, c);
+            at(r, c) = 0.0;
+            for (int k = c + 1; k < m_cols; k++)
+                at(r, k) -= at(c, k) * alpha;
         }
-        main_elem_ptr += diagonal_step;
-        --row_length;
     }
 }
 
@@ -456,7 +426,7 @@ Matrix Matrix::operator+(const Matrix &matrix) const
     Matrix result(m_rows, m_cols);
     for (int i = 0; i < m_rows * m_cols; i++)
     {
-        *(m_data_ptr + i) = *(matrix.m_data_ptr + i);
+        *(result.m_data_ptr + i) = *(m_data_ptr + i) + *(matrix.m_data_ptr + i);
     }
     return result;
 }
@@ -477,8 +447,8 @@ bool Matrix::operator==(const Matrix &m) const
 
 scalar &Matrix::operator()(const int &row, const int &col)
 {
-    assert(col >= 0 && col <= this->m_cols);
-    assert(row >= 0 && row <= this->m_rows);
+    assert(col >= 0 && col < this->m_cols);
+    assert(row >= 0 && row < this->m_rows);
     return *(m_data_ptr + index(row, col));
 }
 
@@ -649,8 +619,11 @@ Vector3 Vector3::operator/(const scalar &value)
 scalar Vector3::Angle(const Vector3 &V)
 {
     scalar var = Dot(V) / (Length() * V.Length());
-    if ((abs(1 - abs(var)) < 10e-8) && (abs(var) > 1))
-        var = std::ceil(var);
+    //rounding can push |cos| slightly above 1
+    if (var > 1)
+        var = 1;
+    else if (var < -1)
+        var = -1;
     return acos(var);
 }
 Vector &Vector::operator=(const double &value)
@@ -697,9 +670,8 @@ Vector Vector::operator-(const Vector &v)
 {
     assert(this->m_length == v.m_length && "The operator '-' has different vector lengths");
     Vector result(this->m_length);
-    *(result.m_data + 0) = (*(v.m_data + 0) - *(this->m_data + 0));
-    *(result.m_data + 1) = (*(v.m_data + 1) - *(this->m_data + 1));
-    *(result.m_data + 2) = (*(v.m_data + 2) - *(this->m_data + 2));
+    for (int i = 0; i < m_length; i++)
+        *(result.m_data + i) = *(m_data + i) - *(v.m_data + i);
     return result;
 
 }
@@ -801,9 +773,9 @@ Vector3 &Vector3::operator +=(const Vector3 &V)
 
 Vector3 &Vector3::operator-=(const Vector3 &V)
 {
-    x += V.x;
-    y += V.y;
-    z += V.z;
+    x -= V.x;
+    y -= V.y;
+    z -= V.z;
     return *this;
 }
 
@@ -893,10 +865,14 @@ void Quaternion::EulerToQuat(const Vector3 &angles)
 
 Vector3 Quaternion::GetEulerAngles() const
 {
-    scalar roll  = atan2((2 * (w * x + y * z)), (1 - 2 * (x * x + y * y)));
     scalar sinp = 2 * (w * y - z * x);
-    scalar pitch;
-    abs(sinp) >= 1 ? pitch = std::copysign(M_PI / 2, sinp) : pitch = asin(sinp);
+    if (abs(sinp) >= 1 - 1e-10)
+    {
+        //gimbal lock (pitch = +-90): only roll -+ yaw is defined, report it as roll with yaw = 0
+        return Vector3(2 * atan2(x, w), std::copysign(M_PI / 2, sinp), 0);
+    }
+    scalar roll  = atan2((2 * (w * x + y * z)), (1 - 2 * (x * x + y * y)));
+    scalar pitch = asin(sinp);
     scalar yaw   = atan2((2 * (w * z + x * y)), (1 - 2 * (y * y + z * z)));
     return Vector3(roll, pitch, yaw);
 }
@@ -1166,41 +1142,32 @@ int Matrix4x4::MaxElem() const noexcept
 
 Quaternion Matrix4x4::ConvertToQuaternion() const noexcept
 {
+    //Shepperd's method: branch on the largest of (trace, m00, m11, m22) so the
+    //square root argument is always >= 1 (stable also for 180 degree turns)
+    const scalar m00 = a[0], m01 = a[1], m02 = a[2];
+    const scalar m10 = a[4], m11 = a[5], m12 = a[6];
+    const scalar m20 = a[8], m21 = a[9], m22 = a[10];
+    const scalar trace = m00 + m11 + m22;
     RoboMath::Quaternion res;
-    scalar trace = a[0] + a[5] + a[10] + 1;
-    scalar s(0);
     if (trace > 0)
     {
-        s = 0.5 / sqrt(trace);
-        res = Quaternion((a[9] - a[6]) * s,
-                (a[2] - a[8]) * s,
-                (a[4] - a[1]) * s,
-                0.25 / s);
-    } else {
-        switch (MaxElem()){
-        case 0:
-            s = sqrt(1.0 + a[0] - a[5] - a[10]) * 2;
-            res = Quaternion((0.5 / s),
-                             (a[1] + a[4]) / s,
-                    (a[2] + a[8]) / s,
-                    (a[6] + a[9]) / s);
-            break;
-        case 1:
-            s = sqrt(1.0 + a[5] - a[0] - a[10]) * 2;
-            res = Quaternion((a[1] + a[4]) / s,
-                             (0.5 / s),
-                             (a[6] + a[9]) / s,
-                             (a[2] + a[8]) / s);
-            break;
-        case 2:
-            s = sqrt(1.0 + a[10] - a[0] - a[5]) * 2;
-            res = Quaternion((a[2] + a[8]) / s,
-                             (a[6] + a[9]) / s,
-                             (0.5 / s),
-                             (a[1] + a[4]) / s);
-            break;
-        }
-
+        scalar s = sqrt(trace + 1.0) * 2; // s = 4w
+        res = Quaternion((m21 - m12) / s, (m02 - m20) / s, (m10 - m01) / s, 0.25 * s);
+    }
+    else if (m00 > m11 && m00 > m22)
+    {
+        scalar s = sqrt(1.0 + m00 - m11 - m22) * 2; // s = 4x
+        res = Quaternion(0.25 * s, (m01 + m10) / s, (m02 + m20) / s, (m21 - m12) / s);
+    }
+    else if (m11 > m22)
+    {
+        scalar s = sqrt(1.0 + m11 - m00 - m22) * 2; // s = 4y
+        res = Quaternion((m01 + m10) / s, 0.25 * s, (m12 + m21) / s, (m02 - m20) / s);
+    }
+    else
+    {
+        scalar s = sqrt(1.0 + m22 - m00 - m11) * 2; // s = 4z
+        res = Quaternion((m02 + m20) / s, (m12 + m21) / s, 0.25 * s, (m10 - m01) / s);
     }
     res.Normalize();
     return res;

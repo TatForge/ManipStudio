@@ -73,7 +73,7 @@ TEST_F(SolverCollisions, LoadsAllNineMeshes)
         EXPECT_GE(solver->m_meshes[i].Size(), 4) << "mesh " << i;
 }
 
-// Documents a real bug: Solver loads "STLmodels/link3.stl" for mesh 2 (the
+// Regression test for a fixed bug: Solver loads "STLmodels/link3.stl" for mesh 2 (the
 // upper arm, between joint 2 and joint 3). The Emulator -- and the file list
 // in STLmodels -- use link2.stl there, so the collision model checks the
 // upper arm with the forearm's geometry.
@@ -196,7 +196,7 @@ TEST_F(SolverCollisions, MoveLThroughObstacleIsRejected)
     }
 }
 
-// Documents a real bug: when mesh i hits the obstacle (mesh 8), the
+// Regression test for a fixed bug: when mesh i hits the obstacle (mesh 8), the
 // short-circuited `||` skips the lambda that assigns j, so the message
 // reports whatever j holds: 8 by coincidence if an earlier i ran the lambda
 // to completion, an uninitialised value if the very first mesh (the base,
