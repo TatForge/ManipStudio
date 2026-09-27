@@ -402,10 +402,85 @@ TEST_F(RoboSettingsRoundTrip, CentersOfMassAndInertiaSurvive)
 // the key "<i>" inside the "mass array", but LoadSettingsFromFile() reads the
 // key "mass", which never exists -- every mass loads as 0 (which is also why
 // ManipulatorSettigns.ini itself contains only zero masses).
+TEST_F(RoboSettingsRoundTrip, JointLimitsAndFloorSurvive)
+{
+    // SetUp already wrote/loaded once; write custom values and load again.
+    for (int i = 0; i < JOINTS_COUNT; i++)
+        source->SetJointLimit(i, ToRad(-100.0 - i), ToRad(50.0 + 2 * i));
+    source->SetFloorHeight(-0.12);
+    source->WriteSettingsToFile();
+    Robo reloaded(6);
+    ASSERT_TRUE(reloaded.LoadManip());
+    auto limits = reloaded.GetJointLimits();
+    ASSERT_EQ(limits.size(), 6u);
+    for (int i = 0; i < JOINTS_COUNT; i++)
+    {
+        EXPECT_NEAR(limits[i].first, ToRad(-100.0 - i), 1e-9) << "joint " << i;
+        EXPECT_NEAR(limits[i].second, ToRad(50.0 + 2 * i), 1e-9) << "joint " << i;
+    }
+    EXPECT_NEAR(reloaded.GetFloorHeight(), -0.12, 1e-12);
+}
+
 TEST_F(RoboSettingsRoundTrip, MassesSurvive)
 {
     for (int i = 0; i < JOINTS_COUNT; i++)
         EXPECT_NEAR(Trajectory::Mass(*loaded, i), Trajectory::Mass(*source, i), 1e-12) << "link " << i;
+}
+
+// Joint limits / floor height are optional in the settings file; without
+// them the documented defaults apply (degrees):
+// base +-170, shoulder -150..+30, elbow +-175, wrist +-180, +-135, flange +-360,
+// floor at the mounting plane z = 0.
+TEST(RoboSettings, DefaultJointLimitsAndFloor)
+{
+    Robo r(6);
+    auto limits = r.GetJointLimits();
+    ASSERT_EQ(limits.size(), 6u);
+    const double expected[6][2] = {{-170, 170}, {-150, 30}, {-175, 175}, {-180, 180}, {-135, 135}, {-360, 360}};
+    for (int i = 0; i < JOINTS_COUNT; i++)
+    {
+        EXPECT_NEAR(limits[i].first, ToRad(expected[i][0]), 1e-12) << "joint " << i;
+        EXPECT_NEAR(limits[i].second, ToRad(expected[i][1]), 1e-12) << "joint " << i;
+    }
+    EXPECT_DOUBLE_EQ(r.GetFloorHeight(), 0.0);
+}
+
+TEST(RoboSettings, LoadsJointLimitsAndFloorFromIni)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    ScopedChdir guard(dir.path().toStdString());
+    ASSERT_TRUE(QFile::copy(QString(TEST_PROJECT_DIR) + "ManipulatorSettigns.ini", "ManipulatorSettigns.ini"));
+    QFile::setPermissions("ManipulatorSettigns.ini", QFile::ReadOwner | QFile::WriteOwner);
+    {
+        QSettings s("ManipulatorSettigns.ini", QSettings::IniFormat);
+        s.beginGroup("joint limits");
+        s.setValue("1/min_deg", -90.0);
+        s.setValue("1/max_deg", 10.0);
+        s.endGroup();
+        s.setValue("workspace/floor_z", 0.05);
+        s.sync();
+    }
+    Robo r(6);
+    ASSERT_TRUE(r.LoadManip());
+    auto limits = r.GetJointLimits();
+    EXPECT_NEAR(limits[1].first, ToRad(-90.0), 1e-12);
+    EXPECT_NEAR(limits[1].second, ToRad(10.0), 1e-12);
+    EXPECT_NEAR(limits[0].second, ToRad(170.0), 1e-12); // not given -> default
+    EXPECT_NEAR(r.GetFloorHeight(), 0.05, 1e-12);
+}
+
+TEST(RoboSettings, ProjectIniDeclaresJointLimits)
+{
+    QSettings s(QString(TEST_PROJECT_DIR) + "ManipulatorSettigns.ini", QSettings::IniFormat);
+    s.beginGroup("joint limits");
+    for (int i = 0; i < JOINTS_COUNT; i++)
+    {
+        EXPECT_TRUE(s.contains(QString::number(i) + "/min_deg")) << "joint " << i;
+        EXPECT_TRUE(s.contains(QString::number(i) + "/max_deg")) << "joint " << i;
+    }
+    s.endGroup();
+    EXPECT_TRUE(s.contains("workspace/floor_z"));
 }
 
 TEST(RoboSettings, LoadManipThrowsWhenSectionMissing)

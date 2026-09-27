@@ -86,6 +86,13 @@ public:
     void RoboCout();
     rm::StateVector SolveForwardKinematic(const rm::Angles &a, rm::Matrix * const state_matrix);
     vector<scalar> GetMaxJointMoments();
+    //joint limits (min, max) in radians; loaded from the "joint limits" group
+    //of the settings file (degrees there), defaults otherwise
+    vector<pair<scalar, scalar>> GetJointLimits() const;
+    void SetJointLimit(int joint, scalar min_rad, scalar max_rad);
+    //height of the table / floor plane the robot is mounted on ("workspace/floor_z")
+    scalar GetFloorHeight() const;
+    void SetFloorHeight(scalar z);
     scalar GetTheta(const int &i);
     rm::Angles *GetAngles();
     Moments *GetMoments();
@@ -111,6 +118,9 @@ private:
     Moments m_moments;
     Elem *robot;
     vector<scalar> max_joint_moments;
+    vector<pair<scalar, scalar>> m_joint_limits;
+    scalar m_floor_z;
+    void SetDefaultLimits();
     array<rm::Matrix4x4, JOINTS_COUNT> m_ji;
     array<rm::Vector, JOINTS_COUNT> m_cm;
     array<rm::Tensor, JOINTS_COUNT> m_i;

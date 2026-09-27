@@ -215,6 +215,118 @@ TEST_F(SolverTest, InverseKinematicNearSingularitiesIsWellBehaved)
     }
 }
 
+// ---------------------------------------------------------------------------
+// Joint limits (replace the old `if (q[1] > 0.5) q[1] = -q[1]` rule)
+// ---------------------------------------------------------------------------
+
+TEST_F(SolverTest, UsesRobotJointLimits)
+{
+    auto expected = robot->GetJointLimits();
+    auto limits = solver->GetJointLimits();
+    ASSERT_EQ(limits.size(), expected.size());
+    for (size_t i = 0; i < limits.size(); i++)
+    {
+        EXPECT_DOUBLE_EQ(limits[i].first, expected[i].first);
+        EXPECT_DOUBLE_EQ(limits[i].second, expected[i].second);
+    }
+}
+
+TEST_F(SolverTest, WithinJointLimitsChecksEveryJoint)
+{
+    EXPECT_TRUE(solver->WithinJointLimits(WorkPose()));
+    auto limits = solver->GetJointLimits();
+    for (int j = 0; j < JOINTS_COUNT; j++)
+    {
+        Angles a = WorkPose();
+        a.q[j] = limits[j].second + 0.01;
+        EXPECT_FALSE(solver->WithinJointLimits(a)) << "joint " << j;
+        a.q[j] = limits[j].first - 0.01;
+        EXPECT_FALSE(solver->WithinJointLimits(a)) << "joint " << j;
+    }
+}
+
+// IK results always respect the joint limits.
+TEST_F(SolverTest, InverseKinematicResultIsWithinJointLimits)
+{
+    for (const auto &goal : IkGoals())
+    {
+        Angles start = goal;
+        for (int j = 0; j < JOINTS_COUNT; j++)
+            start.q[j] += 0.1 * ((j % 2) ? 1 : -1);
+        Angles res;
+        ASSERT_TRUE(RunsWithoutThrowing([&] { solver->SolveInverseKinematic(ReferencePose(goal), start, res); }));
+        EXPECT_TRUE(solver->WithinJointLimits(res));
+    }
+}
+
+// Close to the shoulder limit (+30 deg) the old rule flipped q1 to -q1 as
+// soon as an iteration overshot 0.5 rad (a ~1 rad jump to the other side).
+// Now q1 is simply held inside the limit and the solution stays on this side.
+// (This pose needs ~70 DLS iterations either way -- that is the damped
+// solver's convergence rate here, not the limit handling.)
+TEST_F(SolverTest, InverseKinematicNearShoulderLimitConvergesWithoutFlipping)
+{
+    Angles goal = MakeAngles({0.2, 0.5, 0.9, 0.2, -0.4, 0.1});
+    Angles start = goal;
+    for (int j = 0; j < JOINTS_COUNT; j++)
+        start.q[j] -= 0.05;
+    IKData data;
+    Angles res;
+    ASSERT_TRUE(RunsWithoutThrowing([&] { solver->SolveInverseKinematic(ReferencePose(goal), start, res, &data); }));
+    EXPECT_NEAR(res.q[1], 0.5, 1e-4);
+    EXPECT_VEC3_NEAR(ReferenceTcp(res), ReferenceTcp(goal), 1e-6);
+    EXPECT_LE(data.ctr, MAX_KINEMATIC_ITERS);
+}
+
+// A pose that needs the shoulder beyond its limit is unreachable (or reached
+// by another configuration that respects the limits) -- never by violating
+// the limit.
+TEST_F(SolverTest, InverseKinematicNeverViolatesShoulderLimit)
+{
+    Angles goal = MakeAngles({0.2, 0.7, 0.9, 0.2, -0.4, 0.1}); // q1 = 40 deg > 30 deg
+    Angles start = goal;
+    start.q[1] = 0.45;
+    Angles res;
+    try
+    {
+        ScopedSilence quiet;
+        solver->SolveInverseKinematic(ReferencePose(goal), start, res);
+    }
+    catch (const std::runtime_error &)
+    {
+        SUCCEED();
+        return;
+    }
+    EXPECT_TRUE(solver->WithinJointLimits(res));
+    EXPECT_VEC3_NEAR(ReferenceTcp(res), ReferenceTcp(goal), 1e-5);
+}
+
+TEST_F(SolverTest, MoveJRejectsTargetOutsideJointLimits)
+{
+    Angles to = WorkPose();
+    to.q[1] = ToRad(45); // shoulder limit is +30 deg
+    std::vector<float> flat;
+    try
+    {
+        ScopedSilence quiet;
+        solver->MoveJ(WorkPose(), to, 1.0f, 2.0f, 10.0f, flat);
+        ADD_FAILURE() << "MoveJ beyond the joint limit was planned";
+    }
+    catch (const std::runtime_error &e)
+    {
+        EXPECT_NE(std::string(e.what()).find("limit"), std::string::npos) << e.what();
+    }
+}
+
+TEST_F(SolverTest, MoveJRejectsStartOutsideJointLimits)
+{
+    Angles from = WorkPose();
+    from.q[4] = ToRad(150); // wrist limit is +-135 deg
+    std::vector<float> flat;
+    ScopedSilence quiet;
+    EXPECT_THROW(solver->MoveJ(from, WorkPose(), 1.0f, 2.0f, 10.0f, flat), std::runtime_error);
+}
+
 TEST_F(SolverTest, InverseKinematicThrowsForUnreachableTarget)
 {
     StateVector far_away(2.0, 2.0, 2.0, 0.0, 0.0, 0.0);

@@ -107,6 +107,53 @@ TEST_F(SolverCollisions, FoldedElbowIsASelfCollision)
     EXPECT_NE(msg.find("COLLISION"), std::string::npos) << msg;
 }
 
+// ---------------------------------------------------------------------------
+// Floor / table plane
+// ---------------------------------------------------------------------------
+
+TEST_F(SolverCollisions, FloorIsAtMountingPlaneByDefault)
+{
+    EXPECT_DOUBLE_EQ(solver->GetFloorHeight(), robot->GetFloorHeight());
+    EXPECT_DOUBLE_EQ(solver->GetFloorHeight(), 0.0);
+}
+
+// Shoulder lowered to q1 = -0.1 rad: the tool dips ~7 cm below the table.
+TEST_F(SolverCollisions, LinkBelowFloorIsACollision)
+{
+    std::string msg = CollisionAt(MakeAngles({0.3, -0.1, 0.9, 0.2, -0.4, 0.1}));
+    EXPECT_NE(msg.find("COLLISION"), std::string::npos) << msg;
+    EXPECT_NE(msg.find("floor"), std::string::npos) << msg;
+}
+
+TEST_F(SolverCollisions, FloorHeightIsConfigurable)
+{
+    solver->SetFloorHeight(-0.1);
+    EXPECT_EQ(CollisionAt(MakeAngles({0.3, -0.1, 0.9, 0.2, -0.4, 0.1})), "");
+}
+
+// The base itself stands on the floor; that must not count as a collision.
+TEST_F(SolverCollisions, BaseStandingOnFloorIsNotACollision)
+{
+    EXPECT_EQ(CollisionAt(Angles()), "");
+}
+
+TEST_F(SolverCollisions, MoveJIntoTheTableIsRejected)
+{
+    Angles to = WorkPose();
+    to.q[1] = -0.1;
+    std::vector<float> flat;
+    try
+    {
+        ScopedSilence quiet;
+        solver->MoveJ(WorkPose(), to, 0.5f, 1.0f, 10.0f, flat);
+        ADD_FAILURE() << "MoveJ into the table was planned";
+    }
+    catch (const std::runtime_error &e)
+    {
+        EXPECT_NE(std::string(e.what()).find("floor"), std::string::npos) << e.what();
+    }
+}
+
 TEST_F(SolverCollisions, MoveMeshesKeepsLinksRigid)
 {
     Matrix4x4 TR[JOINTS_COUNT];

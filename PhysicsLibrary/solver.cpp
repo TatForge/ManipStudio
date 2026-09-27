@@ -97,6 +97,8 @@ Solver::Solver(Robo &robot)
 {
     manip_config = new Matrix(*robot.state_matrix);
     max_joint_moments = robot.GetMaxJointMoments();
+    m_joint_limits = robot.GetJointLimits();
+    m_floor_z = robot.GetFloorHeight();
     m_meshes.resize(9);
     m_mass.resize(6);
     m_main_IKData = new IKData;
@@ -263,9 +265,11 @@ void Solver::SolveInverseKinematic(const StateVector &target, const Angles &curr
             data->delta_thetas *= MaxAngleDls/max;
         }
         for (int i = 0; i < JOINTS_COUNT; i++)
+        {
             data->d_thet.q[i] += data->delta_thetas(i);
-        if (data->d_thet.q[1] > 0.5)
-            data->d_thet.q[1] *= - 1.0;
+            //keep the solution inside the joint limits; a target that needs more is unreachable
+            data->d_thet.q[i] = std::min(std::max(data->d_thet.q[i], m_joint_limits[i].first), m_joint_limits[i].second);
+        }
         SolveDirectKinematic(data->d_thet, data->TR);
 
         data->end_eff_world_ori = data->TR[5].ConvertToQuaternion();
@@ -646,6 +650,16 @@ void Solver::MoveJ(const Angles &start_angle, const Angles &end_angle, const flo
 {
     if (end_angle == start_angle)
         throw(std::runtime_error("cant move if position of all joints is equal"));
+    for (int i = 0; i < JOINTS_COUNT; i++)
+    {
+        for (const Angles *a : {&start_angle, &end_angle})
+        {
+            if (a->q[i] < m_joint_limits[i].first || a->q[i] > m_joint_limits[i].second)
+                throw std::runtime_error("MoveJ: joint " + to_string(i) + " " + (a == &start_angle ? "start" : "end") + " angle " +
+                                         to_string(ToDeg(a->q[i])) + " deg is outside its limit [" + to_string(ToDeg(m_joint_limits[i].first)) +
+                                         ", " + to_string(ToDeg(m_joint_limits[i].second)) + "]");
+        }
+    }
     const scalar dt_s = ToSec(dt_millisec);
     m_moments_counter = 0;
     m_collisions_counter = 0;
@@ -760,6 +774,14 @@ void Solver::CheckCollision(const uint *elem_number)
 #endif
         }
     }
+    int below = FindMeshBelowFloor();
+    if (below >= 0)
+    {
+#if !WITH_BENCHMARK
+        m_emulator->OneIterMoveLinear(m_angles_v[k], m_angles_v[k + 1],  DT_MILLISEC, false, m_accel_v[below]);
+#endif
+        throw std::runtime_error("HOLY SHIT! COLLISION! Element " + to_string(below) + " is below the floor (z = " + to_string(m_floor_z) + ")");
+    }
 }
 
 bool Solver::MoveC(const Angles &start_angle, const StateVector &start_point, const StateVector &mid_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const scalar &dt_millisec, vector<float> &results)
@@ -854,6 +876,14 @@ void Solver::CalcCollisionsDynamics(const scalar &array_size, const scalar &dt_m
                     throw std::runtime_error("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + to_string(j)  /*to_string(cube)*/ + " elements");
                 }
             }
+            int below = FindMeshBelowFloor();
+            if (below >= 0)
+            {
+#if !WITH_BENCHMARK
+                m_emulator->OneIterMoveLinear(m_angles_v[size], m_angles_v[size + 1],  dt_millisec, false, m_accel_v[below]);
+#endif
+                throw std::runtime_error("HOLY SHIT! COLLISION! Element " + to_string(below) + " is below the floor (z = " + to_string(m_floor_z) + ")");
+            }
         }
         else
             cout << "Can't calculate all mesh points for this configuration" << endl;
@@ -904,6 +934,39 @@ scalar Solver::FindAngle(const Vector3 &O, const Vector3 &A0, const Vector3 P)
     A0O = A0 - O;
     PO = P - O;
     return acos(A0O.Dot(PO) / (A0O.Length() * PO.Length()));
+}
+
+int Solver::FindMeshBelowFloor() const
+{
+    //mesh 0 is the base standing on the floor, mesh 8 the obstacle
+    for (int i = 1; i <= 7 && i < int(m_meshes_buff.size()); i++)
+        for (ushort k = 0; k < m_meshes_buff[i].Size(); k++)
+            if (m_meshes_buff[i].point(k).z < m_floor_z)
+                return i;
+    return -1;
+}
+
+const vector<pair<scalar, scalar>> &Solver::GetJointLimits() const
+{
+    return m_joint_limits;
+}
+
+bool Solver::WithinJointLimits(const Angles &a) const
+{
+    for (int i = 0; i < JOINTS_COUNT; i++)
+        if (a.q[i] < m_joint_limits[i].first || a.q[i] > m_joint_limits[i].second)
+            return false;
+    return true;
+}
+
+scalar Solver::GetFloorHeight() const
+{
+    return m_floor_z;
+}
+
+void Solver::SetFloorHeight(scalar z)
+{
+    m_floor_z = z;
 }
 
 Angles Solver::GetExtarnalPosition()

@@ -71,6 +71,10 @@ public:
     void CheckCollision(const uint *elem_number = nullptr);
     void CalcCollisionsDynamics(const scalar &array_size, const scalar &dt_millisec);
     scalar FindAngle(const Vector3 &O, const Vector3 &A0, const Vector3 P);
+    const vector<pair<scalar, scalar>> &GetJointLimits() const;
+    bool WithinJointLimits(const Angles &a) const;
+    scalar GetFloorHeight() const;
+    void SetFloorHeight(scalar z);
     Angles GetExtarnalPosition();
     Angles GetInternalPosition();
     Angles GetZeroPosition();
@@ -78,6 +82,7 @@ private:
     Solver(Solver &solver) = delete;
     Solver(Solver &&solver) = delete;
     bool CheckAABB(const BoxAABB &box1, const BoxAABB &box2);
+    int FindMeshBelowFloor() const;
     void CalculateDeltas();
 
     std::vector<MeshCollider> m_meshes_buff;
@@ -97,6 +102,8 @@ private:
     array<rm::Vector, JOINTS_COUNT> m_cm;
     array<rm::Tensor, JOINTS_COUNT> m_i;
     vector<scalar> max_joint_moments;
+    vector<pair<scalar, scalar>> m_joint_limits;
+    scalar m_floor_z;
     vector<Angles>  m_angles_v;
     vector<Vector3> m_speed_v;
     vector<Vector3> m_accel_v;

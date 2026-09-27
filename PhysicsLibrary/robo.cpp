@@ -16,6 +16,7 @@ Robo::Robo()
     jacobian = nullptr;
     delta_thetas = nullptr;
     robot = nullptr;
+    SetDefaultLimits();
 }
 
 Robo::Robo(int number_of_elements)
@@ -561,6 +562,14 @@ void Robo::WriteSettingsToFile()
         manip_settings->setValue(QString::number(i), max_joint_moments.at(i));
     }
     manip_settings->endGroup();
+    manip_settings->beginGroup("joint limits");
+    for (counter i = 0; i < JOINTS_COUNT; i++)
+    {
+        manip_settings->setValue(QString::number(i) + "/min_deg", ToDeg(m_joint_limits.at(i).first));
+        manip_settings->setValue(QString::number(i) + "/max_deg", ToDeg(m_joint_limits.at(i).second));
+    }
+    manip_settings->endGroup();
+    manip_settings->setValue("workspace/floor_z", m_floor_z);
     manip_settings->sync();
 }
 
@@ -628,6 +637,20 @@ void Robo::LoadSettingsFromFile()
         max_joint_moments.at(i) = manip_settings->value(QString::number(i)).toDouble();
     }
     manip_settings->endGroup();
+    //optional: joint limits (degrees) and floor height; defaults stay for missing keys
+    manip_settings->beginGroup("joint limits");
+    for (counter i = 0; i < JOINTS_COUNT; i++)
+    {
+        const QString min_key = QString::number(i) + "/min_deg";
+        const QString max_key = QString::number(i) + "/max_deg";
+        if (manip_settings->contains(min_key))
+            m_joint_limits.at(i).first = ToRad(manip_settings->value(min_key).toDouble());
+        if (manip_settings->contains(max_key))
+            m_joint_limits.at(i).second = ToRad(manip_settings->value(max_key).toDouble());
+    }
+    manip_settings->endGroup();
+    if (manip_settings->contains("workspace/floor_z"))
+        m_floor_z = manip_settings->value("workspace/floor_z").toDouble();
 
 }
 
@@ -907,6 +930,37 @@ void Robo::AllocateForNewRobot()
     state_matrix->MakeZero();
     max_joint_moments.resize(6);
     robot = number_of_elements > 0 ? new Elem [number_of_elements] : nullptr;
+    SetDefaultLimits();
+}
+
+void Robo::SetDefaultLimits()
+{
+    //degrees: base, shoulder (+30 keeps the elbow above the mounting plane), elbow, wrist x3
+    const scalar limits_deg[JOINTS_COUNT][2] = {{-170, 170}, {-150, 30}, {-175, 175}, {-180, 180}, {-135, 135}, {-360, 360}};
+    m_joint_limits.resize(JOINTS_COUNT);
+    for (int i = 0; i < JOINTS_COUNT; i++)
+        m_joint_limits[i] = {ToRad(limits_deg[i][0]), ToRad(limits_deg[i][1])};
+    m_floor_z = 0;
+}
+
+vector<pair<scalar, scalar>> Robo::GetJointLimits() const
+{
+    return m_joint_limits;
+}
+
+void Robo::SetJointLimit(int joint, scalar min_rad, scalar max_rad)
+{
+    m_joint_limits.at(joint) = {min_rad, max_rad};
+}
+
+scalar Robo::GetFloorHeight() const
+{
+    return m_floor_z;
+}
+
+void Robo::SetFloorHeight(scalar z)
+{
+    m_floor_z = z;
 }
 
 void Elem::SetPosition(const Vector3 &V)

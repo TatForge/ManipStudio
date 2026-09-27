@@ -736,7 +736,7 @@ TEST_P(MoveJSweep, ProfileIsCorrect)
 
 INSTANTIATE_TEST_SUITE_P(Profiles, MoveJSweep,
                          ::testing::Values(MoveJCase{0, 0.5, 1.0f, 2.0f, 10},   // triangular (limit)
-                                           MoveJCase{1, 0.4, 0.5f, 1.0f, 10},   // trapezoidal
+                                           MoveJCase{1, -0.3, 0.5f, 1.0f, 10},  // trapezoidal (+0.4 would hit the table)
                                            MoveJCase{2, -0.6, 0.5f, 1.0f, 10},  // negative direction
                                            MoveJCase{3, 1.2, 2.0f, 4.0f, 10},   // fast wrist
                                            MoveJCase{4, 0.3, 0.3f, 3.0f, 10},   // long cruise
