@@ -114,3 +114,26 @@ void PhysicsLib::InverseKinematic(const fvector &target, const fvector &curr_ang
     lib_data->solver->SolveInverseKinematic(StateVector(t[0], t[1], t[2], ToRad(t[3]), ToRad(t[4]), ToRad(t[5])), VectorToAngle(curr_angle), res_angle_a);
     res_angle = AngleToVector(res_angle_a);
 }
+
+fvector PhysicsLib::GetExternalPosition()
+{
+    Angles r = lib_data->solver->GetExtarnalPosition();
+    fvector result;
+    result.resize(6);
+    for (uint i = 0; i < JOINTS_COUNT; i++)
+    {
+        result[i] = r.q[i];
+    }
+    return result;
+}
+fvector PhysicsLib::GetInternalPosition()
+{
+    Angles r = lib_data->solver->GetInternalPosition();
+    fvector result;
+    result.resize(6);
+    for (uint i = 0; i < JOINTS_COUNT; i++)
+    {
+        result[i] = r.q[i];
+    }
+    return result;
+}

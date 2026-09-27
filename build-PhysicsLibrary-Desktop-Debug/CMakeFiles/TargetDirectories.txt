@@ -1,3 +1,0 @@
-/home/devel/Projects/MainKinematic/build-PhysicsLibrary-Desktop-Debug/CMakeFiles/rebuild_cache.dir
-/home/devel/Projects/MainKinematic/build-PhysicsLibrary-Desktop-Debug/CMakeFiles/edit_cache.dir
-/home/devel/Projects/MainKinematic/build-PhysicsLibrary-Desktop-Debug/CMakeFiles/ManipPhysics.dir

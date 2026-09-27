@@ -58,6 +58,8 @@ public:
      * @param res_angle - std::vector<float> [18] mirror of Angles structure (q[6], q_p[6], q_pp[6]) of calcilated angle;
      */
     void InverseKinematic(const fvector &target, const fvector &curr_angle, fvector &res_angle);
+    fvector GetExternalPosition();
+    fvector GetInternalPosition();
 private:
     LibData *lib_data;
 };

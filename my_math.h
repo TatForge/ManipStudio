@@ -31,6 +31,13 @@ namespace RoboMath
         scalar q[JOINTS_COUNT];
         Angles();
         bool IsNull() const;
+        bool operator == (const Angles &a) const
+        {
+            for (uint8_t ctr = 0; ctr < JOINTS_COUNT; ctr++)
+                if (q[ctr] != a.q[ctr])
+                    return false;
+            return true;
+        }
     };
 
 

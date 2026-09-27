@@ -65,13 +65,15 @@ public:
     void CheckCollisionMultithread();
     bool SolveForwardDynamic(const Angles &angles);
     void VisualizeMoments(const scalar &dt_millisec);
-    inline void AnglesVectorToVector(const int size, vector<float> &results);
-
+    void AnglesVectorToVector(const int size, vector<float> &results);
+    Angles VectorToAngle(const vector<float> &v);
     void VectorsResize(const counter &ctr);
     void CheckCollision(const uint *elem_number = nullptr);
     void CalcCollisionsDynamics(const scalar &array_size, const scalar &dt_millisec);
     inline scalar FindAngle(const Vector3 &O, const Vector3 &A0, const Vector3 P);
-
+    Angles GetExtarnalPosition();
+    Angles GetInternalPosition();
+    Angles GetZeroPosition();
 private:
     Solver(Solver &solver) = delete;
     Solver(Solver &&solver) = delete;

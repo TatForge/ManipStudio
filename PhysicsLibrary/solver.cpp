@@ -269,7 +269,8 @@ void Solver::MoveL(const StateVector &start_point, const StateVector &end_point,
                                                                   y + vy * dt_s + ay*dt_s*dt_s/2,
                                                                   z + vz * dt_s + az*dt_s*dt_s/2,
                                                                   rol + 0, pit + 0, yaw + 0));
-        if (!sign(vy + ay * dt_s, vy))
+        auto as = vz + az * dt_s;
+        if (!sign(vx + ax * dt_s, vx) || !sign(vy + ay * dt_s, vy) || !sign(vz + az * dt_s, vz))
             is_last = true;
         //Режим торможения (если расстояние < Sтормож)
         if (distance_next_step <= (v_curr * t_stop - a_curr * t_stop * t_stop * 0.5) && !breaking)
@@ -647,8 +648,22 @@ void Solver::AnglesVectorToVector(const int size, vector<float> &results)
     }
 }
 
+Angles Solver::VectorToAngle(const vector<float> &v)
+{
+    Angles temp;
+    for (uint8_t i = 0; i < JOINTS_COUNT; i++)
+    {
+        temp.q[i] = v[i];
+        temp.q_p[i] = v[i + 6];
+        temp.q_pp[i] = v[i + 12];
+    }
+    return temp;
+}
+
 void Solver::MoveJ(const Angles &start_angle, const Angles &end_angle, const float &speed, const float &acceleration, const float &dt_millisec, vector<float> &results)
 {
+    if (end_angle == start_angle)
+        throw(std::runtime_error("cant move if position of all joints is equal"));
     scalar dt_s = ToSec(dt_millisec);
     Matrix4x4 buff[6];
     m_angles_v.resize(vector_size);
@@ -1080,4 +1095,29 @@ scalar Solver::FindAngle(const Vector3 &O, const Vector3 &A0, const Vector3 P)
     A0O = A0 - O;
     PO = P - O;
     return acos(A0O.Dot(PO) / (A0O.Length() * PO.Length()));
+}
+
+Angles Solver::GetExtarnalPosition()
+{
+    Angles start_angle_external;
+    start_angle_external.q[1] = -M_PI/4;
+    start_angle_external.q[2] = +M_PI/2;
+    start_angle_external.q[3] = -M_PI + M_PI/3.7;
+    start_angle_external.q[4] = -M_PI/2;
+    return start_angle_external;
+}
+
+Angles Solver::GetInternalPosition()
+{
+    Angles start_angle_internal;
+    start_angle_internal.q[1] = -M_PI/4;
+    start_angle_internal.q[2] = +M_PI/2;
+    start_angle_internal.q[3] = +M_PI/4;
+    start_angle_internal.q[4] = +M_PI/2;
+    return start_angle_internal;
+}
+
+Angles Solver::GetZeroPosition()
+{
+    return Angles();
 }

@@ -1,4 +1,3 @@
-#include "Tests/test_my_math.h"
 #include "robo.h"
 #include "cuda_math.h"
 #include "emulator.h"
@@ -13,7 +12,6 @@
 #include <stl_reader.h>
 
 #include "sharedmem.h"
-#include "sysvsharedmemory.h"
 
 #ifdef WITH_TESTS
 #include <QtTest/QTest>
@@ -64,8 +62,18 @@ int main(int argc, char *argv[])
     Solver solver(manipulator);
     Matrix4x4 TT[6];
     Angles start_an;
+    Angles end_an;
+    start_an.q[0] = 0;
+    start_an.q[1] = -M_PI;
+    start_an.q[2] = 0;
+    start_an.q[3] = -M_PI + M_PI/4;
+    start_an.q[4] = 0;
+    start_an.q[5] = 0;
+//    end_an.q[3] = -M_PI/2;
+    end_an.q[3] = 0;
     Angles res_an;
-
+//    start_an = solver.GetExtarnalPosition();
+//    start_an.q[1] += 0.2;
 //    std::thread thread_dynamic();
 
     StateVector stv(0.2, -0.2, 0.115, ToRad(100), ToRad(0), ToRad(0));
@@ -86,8 +94,8 @@ int main(int argc, char *argv[])
     Polynom result[1000];
 //    scalar v_tcp(2.12);
 //    scalar a_tcp(4);
-    scalar v_tcp(4);
-    scalar a_tcp(2);
+    scalar v_tcp(2.2);
+    scalar a_tcp(4);
 
     Angles res_buf;
     Angles a1, a2, a3;
@@ -105,39 +113,24 @@ int main(int argc, char *argv[])
     vector<float> vr;
     vector<float> t1{0.4, 0.241, 0.1, 180, 45, 0};
     try {
-        solver.SolveInverseKinematic(StateVector(Vector3(0.3, -0.1, 0.1), Vector3(0, 0, 0)), a1, res_buf);
-//        solver.MoveL(StateVector(Vector3(0.3, 0.2, 0.21),Vector3(ToRad(180), 0, 0)), StateVector(Vector3(0.3, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, angle_start, 10, vr);
-        solver.MoveL(StateVector(Vector3(0.3, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), StateVector(Vector3(0.3, -0.2, 0.01),Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, angle_start, 10, vr);
-//        solver.MoveL(StateVector(Vector3(0.3, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), StateVector(Vector3(0.3, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, angle_start, 10, vr);
-//        solver.MoveCircle(angle_start,  StateVector(Vector3(0.2,  0.2,  0.01), Vector3(ToRad(180), 0, 0)),
-//                                        StateVector(Vector3(0.2,  0.3, 0.01),  Vector3(ToRad(180), 0, 0)),
-//                                        StateVector(Vector3(0.3,  0.3, 0.01),   Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 5);
-//        solver.MoveCircle(angle_start,  StateVector(Vector3(0.3,  0.3,  0.01), Vector3(ToRad(180), 0, 0)),
-//                                        StateVector(Vector3(0.3,  0.4, 0.01),  Vector3(ToRad(180), 0, 0)),
-//                                        StateVector(Vector3(0.4,  0.3, 0.01),   Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 5);
-        solver.MoveC(angle_start,      StateVector(Vector3(0.3, -0.2, 0.21),  Vector3(ToRad(180), 0, 0)),
-                                       StateVector(Vector3(0.4, -0.3, 0.21),  Vector3(ToRad(180), 0, 0)),
-                                       StateVector(Vector3(0.2, -0.3, 0.21),  Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 10, vr);
-        solver.MoveL(StateVector(Vector3(0.2, -0.3, 0.21),  Vector3(ToRad(180), 0, 0)), StateVector(Vector3(-0.3, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, angle_start, 10, vr);
-//        solver.MoveCircle(angle_start,  StateVector(Vector3(1,  3,  4), Vector3(ToRad(180), 0, 0)),
-//                                        StateVector(Vector3(-2, 5,  2),   Vector3(ToRad(180), 0, 0)),
-//                                        StateVector(Vector3(5,  -3, 6),   Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 5);
-//        solver.MoveJ(a1, a2, v_tcp, a_tcp, 10, vr);
-//        solver.MoveJ(a2, a3,  1.17453, M_PI, 10);
+        vector<float> temp;
+        temp.resize(18);
+        solver.MoveJ(end_an, start_an, v_tcp, a_tcp, 10, vr);
+//        solver.MoveL(StateVector(Vector3(0.45, 0.2, 0.11),Vector3(ToRad(180), 0, 0)), StateVector(Vector3(0.35, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, solver.GetExtarnalPosition(), 10, vr);
+//        solver.MoveL(StateVector(Vector3(0.35, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), StateVector(Vector3(0.35, -0.2, 0.05),Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, solver.GetExtarnalPosition(),10, vr);
+//        solver.MoveL(StateVector(Vector3(0.35, -0.2, 0.05),Vector3(ToRad(180), 0, 0)), StateVector(Vector3(0.35, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, solver.GetExtarnalPosition(), 10, vr);
 
-//        solver.CalcPolynomLine(tarv,  tarv1, v_tcp, a_tcp, res_an,      res_an, 10, result);
-//        solver.CalcPolynomLine(tarv1, tarv2, v_tcp, a_tcp, res_an,      res_an, 10, result);
-//        solver.CalcPolynomLine(tarv2, tarv3, v_tcp, a_tcp, res_an,      res_an, 10, result);
-//        solver.CalcPolynomLine(tarv3, tarv4, v_tcp, a_tcp, res_an,      res_an, 10, result);
+//        solver.MoveC(solver.GetExtarnalPosition(),      StateVector(Vector3(0.35, -0.2, 0.21),  Vector3(ToRad(180), 0, 0)),
+//                                       StateVector(Vector3(0.4, -0.3, 0.21),  Vector3(ToRad(180), 0, 0)),
+//                                       StateVector(Vector3(0.2, -0.3, 0.21),  Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, 10, vr);
+//        solver.MoveL(StateVector(Vector3(0.2, -0.3, 0.21),  Vector3(ToRad(180), 0, 0)), StateVector(Vector3(-0.3, -0.2, 0.21),Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, solver.GetExtarnalPosition(), 10, vr);
+//        solver.MoveL(StateVector(Vector3(-0.3, -0.2, 0.21),  Vector3(ToRad(180), 0, 0)), StateVector(Vector3(-0.3, -0.2, 0.05),Vector3(ToRad(180), 0, 0)), v_tcp, a_tcp, solver.GetExtarnalPosition(), 10, vr);
     }  catch (std::runtime_error &exc) {
         cout << exc.what() << endl;
     }
 
     cout << " Time = " << ct1.duration().count() << endl;
 
-#ifdef WITH_TESTS
-    QTest::qExec(new test_my_math, argc, argv);
-#endif
     cout << "!!!___FINISH___!!!" << endl;
 #if WITH_WINDOW
     return app.exec();

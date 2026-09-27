@@ -9,13 +9,14 @@
 #define WITH_QTESTS     0
 #define WITH_COLLISIONS 1
 #define MULTITHREAD     0
-#define WITH_WINDOW     0
+#define WITH_WINDOW     1
 //assertions turn off
 //#define NDEBUG
 #define SMESH +1.65
 #define DT_MILLISEC 10
 //__________________________________
 #define RANGE_TO_PLOT 0.025  // 25 mm
+
 
 #define RAD (M_PI/180)
 #define DEG (180/M_PI)
