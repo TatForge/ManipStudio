@@ -1,0 +1,2 @@
+# shell scripts are run in Linux/WSL: never convert them to CRLF
+*.sh text eol=lf

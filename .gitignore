@@ -8,3 +8,7 @@ stl_reader.cpp
 stlreader.h
 stlreader.cpp
 
+
+# build output
+PhysicsLibrary/build/
+build-*/
