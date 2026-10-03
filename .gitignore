@@ -1,5 +1,6 @@
 *.user
 *.cmake
+!ManipCore.cmake
 *.autosave
 build/*
 TestRobo/*
