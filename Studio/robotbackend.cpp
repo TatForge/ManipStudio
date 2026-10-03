@@ -1,6 +1,7 @@
 #include "robotbackend.h"
 
 #include "meshlayout.h"
+#include "visuallayout.h"
 
 #include <QDir>
 #include <QFile>
@@ -55,7 +56,7 @@ RobotBackend::RobotBackend(const QString &data_dir, QObject *parent)
     m_thread.setObjectName(QStringLiteral("solver"));
     m_thread.start();
     SetBusy(true);
-    SetStatus(tr("Loading model from %1").arg(m_data_dir));
+    SetStatus(QT_TR_NOOP("Loading model from %1"), {m_data_dir});
     QMetaObject::invokeMethod(m_worker, &SolverWorker::Initialize, Qt::QueuedConnection);
 }
 
@@ -101,6 +102,30 @@ QVariantList RobotBackend::meshPoses() const
     QVariantList out;
     for (const QMatrix4x4 &m : MeshLayout::Placements(m_pose.frames))
         out.append(ToNodePose(m));
+    return out;
+}
+
+int RobotBackend::visualPartCount() const
+{
+    return VisualLayout::Build(m_pose.frames).size();
+}
+
+QVariantList RobotBackend::visualParts() const
+{
+    QVariantList out;
+    for (const VisualLayout::Part &p : VisualLayout::Build(m_pose.frames))
+    {
+        const bool sphere = p.shape == VisualLayout::Shape::Sphere;
+        // Quick3D's #Cylinder / #Sphere are 100 units across (and tall), Y up
+        const float diameter = 2 * p.radius / 100.f;
+        const float length = sphere ? diameter : p.Length() / 100.f;
+        out.append(QVariantMap{{QStringLiteral("shape"), sphere ? QStringLiteral("sphere") : QStringLiteral("cylinder")},
+                               {QStringLiteral("role"), VisualLayout::RoleName(p.role)},
+                               {QStringLiteral("joint"), p.joint},
+                               {QStringLiteral("position"), QVariant::fromValue(p.Center())},
+                               {QStringLiteral("rotation"), QVariant::fromValue(p.Rotation())},
+                               {QStringLiteral("scale"), QVariant::fromValue(QVector3D(diameter, length, diameter))}});
+    }
     return out;
 }
 
@@ -294,7 +319,7 @@ void RobotBackend::moveJ(const QVariantList &target_deg, double speed_deg_s, dou
     for (const QVariant &v : target_deg)
         target.append(qDegreesToRadians(v.toDouble()));
     SetBusy(true);
-    SetStatus(tr("Planning MoveJ..."));
+    SetStatus(QT_TR_NOOP("Planning MoveJ..."));
     emit requestMoveJ(m_target_rad, target, qDegreesToRadians(speed_deg_s), qDegreesToRadians(accel_deg_s2), kTrajectoryDtMs);
 }
 
@@ -347,7 +372,7 @@ void RobotBackend::OnInitialized(const QVector<double> &lo, const QVector<double
     m_floor_z = floor_z;
     m_ready = true;
     SetBusy(false);
-    SetStatus(tr("Model loaded, floor at z = %1 m").arg(floor_z));
+    SetStatus(QT_TR_NOOP("Model loaded, floor at z = %1 m"), {QString::number(floor_z)});
     emit readyChanged();
     emit requestPose(m_target_rad);
 }
@@ -371,11 +396,11 @@ void RobotBackend::OnTrajectory(const PlannedTrajectory &trajectory)
     emit progressChanged();
     if (!m_trajectory_error.isEmpty())
     {
-        SetStatus(tr("MoveJ failed after %1 samples").arg(momentCount()));
+        SetStatus(QT_TR_NOOP("MoveJ failed after %1 samples"), {QString::number(momentCount())});
         emit errorOccurred(QStringLiteral("MoveJ: ") + m_trajectory_error);
         return;
     }
-    SetStatus(tr("MoveJ: %1 samples, %2 s").arg(sampleCount()).arg(duration(), 0, 'f', 2));
+    SetStatus(QT_TR_NOOP("MoveJ: %1 samples, %2 s"), {QString::number(sampleCount()), QString::number(duration(), 'f', 2)});
     if (sampleCount() == 0)
         return;
     ShowSample(0);
@@ -385,7 +410,7 @@ void RobotBackend::OnTrajectory(const PlannedTrajectory &trajectory)
 void RobotBackend::OnFailed(const QString &what, const QString &message)
 {
     SetBusy(false);
-    SetStatus(tr("%1 failed").arg(what));
+    SetStatus(QT_TR_NOOP("%1 failed"), {what});
     emit errorOccurred(what + QStringLiteral(": ") + message);
 }
 
@@ -420,10 +445,19 @@ void RobotBackend::SetBusy(bool busy)
     emit busyChanged();
 }
 
-void RobotBackend::SetStatus(const QString &status)
+QString RobotBackend::status() const
 {
-    if (m_status == status)
-        return;
-    m_status = status;
+    if (!m_status_source)
+        return QString();
+    QString text = tr(m_status_source);
+    for (const QString &arg : m_status_args)
+        text = text.arg(arg);
+    return text;
+}
+
+void RobotBackend::SetStatus(const char *source, const QStringList &args)
+{
+    m_status_source = source;
+    m_status_args = args;
     emit statusChanged();
 }

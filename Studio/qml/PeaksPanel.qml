@@ -3,11 +3,11 @@ import QtQuick.Layouts
 
 // Peak |tau| of every joint over the last trajectory against its motor limit.
 Card {
-    title: qsTr("Пиковые моменты")
+    title: qsTr("Peak moments")
 
     Text {
         visible: robot.peaks.length === 0
-        text: qsTr("нет траектории")
+        text: qsTr("no trajectory")
         color: Theme.textDim
     }
 
@@ -27,7 +27,7 @@ Card {
                 Text {
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignRight
-                    text: modelData.peak.toFixed(1) + " / " + modelData.limit.toFixed(0) + qsTr(" Н·м")
+                    text: modelData.peak.toFixed(1) + " / " + modelData.limit.toFixed(0) + qsTr(" N·m")
                     color: Theme.text
                     font.family: Theme.mono
                 }
@@ -59,7 +59,7 @@ Card {
         visible: robot.trajectoryError !== ""
         Layout.fillWidth: true
         wrapMode: Text.Wrap
-        text: qsTr("Траектория отклонена: ") + robot.trajectoryError
+        text: qsTr("Trajectory rejected: ") + robot.trajectoryError
         color: Theme.bad
         font.pixelSize: 12
     }

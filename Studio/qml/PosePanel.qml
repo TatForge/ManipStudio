@@ -3,10 +3,10 @@ import QtQuick.Layouts
 
 // TCP position and orientation from forward kinematics.
 Card {
-    title: qsTr("Инструмент (TCP)")
+    title: qsTr("Tool (TCP)")
 
     readonly property var names: ["X", "Y", "Z", "Roll", "Pitch", "Yaw"]
-    readonly property var units: ["м", "м", "м", "°", "°", "°"]
+    readonly property var units: [qsTr("m"), qsTr("m"), qsTr("m"), "°", "°", "°"]
     readonly property var colors: [Theme.axisX, Theme.axisY, Theme.axisZ, Theme.axisX, Theme.axisY, Theme.axisZ]
 
     GridLayout {

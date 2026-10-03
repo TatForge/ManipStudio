@@ -22,8 +22,14 @@ add_library(studio_backend STATIC
     solverworker.cpp
     meshlayout.h
     meshlayout.cpp
+    visuallayout.h
+    visuallayout.cpp
     robotbackend.h
-    robotbackend.cpp)
+    robotbackend.cpp
+    translation.h
+    translation.cpp)
+# UI translations, read at run time from :/i18n/studio_<code>.ts (no lrelease needed)
+qt_add_resources(studio_backend "studio_i18n" PREFIX "/i18n" BASE i18n FILES i18n/studio_ru.ts)
 target_include_directories(studio_backend PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(studio_backend PUBLIC manip_core Qt6::Core Qt6::Gui Qt6::Charts)
 
@@ -64,3 +70,9 @@ target_compile_definitions(StudioSceneTests PRIVATE MANIP_DATA_DIR="${MANIP_DATA
 target_link_libraries(StudioSceneTests PRIVATE studio_backend Qt6::Test)
 add_test(NAME StudioSceneTests COMMAND StudioSceneTests)
 set_tests_properties(StudioSceneTests PROPERTIES LABELS "studio")
+
+add_executable(StudioI18nTests tests/test_translation.cpp)
+target_compile_definitions(StudioI18nTests PRIVATE MANIP_DATA_DIR="${MANIP_DATA_DIR}" STUDIO_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(StudioI18nTests PRIVATE studio_backend Qt6::Test)
+add_test(NAME StudioI18nTests COMMAND StudioI18nTests)
+set_tests_properties(StudioI18nTests PROPERTIES LABELS "studio")

@@ -5,8 +5,9 @@ import QtQuick3D
 import QtQuick3D.Helpers
 import Studio
 
-// 3D view of the arm: the STL parts the collision check uses, placed by the
-// solver's forward kinematics, plus the floor, the obstacle and the TCP path.
+// 3D view of the arm: a display model built from the joint frames (always
+// true to the kinematics), optionally the coarse STL parts the collision
+// check uses, plus the floor, the obstacle and the TCP path.
 // The scene is in millimetres (Quick3D defaults suit that scale); the robot
 // node converts from the robot's metres and Z-up frame.
 Rectangle {
@@ -19,14 +20,19 @@ Rectangle {
     readonly property color linkColor: "#c9ced6"
     readonly property color jointColor: "#f08a24"
     readonly property color baseColor: "#4a505a"
+    readonly property color flangeColor: "#2f343c"
+    property bool showCollision: false
     // orbit centre: middle of the reach, robot (0.3, 0.15, 0.25) m in scene millimetres
     readonly property vector3d homeTarget: Qt.vector3d(300, 250, -150)
     readonly property real homeDistance: 2200
 
-    function partColor(name) {
-        if (name === "base")
-            return baseColor
-        return name.startsWith("joint") ? jointColor : linkColor
+    function roleColor(role) {
+        switch (role) {
+        case "base": return baseColor
+        case "joint": return jointColor
+        case "flange": return flangeColor
+        default: return linkColor
+        }
     }
 
     // floor grid: segments every `step` metres within +-`half`
@@ -107,22 +113,45 @@ Rectangle {
 
             AxisLines { length: 0.25 }
 
+            // display model: one delegate per part, the count only changes with the geometry
+            Repeater3D {
+                model: robot.visualPartCount
+                delegate: Model {
+                    required property int index
+                    readonly property var part: robot.visualParts[index]
+                    visible: part !== undefined
+                    source: part && part.shape === "sphere" ? "#Sphere" : "#Cylinder"
+                    position: part ? part.position : Qt.vector3d(0, 0, 0)
+                    rotation: part ? part.rotation : Qt.quaternion(1, 0, 0, 0)
+                    scale: part ? part.scale : Qt.vector3d(0, 0, 0)
+                    castsShadows: true
+                    receivesShadows: true
+                    materials: PrincipledMaterial {
+                        baseColor: root.roleColor(part ? part.role : "")
+                        // low metalness: without an environment map metal renders almost black
+                        metalness: part && part.role === "link" ? 0.2 : 0.1
+                        roughness: part && part.role === "link" ? 0.35 : 0.45
+                    }
+                }
+            }
+
+            // the STL parts the collision check works with; the obstacle exists only here
             Repeater3D {
                 model: robot.meshParts
                 delegate: Model {
                     required property var modelData
                     required property int index
                     readonly property var pose: robot.meshPoses[index]
+                    visible: modelData.obstacle || root.showCollision
                     position: pose ? pose.position : Qt.vector3d(0, 0, 0)
                     rotation: pose ? pose.rotation : Qt.quaternion(1, 0, 0, 0)
                     geometry: StlGeometry { source: modelData.source }
-                    castsShadows: true
+                    castsShadows: modelData.obstacle
                     receivesShadows: true
-                    opacity: modelData.obstacle ? 0.75 : 1.0
+                    opacity: modelData.obstacle ? 0.75 : 0.45
                     materials: PrincipledMaterial {
-                        baseColor: modelData.obstacle ? "#9b3b3b" : root.partColor(modelData.name)
-                        metalness: modelData.name.startsWith("joint") ? 0.1 : 0.35
-                        roughness: 0.45
+                        baseColor: modelData.obstacle ? "#9b3b3b" : "#4fd1c5"
+                        roughness: 0.5
                     }
                 }
             }
@@ -150,12 +179,19 @@ Rectangle {
     RowLayout {
         anchors { right: parent.right; top: parent.top; margins: Theme.gap }
         spacing: 4
+        Chip {
+            text: qsTr("Collision model")
+            tint: "#4fd1c5"
+            checked: root.showCollision
+            onClicked: root.showCollision = !root.showCollision
+            Layout.rightMargin: 8
+        }
         Repeater {
             model: [
-                { label: qsTr("Изо"), pitch: -25, yaw: 35 },
-                { label: qsTr("Спереди"), pitch: 0, yaw: 0 },
-                { label: qsTr("Сбоку"), pitch: 0, yaw: 90 },
-                { label: qsTr("Сверху"), pitch: -90, yaw: 0 }
+                { label: qsTr("Iso"), pitch: -25, yaw: 35 },
+                { label: qsTr("Front"), pitch: 0, yaw: 0 },
+                { label: qsTr("Side"), pitch: 0, yaw: 90 },
+                { label: qsTr("Top"), pitch: -90, yaw: 0 }
             ]
             delegate: Button {
                 required property var modelData
@@ -168,7 +204,7 @@ Rectangle {
     }
 
     Text {
-        text: qsTr("ЛКМ — вращение · колесо — масштаб · ПКМ / два пальца — сдвиг")
+        text: qsTr("LMB: rotate · wheel: zoom · RMB / two fingers: pan")
         color: Theme.textDim
         font.pixelSize: 12
         anchors { left: parent.left; bottom: parent.bottom; margins: Theme.gap }

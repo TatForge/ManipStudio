@@ -4,6 +4,7 @@
 #include "solverworker.h"
 
 #include <QElapsedTimer>
+#include <QStringList>
 #include <QObject>
 #include <QThread>
 #include <QTimer>
@@ -29,6 +30,8 @@ class RobotBackend : public QObject
     Q_PROPERTY(QVariantList meshParts READ meshParts NOTIFY readyChanged)
     Q_PROPERTY(QVariantList meshPoses READ meshPoses NOTIFY poseChanged)
     Q_PROPERTY(QVariantMap toolPose READ toolPose NOTIFY poseChanged)
+    Q_PROPERTY(int visualPartCount READ visualPartCount NOTIFY poseChanged)
+    Q_PROPERTY(QVariantList visualParts READ visualParts NOTIFY poseChanged)
     Q_PROPERTY(QVariantList tcpPath READ tcpPath NOTIFY trajectoryChanged)
     Q_PROPERTY(QVariantList maxMoments READ maxMoments NOTIFY readyChanged)
     Q_PROPERTY(int momentCount READ momentCount NOTIFY trajectoryChanged)
@@ -57,6 +60,12 @@ public:
     QVariantList meshParts() const;
     // {position (QVector3D, m), rotation (QQuaternion)} of every part for the current pose
     QVariantList meshPoses() const;
+    // display model built from the joint frames (see VisualLayout); the count
+    // depends only on the geometry, so QML can keep one delegate per part
+    int visualPartCount() const;
+    // {shape ("cylinder" / "sphere"), role, joint, position, rotation, scale}
+    // per part; scale maps Quick3D's 100-unit primitives onto the part (metres)
+    QVariantList visualParts() const;
     // flange frame {position, rotation}
     QVariantMap toolPose() const;
     // flange positions (QVector3D, m) along the last planned trajectory
@@ -73,7 +82,8 @@ public:
     double progress() const;
     double duration() const;
     int sampleCount() const;
-    QString status() const { return m_status; }
+    // translated on every read, so it follows the current UI language
+    QString status() const;
     QString dataDir() const { return m_data_dir; }
     const ArmPose &pose() const { return m_pose; }
 
@@ -99,6 +109,8 @@ public:
     Q_INVOKABLE void seek(double seconds);
     Q_INVOKABLE QVariantList zeroPose() const;
     Q_INVOKABLE QVariantList internalPose() const;
+    // re-emits the language dependent texts after a language switch
+    Q_INVOKABLE void retranslate() { emit statusChanged(); }
 
 signals:
     void readyChanged();
@@ -123,14 +135,16 @@ private:
     void OnPlayTick();
     void ShowSample(int index);
     void SetBusy(bool busy);
-    void SetStatus(const QString &status);
+    // source: an untranslated QT_TR_NOOP string with %1, %2... for `args`
+    void SetStatus(const char *source, const QStringList &args = {});
 
     QString m_data_dir;
     QThread m_thread;
     SolverWorker *m_worker;
     bool m_ready = false;
     bool m_busy = false;
-    QString m_status;
+    const char *m_status_source = nullptr;
+    QStringList m_status_args;
     QVector<double> m_lo, m_hi;
     QVector<double> m_target_rad;       // latest commanded angles
     ArmPose m_pose;                     // latest computed pose

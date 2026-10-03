@@ -13,10 +13,10 @@ Rectangle {
     radius: Theme.radius
 
     readonly property var kinds: [
-        { key: "moment", label: qsTr("Моменты"), unit: qsTr("Н·м") },
-        { key: "position", label: qsTr("Углы"), unit: "°" },
-        { key: "velocity", label: qsTr("Скорости"), unit: qsTr("°/с") },
-        { key: "acceleration", label: qsTr("Ускорения"), unit: qsTr("°/с²") }
+        { key: "moment", label: qsTr("Moments"), unit: qsTr("N·m") },
+        { key: "position", label: qsTr("Angles"), unit: "°" },
+        { key: "velocity", label: qsTr("Speeds"), unit: qsTr("°/s") },
+        { key: "acceleration", label: qsTr("Accelerations"), unit: qsTr("°/s²") }
     ]
     property int kindIndex: 0
     readonly property string kind: kinds[kindIndex].key
@@ -114,7 +114,7 @@ Rectangle {
             }
             Chip {
                 visible: panel.kind === "moment"
-                text: qsTr("пределы")
+                text: qsTr("limits")
                 tint: Theme.textDim
                 checked: panel.showLimits
                 onClicked: panel.showLimits = !panel.showLimits
@@ -141,7 +141,7 @@ Rectangle {
                 id: axisX
                 min: 0
                 max: 1
-                titleText: qsTr("t, с")
+                titleText: qsTr("t, s")
                 labelFormat: "%.2f"
                 gridLineColor: Theme.panelBorder
                 labelsColor: Theme.textDim
@@ -188,7 +188,7 @@ Rectangle {
             Layout.fillWidth: true
             spacing: Theme.gap
             Button {
-                text: robot.playing ? qsTr("Пауза") : qsTr("Пуск")
+                text: robot.playing ? qsTr("Pause") : qsTr("Play")
                 flat: true
                 enabled: robot.sampleCount > 0 && !robot.busy
                 onClicked: robot.playing ? robot.stop() : robot.play()
@@ -203,7 +203,7 @@ Rectangle {
                 onMoved: robot.seek(value)
             }
             Text {
-                text: robot.time.toFixed(2) + " / " + robot.duration.toFixed(2) + qsTr(" с")
+                text: robot.time.toFixed(2) + " / " + robot.duration.toFixed(2) + qsTr(" s")
                 color: Theme.textDim
                 font.family: Theme.mono
             }
@@ -213,13 +213,13 @@ Rectangle {
     Text {
         anchors.centerIn: parent
         visible: robot.momentCount === 0
-        text: qsTr("Выполните MoveJ — здесь появятся графики траектории")
+        text: qsTr("Run a MoveJ to see the trajectory plots here")
         color: Theme.textDim
     }
 
     FileDialog {
         id: saveDialog
-        title: qsTr("Сохранить траекторию")
+        title: qsTr("Save trajectory")
         fileMode: FileDialog.SaveFile
         defaultSuffix: "csv"
         nameFilters: [qsTr("CSV (*.csv)")]

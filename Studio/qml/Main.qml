@@ -43,8 +43,21 @@ ApplicationWindow {
                 width: 10; height: 10; radius: 5
                 color: !robot.ready ? Theme.warn : robot.busy ? Theme.accent : Theme.good
             }
+            Row {
+                spacing: 4
+                Layout.rightMargin: Theme.gap
+                Repeater {
+                    model: languages.languages
+                    delegate: Chip {
+                        required property var modelData
+                        text: modelData.code.toUpperCase()
+                        checked: languages.language === modelData.code
+                        onClicked: languages.language = modelData.code
+                    }
+                }
+            }
             Text {
-                text: !robot.ready ? qsTr("загрузка") : robot.busy ? qsTr("расчёт") : qsTr("готов")
+                text: !robot.ready ? qsTr("loading") : robot.busy ? qsTr("planning") : qsTr("ready")
                 color: Theme.textDim
             }
         }
@@ -112,7 +125,7 @@ ApplicationWindow {
             }
             Text {
                 visible: robot.sampleCount > 0
-                text: (robot.progress * robot.duration).toFixed(2) + " / " + robot.duration.toFixed(2) + " с"
+                text: (robot.progress * robot.duration).toFixed(2) + " / " + robot.duration.toFixed(2) + qsTr(" s")
                 color: Theme.textDim
                 font.family: Theme.mono
             }

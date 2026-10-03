@@ -4,7 +4,7 @@ import QtQuick.Layouts
 
 // Jog: one slider per joint, bounded by the joint limits from the settings file.
 Card {
-    title: qsTr("Суставы")
+    title: qsTr("Joints")
 
     Repeater {
         model: robot.limits.length
@@ -41,13 +41,13 @@ Card {
     RowLayout {
         Layout.fillWidth: true
         Button {
-            text: qsTr("Ноль")
+            text: qsTr("Zero")
             flat: true
             enabled: robot.ready && !robot.busy
             onClicked: robot.setJoints(robot.zeroPose())
         }
         Button {
-            text: qsTr("Сложенная")
+            text: qsTr("Folded")
             flat: true
             enabled: robot.ready && !robot.busy
             onClicked: robot.setJoints(robot.internalPose())

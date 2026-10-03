@@ -1,4 +1,5 @@
 #include "robotbackend.h"
+#include "translation.h"
 
 #include <QApplication>
 #include <QCommandLineParser>
@@ -32,6 +33,7 @@ int main(int argc, char *argv[])
     // QtCharts' ChartView needs a QApplication, not just QGuiApplication
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("ManipStudio"));
+    QApplication::setOrganizationName(QStringLiteral("ManipStudio"));
     QQuickStyle::setStyle(QStringLiteral("Material"));
 
     QCommandLineParser parser;
@@ -45,7 +47,9 @@ int main(int argc, char *argv[])
     QCommandLineOption shot_option(QStringLiteral("screenshot"),
                                    QStringLiteral("Save the window to <file> once loaded (after --movej finishes), then quit."),
                                    QStringLiteral("file"));
-    parser.addOptions({data_option, joints_option, movej_option, shot_option});
+    QCommandLineOption lang_option(QStringLiteral("lang"), QStringLiteral("UI language: en or ru (default: last used, else system)."),
+                                   QStringLiteral("code"));
+    parser.addOptions({data_option, joints_option, movej_option, shot_option, lang_option});
     parser.process(app);
 
     const QVariantList joints = ParseAngles(parser.value(joints_option));
@@ -63,10 +67,18 @@ int main(int argc, char *argv[])
     QObject::connect(&robot, &RobotBackend::statusChanged, &robot, [&robot] { qInfo("%s", qPrintable(robot.status())); });
     QObject::connect(&robot, &RobotBackend::errorOccurred, &robot, [](const QString &m) { qWarning("%s", qPrintable(m)); });
 
+    LanguageManager languages;
+    languages.setLanguage(parser.isSet(lang_option) ? parser.value(lang_option) : LanguageManager::InitialLanguage());
+
     QQmlApplicationEngine engine;
     // the Studio module (QML files and the C++ geometry types) lives at qrc:/Studio
     engine.addImportPath(QStringLiteral("qrc:/"));
     engine.rootContext()->setContextProperty(QStringLiteral("robot"), &robot);
+    engine.rootContext()->setContextProperty(QStringLiteral("languages"), &languages);
+    QObject::connect(&languages, &LanguageManager::languageChanged, &engine, [&engine, &robot] {
+        engine.retranslate();
+        robot.retranslate();
+    });
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); },
                      Qt::QueuedConnection);
     // Qt 6.4 has no loadFromModule(); the module's files live under qrc:/<URI>/
