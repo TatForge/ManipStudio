@@ -41,13 +41,13 @@ add_library(studio_backend STATIC
     robotbackend.h
     robotbackend.cpp)
 target_include_directories(studio_backend PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(studio_backend PUBLIC manip_core Qt6::Core Qt6::Gui)
+target_link_libraries(studio_backend PUBLIC manip_core Qt6::Core Qt6::Gui Qt6::Charts)
 
 # Directory with ManipulatorSettigns.ini and STLmodels/ used when --data is not given.
 set(MANIP_DATA_DIR ${MANIP_SRC_DIR} CACHE PATH "Directory with ManipulatorSettigns.ini and STLmodels/")
 
 qt_add_executable(ManipStudio main.cpp)
-set(STUDIO_QML Main.qml Theme.qml Card.qml JointPanel.qml MovePanel.qml PosePanel.qml RobotView.qml AxisLines.qml)
+set(STUDIO_QML Main.qml Theme.qml Card.qml JointPanel.qml MovePanel.qml PosePanel.qml RobotView.qml AxisLines.qml ResultsPanel.qml PeaksPanel.qml Chip.qml)
 set(STUDIO_QML_FILES)
 foreach(f ${STUDIO_QML})
     # served at qrc:/Studio/<f>, next to the module's qmldir, so that the

@@ -9,6 +9,8 @@
 #include <QTimer>
 #include <QVariantList>
 #include <QVariantMap>
+#include <QPointF>
+#include <QUrl>
 
 // The single object QML talks to. Angles are in degrees on this side,
 // radians on the solver side. Heavy work runs in SolverWorker's thread;
@@ -28,6 +30,11 @@ class RobotBackend : public QObject
     Q_PROPERTY(QVariantList meshPoses READ meshPoses NOTIFY poseChanged)
     Q_PROPERTY(QVariantMap toolPose READ toolPose NOTIFY poseChanged)
     Q_PROPERTY(QVariantList tcpPath READ tcpPath NOTIFY trajectoryChanged)
+    Q_PROPERTY(QVariantList maxMoments READ maxMoments NOTIFY readyChanged)
+    Q_PROPERTY(int momentCount READ momentCount NOTIFY trajectoryChanged)
+    Q_PROPERTY(QVariantList peaks READ peaks NOTIFY trajectoryChanged)
+    Q_PROPERTY(QString trajectoryError READ trajectoryError NOTIFY trajectoryChanged)
+    Q_PROPERTY(double time READ time NOTIFY progressChanged)
     Q_PROPERTY(double progress READ progress NOTIFY progressChanged)
     Q_PROPERTY(double duration READ duration NOTIFY trajectoryChanged)
     Q_PROPERTY(int sampleCount READ sampleCount NOTIFY trajectoryChanged)
@@ -54,6 +61,15 @@ public:
     QVariantMap toolPose() const;
     // flange positions (QVector3D, m) along the last planned trajectory
     QVariantList tcpPath() const;
+    // motor limits |tau| (N*m) from the settings file
+    QVariantList maxMoments() const;
+    // samples with computed moments; after a failed plan, up to the failing one
+    int momentCount() const { return m_moments.size() / 6; }
+    // per joint: {peak |tau|, time (s), limit, ratio = peak / limit, exceeded}
+    QVariantList peaks() const;
+    QString trajectoryError() const { return m_trajectory_error; }
+    // playback position, seconds
+    double time() const { return m_sample * m_dt_ms / 1000.0; }
     double progress() const;
     double duration() const;
     int sampleCount() const;
@@ -61,12 +77,26 @@ public:
     QString dataDir() const { return m_data_dir; }
     const ArmPose &pose() const { return m_pose; }
 
+    // Curves of the last trajectory for the plots, x in seconds:
+    // "moment" N*m, "position" deg, "velocity" deg/s, "acceleration" deg/s^2.
+    QList<QPointF> Series(const QString &kind, int joint) const;
+    // {xMax, yMin, yMax} over all joints of one kind
+    Q_INVOKABLE QVariantMap seriesRange(const QString &kind) const;
+    // replaces the points of a QtCharts QXYSeries with Series(kind, joint)
+    Q_INVOKABLE bool fillSeries(QObject *series, const QString &kind, int joint) const;
+    // t, q, q', q'' (deg) and tau (N*m) of every sample as CSV
+    Q_INVOKABLE bool exportCsv(const QUrl &file) const;
+
     // Jog: sets joint angles directly (clamped to the limits).
     Q_INVOKABLE void setJoint(int index, double deg);
     Q_INVOKABLE void setJoints(const QVariantList &deg);
     // Plans a synchronized joint move from the current angles and plays it back.
     Q_INVOKABLE void moveJ(const QVariantList &target_deg, double speed_deg_s, double accel_deg_s2);
     Q_INVOKABLE void stop();
+    // replays the last trajectory from the current position (from the start at the end)
+    Q_INVOKABLE void play();
+    // jumps to a moment of the last trajectory (seconds), pausing playback
+    Q_INVOKABLE void seek(double seconds);
     Q_INVOKABLE QVariantList zeroPose() const;
     Q_INVOKABLE QVariantList internalPose() const;
 
@@ -86,9 +116,9 @@ signals:
     void requestMoveJ(const QVector<double> &from_rad, const QVector<double> &to_rad, double speed, double accel, double dt_ms);
 
 private:
-    void OnInitialized(const QVector<double> &lo, const QVector<double> &hi, double floor_z);
+    void OnInitialized(const QVector<double> &lo, const QVector<double> &hi, double floor_z, const QVector<double> &max_moments);
     void OnPose(const ArmPose &pose);
-    void OnTrajectory(const QVector<float> &samples, double dt_ms, const QVector<QVector3D> &tcp_path);
+    void OnTrajectory(const PlannedTrajectory &trajectory);
     void OnFailed(const QString &what, const QString &message);
     void OnPlayTick();
     void ShowSample(int index);
@@ -106,6 +136,10 @@ private:
     ArmPose m_pose;                     // latest computed pose
     QVector<float> m_samples;
     QVector<QVector3D> m_tcp_path;
+    QVector<float> m_moments;           // 6 per sample
+    QVector<double> m_max_moments;
+    QString m_trajectory_error;
+    int m_play_from = 0;
     double m_floor_z = 0;
     double m_dt_ms = 0;
     int m_sample = 0;

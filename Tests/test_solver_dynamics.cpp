@@ -426,3 +426,63 @@ TEST_F(SolverDynamics, MoveJEvaluatesDynamicsForEverySample)
                 << "sample " << k << " joint " << i;
     }
 }
+
+// Public access to the moments of a planned trajectory (used by the GUI plots).
+TEST_F(SolverDynamics, TrajectoryMomentsCoverEverySample)
+{
+    Angles to = WorkPose();
+    to.q[1] -= 0.4;
+    std::vector<float> flat;
+    ASSERT_TRUE(RunsWithoutThrowing([&] { solver->MoveJ(WorkPose(), to, 1.0f, 2.0f, 10.0f, flat); }));
+    const auto samples = Samples(flat);
+    const std::vector<Robo::Moments> moments = solver->GetTrajectoryMoments();
+    ASSERT_EQ(moments.size(), samples.size());
+    for (size_t k = 0; k < moments.size(); k++)
+        for (int i = 0; i < JOINTS_COUNT; i++)
+            EXPECT_EQ(moments[k].tao[i], solver->m_moments_v[k].tao[i]) << "sample " << k << " joint " << i;
+}
+
+// When a motor limit stops the planning, the moments up to and including the
+// sample that exceeded it are still available, so the GUI can show where.
+TEST_F(SolverDynamics, TrajectoryMomentsEndAtTheSampleThatExceededALimit)
+{
+    Angles to = WorkPose();
+    to.q[1] -= 0.4;
+    std::vector<float> flat;
+    ASSERT_TRUE(RunsWithoutThrowing([&] { solver->MoveJ(WorkPose(), to, 1.0f, 2.0f, 10.0f, flat); }));
+    const std::vector<Robo::Moments> full = solver->GetTrajectoryMoments();
+    // a limit between the smallest and the largest |tau1| along the move
+    double lo = 1e9, hi = 0;
+    for (const auto &m : full)
+    {
+        lo = std::min(lo, std::abs(m.tao[1]));
+        hi = std::max(hi, std::abs(m.tao[1]));
+    }
+    ASSERT_GT(hi - lo, 1.0);
+    const double limit = (lo + hi) / 2;
+    auto saved = solver->max_joint_moments;
+    solver->max_joint_moments[1] = limit;
+    flat.clear();
+    EXPECT_THROW(
+        {
+            ScopedSilence quiet;
+            solver->MoveJ(WorkPose(), to, 1.0f, 2.0f, 10.0f, flat);
+        },
+        std::runtime_error);
+    solver->max_joint_moments = saved;
+
+    const std::vector<Robo::Moments> partial = solver->GetTrajectoryMoments();
+    ASSERT_FALSE(partial.empty());
+    ASSERT_LT(partial.size(), full.size());
+    for (size_t k = 0; k + 1 < partial.size(); k++)
+        EXPECT_LE(std::abs(partial[k].tao[1]), limit) << "sample " << k;
+    EXPECT_GT(std::abs(partial.back().tao[1]), limit);
+    // same trajectory, so the samples before the stop are the full run's
+    for (size_t k = 0; k < partial.size(); k++)
+        EXPECT_NEAR(partial[k].tao[1], full[k].tao[1], 1e-9) << "sample " << k;
+}
+
+TEST_F(SolverDynamics, NoTrajectoryMomentsBeforePlanning)
+{
+    EXPECT_TRUE(solver->GetTrajectoryMoments().empty());
+}

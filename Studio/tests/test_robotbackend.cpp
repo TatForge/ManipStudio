@@ -2,7 +2,10 @@
 // against the real core (settings and STL meshes from MANIP_DATA_DIR).
 #include "robotbackend.h"
 
+#include <QDir>
+#include <QFile>
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QtTest>
 
 #include <memory>
@@ -25,6 +28,42 @@ private:
     }
 
     static double At(const QVariantList &l, int i) { return l.at(i).toDouble(); }
+
+    static QVariantMap Peak(const RobotBackend &b, int joint) { return b.peaks().at(joint).toMap(); }
+
+    // plans and plays the default test move to the end
+    void RunMove(const QVariantList &target = {20, -40, 60, 10, 45, -30})
+    {
+        QSignalSpy finished(m_backend.get(), &RobotBackend::motionFinished);
+        m_backend->moveJ(target, 90, 180);
+        QVERIFY(finished.wait(kTimeoutMs));
+    }
+
+    // data directory with the project's model but a lower motor limit for one joint
+    static bool MakeDataDirWithMomentLimit(QTemporaryDir &dir, int joint, double limit)
+    {
+        const QDir src(QStringLiteral(MANIP_DATA_DIR));
+        QFile ini(src.filePath(QStringLiteral("ManipulatorSettigns.ini")));
+        if (!ini.open(QIODevice::ReadOnly))
+            return false;
+        QString text = QString::fromUtf8(ini.readAll());
+        const int section = text.indexOf(QStringLiteral("[max%20moments]"));
+        const int at = text.indexOf(QRegularExpression(QStringLiteral("\r?\n%1=").arg(joint)), section);
+        if (section < 0 || at < 0)
+            return false;
+        const int value = text.indexOf(QLatin1Char('='), at) + 1;
+        const int end = text.indexOf(QRegularExpression(QStringLiteral("\r?\n")), value);
+        text.replace(value, end - value, QString::number(limit, 'g', 17));
+        QFile out(QDir(dir.path()).filePath(QStringLiteral("ManipulatorSettigns.ini")));
+        if (!out.open(QIODevice::WriteOnly) || out.write(text.toUtf8()) < 0)
+            return false;
+        out.close();
+        QDir(dir.path()).mkdir(QStringLiteral("STLmodels"));
+        for (const QString &f : QDir(src.filePath(QStringLiteral("STLmodels"))).entryList(QDir::Files))
+            if (!QFile::copy(src.filePath(QStringLiteral("STLmodels/") + f), QDir(dir.path()).filePath(QStringLiteral("STLmodels/") + f)))
+                return false;
+        return true;
+    }
 
 private slots:
     void init()
@@ -137,6 +176,143 @@ private slots:
         QVERIFY(qAbs(after.x() + before.y()) < 1e-4);
         QVERIFY(qAbs(after.y() - before.x()) < 1e-4);
         QVERIFY(qAbs(after.z() - before.z()) < 1e-4);
+    }
+
+    void momentsCoverEveryPlannedSample()
+    {
+        RunMove();
+        QCOMPARE(m_backend->maxMoments().size(), 6);
+        QCOMPARE(qRound(At(m_backend->maxMoments(), 0)), 180);
+        QCOMPARE(m_backend->momentCount(), m_backend->sampleCount());
+        QVERIFY(m_backend->trajectoryError().isEmpty());
+        for (int j = 0; j < 6; j++)
+        {
+            const QList<QPointF> tau = m_backend->Series(QStringLiteral("moment"), j);
+            QCOMPARE(tau.size(), m_backend->sampleCount());
+            QCOMPARE(tau.first().x(), 0.0);
+            QVERIFY(qAbs(tau.last().x() - m_backend->duration()) < 1e-9);
+        }
+        // the shoulder holds the arm against gravity: clearly non-zero moment
+        double shoulder = 0;
+        for (const QPointF &p : m_backend->Series(QStringLiteral("moment"), 1))
+            shoulder = std::max(shoulder, std::abs(p.y()));
+        QVERIFY(shoulder > 5);
+    }
+
+    void peaksAreWithinTheMotorLimitsOfAnAcceptedMove()
+    {
+        RunMove();
+        const QVariantList peaks = m_backend->peaks();
+        QCOMPARE(peaks.size(), 6);
+        for (int j = 0; j < 6; j++)
+        {
+            const QVariantMap p = peaks[j].toMap();
+            QVERIFY(!p[QStringLiteral("exceeded")].toBool());
+            QVERIFY(p[QStringLiteral("ratio")].toDouble() <= 1.0);
+            QVERIFY(p[QStringLiteral("time")].toDouble() <= m_backend->duration() + 1e-9);
+            // the peak is the largest |tau| of the curve
+            double peak = 0;
+            for (const QPointF &pt : m_backend->Series(QStringLiteral("moment"), j))
+                peak = std::max(peak, std::abs(pt.y()));
+            QVERIFY(qAbs(p[QStringLiteral("peak")].toDouble() - peak) < 1e-6);
+        }
+    }
+
+    void kinematicSeriesEndAtTheTarget()
+    {
+        const QVariantList target{20, -40, 60, 10, 45, -30};
+        RunMove(target);
+        for (int j = 0; j < 6; j++)
+        {
+            QVERIFY(qAbs(m_backend->Series(QStringLiteral("position"), j).last().y() - At(target, j)) < 1e-3);
+            QVERIFY(qAbs(m_backend->Series(QStringLiteral("velocity"), j).last().y()) < 1.0);
+        }
+        // synchronized MoveJ: the joint with the largest travel reaches the commanded speed
+        double top = 0;
+        for (int j = 0; j < 6; j++)
+            for (const QPointF &p : m_backend->Series(QStringLiteral("velocity"), j))
+                top = std::max(top, std::abs(p.y()));
+        QVERIFY2(top > 80 && top < 92, qPrintable(QString::number(top)));
+        const QVariantMap range = m_backend->seriesRange(QStringLiteral("position"));
+        QVERIFY(range[QStringLiteral("yMin")].toDouble() <= -40 + 1e-3);
+        QVERIFY(range[QStringLiteral("yMax")].toDouble() >= 60 - 1e-3);
+        QVERIFY(m_backend->Series(QStringLiteral("nonsense"), 0).isEmpty());
+    }
+
+    void seekShowsThePoseAtThatTime()
+    {
+        RunMove();
+        const double half = m_backend->duration() / 2;
+        m_backend->seek(half);
+        QVERIFY(!m_backend->playing());
+        QVERIFY(qAbs(m_backend->time() - half) <= 0.0051);
+        const int k = qRound(m_backend->time() * 100);   // dt = 10 ms
+        for (int j = 0; j < 6; j++)
+            QVERIFY(qAbs(At(m_backend->joints(), j) - m_backend->Series(QStringLiteral("position"), j).at(k).y()) < 1e-6);
+        WaitPose();
+        // replay continues from there and ends at the target
+        QSignalSpy finished(m_backend.get(), &RobotBackend::motionFinished);
+        m_backend->play();
+        QVERIFY(m_backend->playing());
+        QVERIFY(finished.wait(kTimeoutMs));
+        QCOMPARE(m_backend->progress(), 1.0);
+    }
+
+    void exportsTheTrajectoryAsCsv()
+    {
+        QTemporaryDir dir;
+        const QUrl file = QUrl::fromLocalFile(QDir(dir.path()).filePath(QStringLiteral("move.csv")));
+        QVERIFY(!m_backend->exportCsv(file));      // nothing planned yet
+        RunMove();
+        QVERIFY(m_backend->exportCsv(file));
+        QFile f(file.toLocalFile());
+        QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QStringList lines = QString::fromUtf8(f.readAll()).split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+        QCOMPARE(lines.size(), m_backend->sampleCount() + 1);
+        const QStringList header = lines.first().split(QLatin1Char(','));
+        QCOMPARE(header.size(), 1 + 18 + 6);
+        QCOMPARE(header[1], QStringLiteral("q1_deg"));
+        QCOMPARE(header.last(), QStringLiteral("tau6_Nm"));
+        const QStringList last = lines.last().split(QLatin1Char(','));
+        QCOMPARE(last.size(), header.size());
+        QVERIFY(qAbs(last[1].toDouble() - 20) < 1e-3);
+        QVERIFY(qAbs(last[0].toDouble() - m_backend->duration()) < 1e-6);
+    }
+
+    void motorLimitStopsThePlanAndShowsWhere()
+    {
+        // |tau2| along the default move, then a limit half way between its extremes
+        RunMove();
+        double lo = 1e9, hi = 0;
+        for (const QPointF &p : m_backend->Series(QStringLiteral("moment"), 1))
+        {
+            lo = std::min(lo, std::abs(p.y()));
+            hi = std::max(hi, std::abs(p.y()));
+        }
+        const int full = m_backend->momentCount();
+        QVERIFY(hi - lo > 1.0);
+        const double limit = (lo + hi) / 2;
+
+        QTemporaryDir dir;
+        QVERIFY(MakeDataDirWithMomentLimit(dir, 1, limit));
+        m_backend = std::make_unique<RobotBackend>(dir.path());
+        QTRY_VERIFY_WITH_TIMEOUT(m_backend->ready(), kTimeoutMs);
+        QVERIFY(qAbs(At(m_backend->maxMoments(), 1) - limit) < 1e-6);
+        m_backend->setJoints({0, 0, 0, 0, 0, 0});
+        WaitPose();
+
+        QSignalSpy errors(m_backend.get(), &RobotBackend::errorOccurred);
+        m_backend->moveJ({20, -40, 60, 10, 45, -30}, 90, 180);
+        QVERIFY(errors.wait(kTimeoutMs));
+        QVERIFY(!m_backend->busy());
+        QVERIFY(!m_backend->trajectoryError().isEmpty());
+        QCOMPARE(m_backend->sampleCount(), 0);
+        QVERIFY(m_backend->momentCount() > 0);
+        QVERIFY(m_backend->momentCount() < full);
+        const QVariantMap p = Peak(*m_backend, 1);
+        QVERIFY(p[QStringLiteral("exceeded")].toBool());
+        // the last evaluated sample is the one over the limit
+        QVERIFY(std::abs(m_backend->Series(QStringLiteral("moment"), 1).last().y()) > limit);
     }
 
     void moveJOutsideLimitsReportsError()

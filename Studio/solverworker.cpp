@@ -56,6 +56,7 @@ bool Guarded(SolverWorker *w, const QString &what, F &&f)
 SolverWorker::SolverWorker(QObject *parent) : QObject(parent)
 {
     qRegisterMetaType<ArmPose>();
+    qRegisterMetaType<PlannedTrajectory>();
 }
 
 SolverWorker::~SolverWorker() = default;
@@ -74,7 +75,10 @@ void SolverWorker::Initialize()
             lo.append(l.first);
             hi.append(l.second);
         }
-        emit Initialized(lo, hi, m_solver->GetFloorHeight());
+        QVector<double> max_moments;
+        for (scalar m : m_robot->GetMaxJointMoments())
+            max_moments.append(m);
+        emit Initialized(lo, hi, m_solver->GetFloorHeight(), max_moments);
     });
 }
 
@@ -104,12 +108,34 @@ void SolverWorker::MoveJ(const QVector<double> &from_rad, const QVector<double> 
         emit Failed(QStringLiteral("MoveJ"), QStringLiteral("solver is not initialized"));
         return;
     }
+    PlannedTrajectory out;
+    out.dt_ms = dt_ms;
     std::vector<float> results;
-    if (!Guarded(this, QStringLiteral("MoveJ"), [&] {
-            m_solver->MoveJ(ToAngles(from_rad), ToAngles(to_rad), float(speed_rad_s), float(accel_rad_s2), float(dt_ms), results);
-        }))
+    try
+    {
+        m_solver->MoveJ(ToAngles(from_rad), ToAngles(to_rad), float(speed_rad_s), float(accel_rad_s2), float(dt_ms), results);
+    }
+    catch (const std::exception &e)
+    {
+        out.error = QString::fromStdString(e.what());
+    }
+    catch (const std::string &s)
+    {
+        out.error = QString::fromStdString(s);
+    }
+    catch (...)
+    {
+        out.error = QStringLiteral("unknown error");
+    }
+    for (const Robo::Moments &m : m_solver->GetTrajectoryMoments())
+        for (int i = 0; i < JOINTS_COUNT; i++)
+            out.moments.append(float(m.tao[i]));
+    if (!out.error.isEmpty())
+    {
+        emit TrajectoryReady(out);
         return;
-    QVector<QVector3D> path;
+    }
+    out.samples = QVector<float>(results.begin(), results.end());
     Matrix4x4 TR[JOINTS_COUNT];
     for (size_t k = 0; k + SampleStride <= results.size(); k += SampleStride)
     {
@@ -118,7 +144,7 @@ void SolverWorker::MoveJ(const QVector<double> &from_rad, const QVector<double> 
             a.q[i] = results[k + i];
         m_solver->SolveDirectKinematic(a, TR);
         const Matrix4x4 &t = TR[JOINTS_COUNT - 1];
-        path.append(QVector3D(float(t.at(0, 3)), float(t.at(1, 3)), float(t.at(2, 3))));
+        out.tcp_path.append(QVector3D(float(t.at(0, 3)), float(t.at(1, 3)), float(t.at(2, 3))));
     }
-    emit TrajectoryReady(QVector<float>(results.begin(), results.end()), dt_ms, path);
+    emit TrajectoryReady(out);
 }

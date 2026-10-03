@@ -6,7 +6,7 @@ import QtQuick.Layouts
 ApplicationWindow {
     id: window
     width: 1400
-    height: 860
+    height: 940
     minimumWidth: 1000
     minimumHeight: 640
     visible: true
@@ -68,9 +68,20 @@ ApplicationWindow {
             }
         }
 
-        RobotView {
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            spacing: Theme.gap
+            RobotView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.minimumHeight: 280
+            }
+            ResultsPanel {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 300
+                Layout.minimumHeight: 220
+            }
         }
 
         ColumnLayout {
@@ -79,6 +90,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             spacing: Theme.gap
             PosePanel { Layout.fillWidth: true }
+            PeaksPanel { Layout.fillWidth: true }
             Item { Layout.fillHeight: true }
         }
     }

@@ -21,6 +21,19 @@ struct ArmPose
 };
 Q_DECLARE_METATYPE(ArmPose)
 
+// Result of planning one motion. On failure `error` is set, `samples` and
+// `tcp_path` are empty and `moments` holds the samples evaluated before the
+// stop (the last one is where a motor limit was exceeded, if that was the cause).
+struct PlannedTrajectory
+{
+    QVector<float> samples;             // SampleStride floats per sample (q, q', q'' in rad)
+    QVector<float> moments;             // 6 joint moments (N*m) per evaluated sample
+    QVector<QVector3D> tcp_path;        // flange origin (m) of every sample
+    double dt_ms = 0;
+    QString error;
+};
+Q_DECLARE_METATYPE(PlannedTrajectory)
+
 // Owns the robot model and the solver. Lives in its own thread: every call
 // into the core goes through the queued slots below, so the solver is never
 // touched from two threads.
@@ -41,10 +54,10 @@ public slots:
     void MoveJ(const QVector<double> &from_rad, const QVector<double> &to_rad, double speed_rad_s, double accel_rad_s2, double dt_ms);
 
 signals:
-    void Initialized(const QVector<double> &limits_min_rad, const QVector<double> &limits_max_rad, double floor_z);
+    void Initialized(const QVector<double> &limits_min_rad, const QVector<double> &limits_max_rad, double floor_z,
+                     const QVector<double> &max_moments);
     void PoseReady(const ArmPose &pose);
-    // tcp_path: flange origin (m) of every sample
-    void TrajectoryReady(const QVector<float> &samples, double dt_ms, const QVector<QVector3D> &tcp_path);
+    void TrajectoryReady(const PlannedTrajectory &trajectory);
     void Failed(const QString &what, const QString &message);
 
 private:

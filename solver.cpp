@@ -946,6 +946,16 @@ int Solver::FindMeshBelowFloor() const
     return -1;
 }
 
+vector<Robo::Moments> Solver::GetTrajectoryMoments() const
+{
+    const size_t n = std::min<size_t>(m_moments_counter, m_moments_v.size());
+    vector<Robo::Moments> out(m_moments_v.begin(), m_moments_v.begin() + n);
+    //CheckMaxMoments throws before the sample is stored; m_moments still holds it
+    if (n > 0)
+        out.back() = m_moments;
+    return out;
+}
+
 const vector<pair<scalar, scalar>> &Solver::GetJointLimits() const
 {
     return m_joint_limits;

@@ -71,6 +71,9 @@ public:
     void CheckCollision(const uint *elem_number = nullptr);
     void CalcCollisionsDynamics(const scalar &array_size, const scalar &dt_millisec);
     scalar FindAngle(const Vector3 &O, const Vector3 &A0, const Vector3 P);
+    //joint moments of the last planned trajectory, one per evaluated sample; when planning
+    //stopped on a motor limit, the last entry is the sample that exceeded it
+    vector<Robo::Moments> GetTrajectoryMoments() const;
     const vector<pair<scalar, scalar>> &GetJointLimits() const;
     bool WithinJointLimits(const Angles &a) const;
     scalar GetFloorHeight() const;
