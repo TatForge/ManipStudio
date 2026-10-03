@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QFileInfo>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
@@ -55,6 +56,9 @@ int main(int argc, char *argv[])
         return 2;
     }
 
+    // resolved now: the backend changes the working directory to the data directory
+    const QString shot = parser.isSet(shot_option) ? QFileInfo(parser.value(shot_option)).absoluteFilePath() : QString();
+
     RobotBackend robot(parser.value(data_option));
     QObject::connect(&robot, &RobotBackend::statusChanged, &robot, [&robot] { qInfo("%s", qPrintable(robot.status())); });
     QObject::connect(&robot, &RobotBackend::errorOccurred, &robot, [](const QString &m) { qWarning("%s", qPrintable(m)); });
@@ -68,7 +72,6 @@ int main(int argc, char *argv[])
     // Qt 6.4 has no loadFromModule(); the module's files live under qrc:/<URI>/
     engine.load(QUrl(QStringLiteral("qrc:/Studio/Main.qml")));
 
-    const QString shot = parser.value(shot_option);
     // give the scene a moment to render, then save the window
     auto grab = [&engine, shot] {
         QTimer::singleShot(1500, [&engine, shot] {

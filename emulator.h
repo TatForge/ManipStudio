@@ -8,9 +8,6 @@
 #include "sharedmem.h"
 //#include "sysvsharedmemory.h"
 
-#if WITH_WINDOW
-#include "mainwindow.h"
-#endif
 
 #define VREMENNO_DLYA_VISUALKI
 
@@ -50,9 +47,6 @@ public:
     void MoveMeshes();
 
     int iter;
-#if WITH_WINDOW
-    MainWindow moments_window;
-#endif
 private:
     void SetPolynomKF(Polynom polynom_in);
     void UpdateStateMatrix();
@@ -79,9 +73,6 @@ private:
     std::vector<MeshCollider> meshes_buff;
 #endif
 
-#if WITH_WINDOW
-    MainWindow w;
-#endif
 };
 
 #endif // EMULATOR_H

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
-# ManipStudio: the single Qt6/QML window that replaces the old Qt5 windows.
-# Standalone project: cmake -S Studio -B build-studio
+# ManipStudio: the Qt6/QML GUI of the project. Built from the top-level
+# CMakeLists.txt, or on its own: cmake -S Studio -B build-studio
 project(ManipStudio LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -12,25 +12,9 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControl
 
 get_filename_component(MANIP_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/.. ABSOLUTE)
 
-# The kinematics / dynamics core, compiled against Qt6::Core (it only needs
-# QSettings and QSharedMemory).
-add_library(manip_core STATIC
-    ${MANIP_SRC_DIR}/constants.h
-    ${MANIP_SRC_DIR}/my_math.h
-    ${MANIP_SRC_DIR}/my_math.cpp
-    ${MANIP_SRC_DIR}/meshcollider.h
-    ${MANIP_SRC_DIR}/meshcollider.cpp
-    ${MANIP_SRC_DIR}/robo.h
-    ${MANIP_SRC_DIR}/robo.cpp
-    ${MANIP_SRC_DIR}/solver.h
-    ${MANIP_SRC_DIR}/solver.cpp
-    ${MANIP_SRC_DIR}/emulator.h
-    ${MANIP_SRC_DIR}/emulator.cpp
-    ${MANIP_SRC_DIR}/sharedmem.h
-    ${MANIP_SRC_DIR}/sharedmem.cpp)
-target_include_directories(manip_core PUBLIC ${MANIP_SRC_DIR} ${MANIP_SRC_DIR}/STLmodels)
-target_link_libraries(manip_core PUBLIC Qt6::Core)
-set_target_properties(manip_core PROPERTIES AUTOMOC OFF)
+# The kinematics / dynamics core (already defined when built from the top-level project)
+include(${MANIP_SRC_DIR}/ManipCore.cmake)
+manip_add_core(Qt6::Core)
 
 # Qt-side bridge to the core (no QML, so it can be tested headless).
 add_library(studio_backend STATIC

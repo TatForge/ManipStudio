@@ -64,7 +64,6 @@ public:
     void SolveForwardDynamicMultithread();
     void CheckCollisionMultithread();
     bool SolveForwardDynamic(const Angles &angles);
-    void VisualizeMoments(const scalar &dt_millisec);
     void AnglesVectorToVector(const int size, vector<float> &results);
     Angles VectorToAngle(const vector<float> &v);
     void VectorsResize(const counter &ctr);

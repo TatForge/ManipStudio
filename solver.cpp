@@ -346,22 +346,9 @@ void Solver::MoveL(const StateVector &start_point, const StateVector &end_point,
     m_angles_v[last + 1] = m_angles_v[last];
 
     CalcCollisionsDynamics(last + 1, dt_millisec);
-#if WITH_WINDOW
-    for (int i = 0; i <= last; i++)
-    {
-        m_emulator->moments_window.PlotCoordinates(m_moments_v[i].tao[0], m_moments_v[i].tao[1], m_moments_v[i].tao[2],
-                                                   m_moments_v[i].tao[3], m_moments_v[i].tao[4], m_moments_v[i].tao[5], dt_millisec);
-    }
-#endif
     if (distance > 0)
         for (int i = 0; i <= last; i++)
             CheckTrajectoryForLinear(m_angles_v[i], p0, p1, DELTA_RANGE);
-#if !WITH_BENCHMARK
-#if WITH_WINDOW
-    m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec, true);
-    m_emulator->MoveManipLinear(m_angles_v, m_speed_v, dt_millisec);
-#endif
-#endif
     AnglesVectorToVector(last + 1, results);
 }
 
@@ -474,9 +461,6 @@ bool Solver::CheckMaxMoments()
     {
         if (abs(m_moments.tao[joint_number]) > max_joint_moments[joint_number])
         {
-#if WITH_WINDOW
-            m_emulator->OneIterMoveLinear(m_angles_v[m_moments_counter], m_angles_v[m_moments_counter],  DT_MILLISEC, true, m_accel_v[m_collisions_counter]);
-#endif
             throw std::runtime_error("Calculated moment of the " + to_string(joint_number) + "'s engine (" + to_string(m_moments.tao[joint_number]) + ")is greated than the maximum possible[" + to_string(max_joint_moments[joint_number]) + "]");
             return true;
         }
@@ -498,11 +482,6 @@ void Solver::SolveForwardDynamicMultithread()
         CalcUMatrix(m_angles_v[m_moments_counter]);
         SolveForwardDynamic(m_angles_v[m_moments_counter]);
         m_moments_v[m_moments_counter] = m_moments;
-#if WITH_WINDOW
-        //        m_emulator->moments_window.PlotCoordinates(m_moments_vector[m_moments_counter].tao[0], m_moments_vector[m_moments_counter].tao[1],
-        //                                                   m_moments_vector[m_moments_counter].tao[2], m_moments_vector[m_moments_counter].tao[3],
-        //                                                   m_moments_vector[m_moments_counter].tao[4], m_moments_vector[m_moments_counter].tao[5], dt_millisec);
-#endif
         m_dynamic_notified = false;
         m_dynamic_cv.wait(lock);
     }
@@ -598,26 +577,6 @@ bool Solver::SolveForwardDynamic(const Angles &angles)
     return true;
 }
 
-void Solver::VisualizeMoments(const scalar &dt_millisec)
-{
-#if WITH_WINDOW
-    for (counter i = 0; i < m_moments_counter; i++)
-    {
-        if (i == 0)
-            m_emulator->moments_window.PrintResult(m_moments_v[i].tao[0], m_moments_v[i].tao[1],
-                    m_moments_v[i].tao[2], ToRad(m_moments_v[i].tao[3]),
-                    ToRad(m_moments_v[i].tao[4]), ToRad(m_moments_v[i].tao[5]));
-        m_emulator->moments_window.PlotCoordinates(m_moments_v[i].tao[0], m_moments_v[i].tao[1],
-                m_moments_v[i].tao[2], m_moments_v[i].tao[3],
-                m_moments_v[i].tao[4], m_moments_v[i].tao[5], dt_millisec);
-        if (i == m_moments_counter - 1)
-            m_emulator->moments_window.PlotCoordinates(m_moments_v[i].tao[0], m_moments_v[i].tao[1],
-                    m_moments_v[i].tao[2], m_moments_v[i].tao[3],
-                    m_moments_v[i].tao[4], m_moments_v[i].tao[5], dt_millisec, true);
-    }
-#endif
-}
-
 void Solver::AnglesVectorToVector(const int size, vector<float> &results)
 {
     results.clear();
@@ -694,10 +653,6 @@ void Solver::MoveJ(const Angles &start_angle, const Angles &end_angle, const flo
     //Коллизии + динамика
     CalcCollisionsDynamics(last + 1, dt_millisec);
     AnglesVectorToVector(last + 1, results);
-    VisualizeMoments(dt_millisec);
-#if WITH_WINDOW
-    m_emulator->MoveManipLinear(m_angles_v, m_speed_v, dt_millisec);
-#endif
 }
 
 int Solver::CalcTrajOneJoint(const Angles &start_angle, const Angles &end_angle, const scalar &dt_s, const scalar &angle_max_speed, const scalar &angle_acceleration, const int &element_number)
@@ -843,10 +798,6 @@ bool Solver::MoveC(const Angles &start_angle, const StateVector &start_point, co
 
     CalcCollisionsDynamics(last + 1, dt_millisec);
     AnglesVectorToVector(last + 1, results);
-#if WITH_WINDOW
-    m_emulator->moments_window.PlotCoordinates(m_moments.tao[0], m_moments.tao[1],m_moments.tao[2],m_moments.tao[3],m_moments.tao[4],m_moments.tao[5], dt_millisec, true);
-    m_emulator->MoveManipLinear(m_angles_v, m_speed_v, dt_millisec);
-#endif
     return true;
 }
 

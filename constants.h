@@ -3,6 +3,13 @@
 
 #include <cmath>
 
+// uint / ushort come from glibc's <sys/types.h>; MinGW and MSVC lack them
+// (Qt declares the same typedefs, repeating an identical typedef is fine)
+#if !defined(__GLIBC__)
+typedef unsigned int uint;
+typedef unsigned short ushort;
+#endif
+
 //______ALL_PROJECT_CONSTANTS______
 #ifndef WITH_BENCHMARK
 #define WITH_BENCHMARK  0
@@ -15,7 +22,6 @@
 #endif
 #define WITH_COLLISIONS 1
 #define MULTITHREAD     0
-#define WITH_WINDOW     0
 //assertions turn off
 //#define NDEBUG
 #define SMESH +1.65

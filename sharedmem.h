@@ -3,6 +3,7 @@
 
 
 #include <QSharedMemory>
+#include <algorithm>
 #include <iostream>
 
 #define MAX_DATA_SIZE 1000
@@ -12,7 +13,7 @@ class SharedMem
 public:
 
 
-    SharedMem(QString key, size_t size = 10) : m_key(key), m_size(size)
+    SharedMem(QString key, size_t size = 10) : m_key(key), m_size(size), m_bytes(sizeof(float) * size)
     {//size = elements count
         sh_m = new QSharedMemory(m_key);
         m_data = new float [m_size];
@@ -36,8 +37,9 @@ public:
     }
     bool SendData(float *data_ptr, size_t size)
     {
-        //sends `size` bytes from data_ptr
-        if (!sh_m->isAttached() || size > size_t(sh_m->size()))
+        //sends `size` bytes from data_ptr; the limit is the requested segment size:
+        //on Windows QSharedMemory::size() is rounded up to whole pages
+        if (!sh_m->isAttached() || size > std::min(m_bytes, size_t(sh_m->size())))
             return false;
         if (sh_m->lock())
         {
@@ -73,6 +75,7 @@ private:
     QSharedMemory *sh_m;
     QString m_key;
     size_t m_size;
+    size_t m_bytes;     //requested segment size
     float *m_data;
 
 };
