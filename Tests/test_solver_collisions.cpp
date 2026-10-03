@@ -1,10 +1,12 @@
-// Phase 3: collision model of the Solver -- which meshes are loaded, how
-// they follow the arm, and that planned motions are stopped by self
-// collisions and by the obstacle.
+// Phase 3: collision model of the Solver -- the convex hulls of the arm
+// shape (ArmShape) and the obstacle, how they follow the arm, and that
+// planned motions are stopped by self collisions and by the obstacle.
 
 #include "solver_fixture.h"
 
 #include <string>
+#include <utility>
+#include <vector>
 
 using namespace solver_test;
 
@@ -54,43 +56,128 @@ protected:
         return true;
     }
 
-    // Moves the obstacle cube (mesh 8) so that its centre is at `center`.
+    MeshCollider &Obstacle() { return solver->m_meshes.back(); }
+
+    // Moves the obstacle cube (the last mesh) so that its centre is at `center`.
     void PlaceObstacle(const Vector3 &center)
     {
         Vector3 mn, mx;
-        BoundingBox(solver->m_meshes[8], mn, mx);
+        BoundingBox(Obstacle(), mn, mx);
         Vector3 current = (mn + mx) / 2;
-        solver->m_meshes[8].MoveMesh(Quaternion(), center - current);
+        Obstacle().MoveMesh(Quaternion(), center - current);
+    }
+
+    // Replaces the obstacle with a small cube (edge `size`) centred at `center`.
+    void PlaceSmallObstacle(const Vector3 &center, double size)
+    {
+        std::vector<Vector3> corners;
+        for (int i = 0; i < 8; i++)
+            corners.emplace_back(center.x + (i & 1 ? 0.5 : -0.5) * size, center.y + (i & 2 ? 0.5 : -0.5) * size,
+                                 center.z + (i & 4 ? 0.5 : -0.5) * size);
+        Obstacle() = MeshCollider(corners);
+    }
+
+    const ArmPart *Part(const std::string &name)
+    {
+        for (const auto &p : solver->GetArmParts())
+            if (p.name == name)
+                return &p;
+        return nullptr;
     }
 };
 
 } // namespace
 
-TEST_F(SolverCollisions, LoadsAllNineMeshes)
+TEST_F(SolverCollisions, OneHullPerArmPartPlusTheObstacle)
 {
-    ASSERT_EQ(solver->m_meshes.size(), 9u);
+    const auto &parts = solver->GetArmParts();
+    ASSERT_GE(parts.size(), 14u);
+    ASSERT_EQ(solver->m_meshes.size(), parts.size() + 1);
     for (size_t i = 0; i < solver->m_meshes.size(); i++)
         EXPECT_GE(solver->m_meshes[i].Size(), 4) << "mesh " << i;
+    // the hull of every part is the one ArmShape gives for it
+    for (size_t i = 0; i < parts.size(); i++)
+    {
+        const auto hull = ArmShape::HullPoints(parts[i]);
+        ASSERT_EQ(solver->m_meshes[i].Size(), hull.size()) << parts[i].name;
+    }
 }
 
-// Regression test for a fixed bug: Solver loads "STLmodels/link3.stl" for mesh 2 (the
-// upper arm, between joint 2 and joint 3). The Emulator -- and the file list
-// in STLmodels -- use link2.stl there, so the collision model checks the
-// upper arm with the forearm's geometry.
-TEST_F(SolverCollisions, UpperArmUsesLink2Model)
+// The placed hulls are where the parts are: GUI draws GetArmParts(), the
+// check uses the hulls, so both must agree.
+TEST_F(SolverCollisions, PlacedHullsSurroundThePartsInWorldCoordinates)
 {
-    // (MeshCollider(const std::string&) is declared but never defined, so the
-    // file is loaded with ReadStl.)
-    MeshCollider link2;
-    ASSERT_TRUE(link2.ReadStl("STLmodels/link2.stl"));
-    ASSERT_GT(link2.Size(), 0);
-    EXPECT_TRUE(SameMesh(solver->m_meshes[2], link2));
+    const Angles q = MakeAngles({0.4, -0.7, 1.1, -0.5, 0.8, 0.3});
+    Matrix4x4 TR[JOINTS_COUNT];
+    solver->SolveDirectKinematic(q, TR);
+    solver->MoveMeshes(TR);
+    const auto &parts = solver->GetArmParts();
+    for (size_t i = 0; i < parts.size(); i++)
+    {
+        Vector3 from = parts[i].from, to = parts[i].to;
+        if (parts[i].body >= 0)
+        {
+            const Mat4 t = ReferenceT0(q.q, parts[i].body);
+            auto map = [&](const Vector3 &v) {
+                return Vector3(t[0][0] * v.x + t[0][1] * v.y + t[0][2] * v.z + t[0][3], t[1][0] * v.x + t[1][1] * v.y + t[1][2] * v.z + t[1][3],
+                               t[2][0] * v.x + t[2][1] * v.y + t[2][2] * v.z + t[2][3]);
+            };
+            from = map(from);
+            to = map(to);
+        }
+        // every hull vertex sits about one radius away from the part's axis / centre
+        const auto &hull = solver->m_meshes_buff[i];
+        for (ushort k = 0; k < hull.Size(); k++)
+        {
+            const Vector3 v = hull.point(k);
+            const double abx = to.x - from.x, aby = to.y - from.y, abz = to.z - from.z;
+            const double len2 = abx * abx + aby * aby + abz * abz;
+            double t = len2 > 0 ? ((v.x - from.x) * abx + (v.y - from.y) * aby + (v.z - from.z) * abz) / len2 : 0;
+            t = std::min(1.0, std::max(0.0, t));
+            const double d = Dist(v, Vector3(from.x + t * abx, from.y + t * aby, from.z + t * abz));
+            EXPECT_GE(d, parts[i].radius - 1e-6) << parts[i].name;
+            EXPECT_LE(d, parts[i].radius * 1.05) << parts[i].name;
+        }
+    }
+}
+
+// The STL collision models left ~15 cm of the upper arm and forearm unchecked.
+// A 2 cm obstacle anywhere on the joint-to-joint axis must now be detected.
+TEST_F(SolverCollisions, CollisionModelCoversTheWholeArm)
+{
+    for (const Angles &q : {Angles(), WorkPose()})
+    {
+        for (int k = 0; k < JOINTS_COUNT - 1; k++)
+        {
+            const Vector3 a = Position(ReferenceT0(q.q, k)), b = Position(ReferenceT0(q.q, k + 1));
+            // the axis runs a(k) along x(k), then d(k+1) along z(k+1)
+            const Mat4 tk = ReferenceT0(q.q, k);
+            const double ak = ProjectDH()[k].a;
+            const Vector3 bend(a.x + tk[0][0] * ak, a.y + tk[1][0] * ak, a.z + tk[2][0] * ak);
+            for (const auto &seg : {std::make_pair(a, bend), std::make_pair(bend, b)})
+            {
+                const double len = Dist(seg.first, seg.second);
+                for (double s = 0; s <= len; s += 0.02)
+                {
+                    const double t = len > 0 ? s / len : 0;
+                    const Vector3 x(seg.first.x + t * (seg.second.x - seg.first.x), seg.first.y + t * (seg.second.y - seg.first.y),
+                                    seg.first.z + t * (seg.second.z - seg.first.z));
+                    PlaceSmallObstacle(x, 0.02);
+                    const std::string msg = CollisionAt(q);
+                    EXPECT_NE(msg.find("obstacle"), std::string::npos) << "body " << k << " at " << x.x << " " << x.y << " " << x.z << ": '" << msg << "'";
+                }
+            }
+        }
+    }
+    // the point of the old 8.5 cm gap before the elbow, zero pose
+    PlaceSmallObstacle(Vector3(0.30, 0.10, 0.2325), 0.02);
+    EXPECT_NE(CollisionAt(Angles()).find("link 2"), std::string::npos);
 }
 
 TEST_F(SolverCollisions, ObstacleIsPlacedAsConfigured)
 {
     Vector3 mn, mx;
-    BoundingBox(solver->m_meshes[8], mn, mx);
+    BoundingBox(Obstacle(), mn, mx);
     EXPECT_VEC3_NEAR((mn + mx) / 2, Vector3(SMESH + 0.05, SMESH - 0.05, 0), 1e-6);
     EXPECT_VEC3_NEAR(mx - mn, Vector3(0.5, 0.5, 0.5), 1e-6);
 }
@@ -154,24 +241,24 @@ TEST_F(SolverCollisions, MoveJIntoTheTableIsRejected)
     }
 }
 
-TEST_F(SolverCollisions, MoveMeshesKeepsLinksRigid)
+TEST_F(SolverCollisions, MoveMeshesKeepsPartsRigid)
 {
     Matrix4x4 TR[JOINTS_COUNT];
     solver->SolveDirectKinematic(WorkPose(), TR);
     solver->MoveMeshes(TR);
-    for (int m = 0; m < 8; m++)
+    for (size_t m = 0; m < solver->GetArmParts().size(); m++)
     {
         const auto &orig = solver->m_meshes[m];
         const auto &moved = solver->m_meshes_buff[m];
         ASSERT_EQ(orig.Size(), moved.Size());
-        for (ushort i = 0; i + 1 < orig.Size(); i += 3)
-            EXPECT_NEAR(Dist(moved.point(i), moved.point(i + 1)), Dist(orig.point(i), orig.point(i + 1)), 1e-9) << "mesh " << m;
+        for (ushort i = 0; i + 3 < orig.Size(); i += 3)
+            EXPECT_NEAR(Dist(moved.point(i), moved.point(i + 3)), Dist(orig.point(i), orig.point(i + 3)), 1e-9) << "mesh " << m;
     }
 }
 
-// Moving joint 4 must move only what is mounted after it (meshes 6, 7) and
-// leave the base, upper arm and forearm meshes where they are.
-TEST_F(SolverCollisions, JointMotionMovesOnlyDownstreamMeshes)
+// Moving joint 5 (q[4]) must move only what is mounted from frame 4 on and
+// leave the base, the upper arm and the forearm where they are.
+TEST_F(SolverCollisions, JointMotionMovesOnlyDownstreamParts)
 {
     Matrix4x4 TR[JOINTS_COUNT];
     Angles q = WorkPose();
@@ -181,23 +268,34 @@ TEST_F(SolverCollisions, JointMotionMovesOnlyDownstreamMeshes)
     q.q[4] += 0.5;
     solver->SolveDirectKinematic(q, TR);
     solver->MoveMeshes(TR);
-    for (int m = 0; m <= 5; m++)
-        EXPECT_TRUE(SameMesh(before[m], solver->m_meshes_buff[m])) << "mesh " << m << " moved";
-    for (int m = 6; m <= 7; m++)
-        EXPECT_FALSE(SameMesh(before[m], solver->m_meshes_buff[m])) << "mesh " << m << " did not move";
+    const auto &parts = solver->GetArmParts();
+    for (size_t m = 0; m < parts.size(); m++)
+    {
+        // the drum of joint 5 turns about its own axis: its hull vertices move too
+        if (parts[m].body < 4)
+            EXPECT_TRUE(SameMesh(before[m], solver->m_meshes_buff[m])) << parts[m].name << " moved";
+        else
+            EXPECT_FALSE(SameMesh(before[m], solver->m_meshes_buff[m])) << parts[m].name << " did not move";
+    }
 }
 
-// The tool mesh must travel with the TCP.
-TEST_F(SolverCollisions, ToolMeshFollowsTcp)
+// The flange must travel with the TCP.
+TEST_F(SolverCollisions, FlangeFollowsTcp)
 {
+    const auto &parts = solver->GetArmParts();
+    size_t flange = parts.size();
+    for (size_t i = 0; i < parts.size(); i++)
+        if (parts[i].name == "flange")
+            flange = i;
+    ASSERT_LT(flange, parts.size());
     for (const auto &q : {WorkPose(), MakeAngles({1.1, -0.3, 0.8, 0.6, -0.9, -0.4})})
     {
         Matrix4x4 TR[JOINTS_COUNT];
         solver->SolveDirectKinematic(q, TR);
         solver->MoveMeshes(TR);
         Vector3 mn, mx;
-        BoundingBox(solver->m_meshes_buff[7], mn, mx);
-        EXPECT_LT(Dist((mn + mx) / 2, ReferenceTcp(q)), 0.2);
+        BoundingBox(solver->m_meshes_buff[flange], mn, mx);
+        EXPECT_LT(Dist((mn + mx) / 2, ReferenceTcp(q)), 0.06);
     }
 }
 
@@ -243,15 +341,26 @@ TEST_F(SolverCollisions, MoveLThroughObstacleIsRejected)
     }
 }
 
-// Regression test for a fixed bug: when mesh i hits the obstacle (mesh 8), the
-// short-circuited `||` skips the lambda that assigns j, so the message
-// reports whatever j holds: 8 by coincidence if an earlier i ran the lambda
-// to completion, an uninitialised value if the very first mesh (the base,
-// i = 0) hits the obstacle -- which is the case constructed here.
-TEST_F(SolverCollisions, ObstacleCollisionMessageNamesTheObstacle)
+// Regression test for a fixed bug (the message once named an uninitialised
+// part when the base hit the obstacle); parts are now named.
+TEST_F(SolverCollisions, ObstacleCollisionMessageNamesBothParts)
 {
     PlaceObstacle(Vector3(0, 0, 0.1)); // around the robot base
     std::string msg = CollisionAt(WorkPose());
     ASSERT_NE(msg.find("COLLISION"), std::string::npos) << msg;
-    EXPECT_NE(msg.find("Between 0 and 8 "), std::string::npos) << msg;
+    EXPECT_NE(msg.find("Between base and obstacle"), std::string::npos) << msg;
+}
+
+TEST_F(SolverCollisions, SelfCollisionMessageNamesBothParts)
+{
+    std::string msg = CollisionAt(MakeAngles({0, 0, 3.0, 0, 0, 0}));
+    ASSERT_NE(msg.find("Between "), std::string::npos) << msg;
+    EXPECT_EQ(msg.find("obstacle"), std::string::npos) << msg;
+}
+
+TEST_F(SolverCollisions, FloorMessageNamesThePart)
+{
+    std::string msg = CollisionAt(MakeAngles({0.3, -0.1, 0.9, 0.2, -0.4, 0.1}));
+    EXPECT_NE(msg.find("below the floor"), std::string::npos) << msg;
+    EXPECT_TRUE(msg.find("joint") != std::string::npos || msg.find("link") != std::string::npos || msg.find("flange") != std::string::npos) << msg;
 }

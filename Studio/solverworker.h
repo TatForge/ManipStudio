@@ -7,7 +7,10 @@
 #include <QVector3D>
 #include <QVector>
 
+#include "armshape.h"
+
 #include <memory>
+#include <vector>
 
 class Robo;
 class Solver;
@@ -33,6 +36,7 @@ struct PlannedTrajectory
     QString error;
 };
 Q_DECLARE_METATYPE(PlannedTrajectory)
+Q_DECLARE_METATYPE(std::vector<ArmPart>)
 
 // Owns the robot model and the solver. Lives in its own thread: every call
 // into the core goes through the queued slots below, so the solver is never
@@ -55,7 +59,7 @@ public slots:
 
 signals:
     void Initialized(const QVector<double> &limits_min_rad, const QVector<double> &limits_max_rad, double floor_z,
-                     const QVector<double> &max_moments);
+                     const QVector<double> &max_moments, const std::vector<ArmPart> &shape);
     void PoseReady(const ArmPose &pose);
     void TrajectoryReady(const PlannedTrajectory &trajectory);
     void Failed(const QString &what, const QString &message);

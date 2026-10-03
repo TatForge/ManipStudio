@@ -85,7 +85,7 @@ BoxAABB::BoxAABB(const scalar &x_min, const scalar &y_min, const scalar &z_min, 
 {
 }
 
-bool Solver::CheckAABB(const BoxAABB &box1, const BoxAABB &box2)
+bool Solver::CheckAABB(const BoxAABB &box1, const BoxAABB &box2) const
 {
     return box1.point_min.x <= box2.point_max.x && box1.point_max.x >= box2.point_min.x &&
            box1.point_min.y <= box2.point_max.y && box1.point_max.y >= box2.point_min.y &&
@@ -99,20 +99,26 @@ Solver::Solver(Robo &robot)
     max_joint_moments = robot.GetMaxJointMoments();
     m_joint_limits = robot.GetJointLimits();
     m_floor_z = robot.GetFloorHeight();
-    m_meshes.resize(9);
     m_mass.resize(6);
     m_main_IKData = new IKData;
-    m_meshes[0].ReadStl("STLmodels/base.stl");
-    m_meshes[1].ReadStl("STLmodels/joint2.stl");
-    m_meshes[2].ReadStl("STLmodels/link2.stl");
-    m_meshes[3].ReadStl("STLmodels/joint3.stl");
-    m_meshes[4].ReadStl("STLmodels/link3.stl");
-    m_meshes[5].ReadStl("STLmodels/joint4.stl");
-    m_meshes[6].ReadStl("STLmodels/joint5.stl");
-    m_meshes[7].ReadStl("STLmodels/joint6.stl");
-    m_meshes[8].ReadStl("STLmodels/cube0.5m.stl");
-    m_meshes[8].MoveMesh(Quaternion(0, 0, 0, 1), Vector3(SMESH + 0.05, SMESH - 0.05, 0));
+    //collision model: convex hulls of the arm shape (body frames), the obstacle last (world)
+    m_parts = ArmShape::Build(*manip_config);
+    for (const ArmPart &part : m_parts)
+        m_meshes.emplace_back(ArmShape::HullPoints(part));
+    MeshCollider obstacle;
+    obstacle.ReadStl("STLmodels/cube0.5m.stl");
+    obstacle.MoveMesh(Quaternion(0, 0, 0, 1), Vector3(SMESH + 0.05, SMESH - 0.05, 0));
+    m_meshes.push_back(obstacle);
+    const int obstacle_index = int(m_parts.size());
+    for (int i = 0; i < obstacle_index; i++)
+    {
+        for (int j = i + 1; j < obstacle_index; j++)
+            if (!ArmShape::Adjacent(m_parts[i].body, m_parts[j].body))
+                m_check_pairs.emplace_back(i, j);
+        m_check_pairs.emplace_back(i, obstacle_index);
+    }
     m_meshes_buff = m_meshes;
+    m_bounds.assign(m_meshes.size(), BoxAABB(0, 0, 0, 0, 0, 0));
 //    m_inertion[0] = {0.000588, 0.000587, 0.000929, -1.299e-8, 2.44e-8, 1.79e-6};
 //    m_inertion[1] = {0.000928, 0.001512, 0.000937, 1.86e-5,  1.55e-10, 5.34e-12};
 //    m_inertion[2] = {0.001759, 0.000747, 0.001913, 2.32e-8,  6.37e-9,  1.68e-6};
@@ -369,35 +375,29 @@ bool Solver::CheckTrajectoryForLinear(const Angles angles, const Vector3 &l1, co
 
 bool Solver::MoveMeshes(const Matrix4x4 TR[]) noexcept
 {
-    std::vector<Vector3>v_move;
-    std::vector<Quaternion> quat_move;
-    v_move.resize(7);
-    quat_move.resize(6);
-    v_move[0] = Vector3(0, 0, 0);
-    v_move[1] = TR[0].ConvertToVector3();
-    v_move[2] = TR[1].ConvertToVector3();
-    v_move[3] = TR[2].ConvertToVector3();
-    v_move[4] = TR[3].ConvertToVector3();
-    v_move[5] = TR[4].ConvertToVector3();
-    v_move[6] = TR[5].ConvertToVector3();
-
-    quat_move[0] = TR[0].ConvertToQuaternion();
-    quat_move[1] = TR[1].ConvertToQuaternion();
-    quat_move[2] = TR[2].ConvertToQuaternion();
-    quat_move[3] = TR[3].ConvertToQuaternion();
-    quat_move[4] = TR[4].ConvertToQuaternion();
-    quat_move[5] = TR[5].ConvertToQuaternion();
-
-    //пересчет точек тут же
+    Quaternion rotation[JOINTS_COUNT];
+    Vector3 origin[JOINTS_COUNT];
+    for (int k = 0; k < JOINTS_COUNT; k++)
+    {
+        rotation[k] = TR[k].ConvertToQuaternion();
+        origin[k] = TR[k].ConvertToVector3();
+    }
     m_meshes_buff = m_meshes;
-    m_meshes_buff[0].MoveMesh(quat_move[0], Vector3(0, 0, 0));
-    m_meshes_buff[1].MoveMesh(quat_move[0], v_move[1]);
-    m_meshes_buff[2].MoveMesh(quat_move[1], v_move[2]);
-    m_meshes_buff[3].MoveMesh(quat_move[2], v_move[3]);
-    m_meshes_buff[4].MoveMesh(quat_move[2], v_move[3]);
-    m_meshes_buff[5].MoveMesh(quat_move[3], v_move[4]);
-    m_meshes_buff[6].MoveMesh(quat_move[4], v_move[4]);
-    m_meshes_buff[7].MoveMesh(quat_move[5], v_move[5]);
+    for (size_t i = 0; i < m_meshes_buff.size(); i++)
+    {
+        //the base and the obstacle stay where they are
+        if (i < m_parts.size() && m_parts[i].body >= 0)
+            m_meshes_buff[i].MoveMesh(rotation[m_parts[i].body], origin[m_parts[i].body]);
+        const MeshCollider &m = m_meshes_buff[i];
+        Vector3 lo(1e9, 1e9, 1e9), hi(-1e9, -1e9, -1e9);
+        for (ushort k = 0; k < m.Size(); k++)
+        {
+            const Vector3 p = m.point(k);
+            lo = Vector3(std::min(lo.x, p.x), std::min(lo.y, p.y), std::min(lo.z, p.z));
+            hi = Vector3(std::max(hi.x, p.x), std::max(hi.y, p.y), std::max(hi.z, p.z));
+        }
+        m_bounds[i] = BoxAABB(lo.x, lo.y, lo.z, hi.x, hi.y, hi.z);
+    }
     return true;
 }
 
@@ -700,43 +700,51 @@ void Solver::VectorsResize(const counter &size)
 
 void Solver::CheckCollision(const uint *elem_number)
 {
-    uint k(0);
-    if (elem_number == nullptr)
-        k = m_collisions_counter;
-    else
-        k = *elem_number;
-    for (uint j = 0, i = 0; i < m_meshes_buff.size() - 1; i++)
-    {
-        if ((m_meshes_buff[i].CheckCollision(m_meshes_buff[8]) && (j = 8)) ||
-                [&](){
-                for (j = i + 2; j < 8; j++)
-                if (m_meshes_buff[i].CheckCollision(m_meshes_buff[j]))
-                return true;
-                return false;}())
-        {
-#if !WITH_BENCHMARK
-            m_emulator->OneIterMoveLinear(m_angles_v[k], m_angles_v[k + 1],  DT_MILLISEC, false, m_accel_v[i]);
-#endif
+    const uint k = elem_number == nullptr ? m_collisions_counter : *elem_number;
 #if MULTITHREAD
-            try {
-                throw std::runtime_error("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + to_string(j)+ " elements");
-            }  catch (...) {
-                exception_ptr p = current_exception();
-                exception_queue.push(p);
-            }
+    try {
+        ThrowOnCollision(k, DT_MILLISEC);
+    }  catch (...) {
+        exception_queue.push(current_exception());
+    }
 #else
-            throw std::runtime_error("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + to_string(j) + " elements");
+    ThrowOnCollision(k, DT_MILLISEC);
 #endif
-        }
-    }
-    int below = FindMeshBelowFloor();
-    if (below >= 0)
+}
+
+pair<int, int> Solver::FindCollision() const
+{
+    for (const auto &p : m_check_pairs)
     {
-#if !WITH_BENCHMARK
-        m_emulator->OneIterMoveLinear(m_angles_v[k], m_angles_v[k + 1],  DT_MILLISEC, false, m_accel_v[below]);
-#endif
-        throw std::runtime_error("HOLY SHIT! COLLISION! Element " + to_string(below) + " is below the floor (z = " + to_string(m_floor_z) + ")");
+        if (!CheckAABB(m_bounds[p.first], m_bounds[p.second]))
+            continue;
+        //CheckCollision is not const; the meshes are copied per sample anyway
+        MeshCollider a = m_meshes_buff[p.first];
+        if (a.CheckCollision(m_meshes_buff[p.second]))
+            return p;
     }
+    return {-1, -1};
+}
+
+string Solver::MeshName(int index) const
+{
+    return index < int(m_parts.size()) ? m_parts[index].name : "obstacle";
+}
+
+void Solver::ThrowOnCollision(uint sample, scalar dt_millisec)
+{
+    const pair<int, int> hit = FindCollision();
+    const int below = hit.first < 0 ? FindMeshBelowFloor() : -1;
+    if (hit.first < 0 && below < 0)
+        return;
+#if !WITH_BENCHMARK
+    //show the pose in the visualizer
+    if (sample + 1 < m_angles_v.size() && sample < m_accel_v.size())
+        m_emulator->OneIterMoveLinear(m_angles_v[sample], m_angles_v[sample + 1], dt_millisec, false, m_accel_v[sample]);
+#endif
+    if (hit.first >= 0)
+        throw std::runtime_error("HOLY SHIT! COLLISION! Between " + MeshName(hit.first) + " and " + MeshName(hit.second));
+    throw std::runtime_error("HOLY SHIT! COLLISION! Element " + MeshName(below) + " is below the floor (z = " + to_string(m_floor_z) + ")");
 }
 
 bool Solver::MoveC(const Angles &start_angle, const StateVector &start_point, const StateVector &mid_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const scalar &dt_millisec, vector<float> &results)
@@ -810,32 +818,7 @@ void Solver::CalcCollisionsDynamics(const scalar &array_size, const scalar &dt_m
 #if WITH_COLLISIONS && !MULTITHREAD
         //Mesh calculations
         if (MoveMeshes(buff))
-        {
-            for (uint j = 0, i = 0; i < m_meshes_buff.size() - 1; i++)
-            {
-                if ((m_meshes_buff[i].CheckCollision(m_meshes_buff[8]) && (j = 8)) ||
-                        [&](){
-                        for (j = i + 2; j < 8; j++)
-                        if (m_meshes_buff[i].CheckCollision(m_meshes_buff[j]))
-                        return true;
-                        return false;}())
-                {
-                    //show collision in visual
-#if !WITH_BENCHMARK
-                    m_emulator->OneIterMoveLinear(m_angles_v[size], m_angles_v[size + 1],  dt_millisec, false, m_accel_v[i]);
-#endif
-                    throw std::runtime_error("HOLY SHIT! COLLISION! Between " + to_string(i) + " and " + to_string(j)  /*to_string(cube)*/ + " elements");
-                }
-            }
-            int below = FindMeshBelowFloor();
-            if (below >= 0)
-            {
-#if !WITH_BENCHMARK
-                m_emulator->OneIterMoveLinear(m_angles_v[size], m_angles_v[size + 1],  dt_millisec, false, m_accel_v[below]);
-#endif
-                throw std::runtime_error("HOLY SHIT! COLLISION! Element " + to_string(below) + " is below the floor (z = " + to_string(m_floor_z) + ")");
-            }
-        }
+            ThrowOnCollision(size, dt_millisec);
         else
             cout << "Can't calculate all mesh points for this configuration" << endl;
 #endif
@@ -889,12 +872,21 @@ scalar Solver::FindAngle(const Vector3 &O, const Vector3 &A0, const Vector3 P)
 
 int Solver::FindMeshBelowFloor() const
 {
-    //mesh 0 is the base standing on the floor, mesh 8 the obstacle
-    for (int i = 1; i <= 7 && i < int(m_meshes_buff.size()); i++)
+    //the base stands on the floor; the obstacle is not part of the arm
+    for (int i = 0; i < int(m_parts.size()); i++)
+    {
+        if (m_parts[i].body < 0 || m_bounds[i].point_min.z >= m_floor_z)
+            continue;
         for (ushort k = 0; k < m_meshes_buff[i].Size(); k++)
             if (m_meshes_buff[i].point(k).z < m_floor_z)
                 return i;
+    }
     return -1;
+}
+
+const vector<ArmPart> &Solver::GetArmParts() const
+{
+    return m_parts;
 }
 
 vector<Robo::Moments> Solver::GetTrajectoryMoments() const

@@ -57,6 +57,7 @@ SolverWorker::SolverWorker(QObject *parent) : QObject(parent)
 {
     qRegisterMetaType<ArmPose>();
     qRegisterMetaType<PlannedTrajectory>();
+    qRegisterMetaType<std::vector<ArmPart>>();
 }
 
 SolverWorker::~SolverWorker() = default;
@@ -78,7 +79,7 @@ void SolverWorker::Initialize()
         QVector<double> max_moments;
         for (scalar m : m_robot->GetMaxJointMoments())
             max_moments.append(m);
-        emit Initialized(lo, hi, m_solver->GetFloorHeight(), max_moments);
+        emit Initialized(lo, hi, m_solver->GetFloorHeight(), max_moments, m_solver->GetArmParts());
     });
 }
 

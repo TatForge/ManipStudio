@@ -6,22 +6,12 @@
 #include <QVector3D>
 #include <QVector>
 
-// Which STL is drawn where. Mirrors Solver::MoveMeshes, so the 3D view shows
-// exactly the geometry the collision check works with.
+// The obstacle of the collision check, an STL cube placed as in the Solver
+// constructor. (The arm itself is drawn from ArmShape, see VisualLayout.)
 namespace MeshLayout
 {
-struct Part
-{
-    QString name;
-    QString file;       // relative to the data directory
-    bool obstacle;
-};
-
-const QVector<Part> &Parts();
-
-// Placement (rotation + translation, metres) of every part for the joint
-// frames TR[0..5] of one pose.
-QVector<QMatrix4x4> Placements(const QVector<QMatrix4x4> &frames);
+QString ObstacleFile();             // relative to the data directory
+QMatrix4x4 ObstaclePlacement();     // metres, world
 }
 
 // Triangles of an STL file (binary or ASCII), flat normals, metres.

@@ -89,31 +89,25 @@ QVariantList RobotBackend::frames() const
 
 QVariantList RobotBackend::meshParts() const
 {
-    QVariantList out;
-    for (const MeshLayout::Part &p : MeshLayout::Parts())
-        out.append(QVariantMap{{QStringLiteral("name"), p.name},
-                               {QStringLiteral("source"), QUrl::fromLocalFile(QDir(m_data_dir).filePath(p.file))},
-                               {QStringLiteral("obstacle"), p.obstacle}});
-    return out;
+    return {QVariantMap{{QStringLiteral("name"), QStringLiteral("obstacle")},
+                        {QStringLiteral("source"), QUrl::fromLocalFile(QDir(m_data_dir).filePath(MeshLayout::ObstacleFile()))},
+                        {QStringLiteral("obstacle"), true}}};
 }
 
 QVariantList RobotBackend::meshPoses() const
 {
-    QVariantList out;
-    for (const QMatrix4x4 &m : MeshLayout::Placements(m_pose.frames))
-        out.append(ToNodePose(m));
-    return out;
+    return {ToNodePose(MeshLayout::ObstaclePlacement())};
 }
 
 int RobotBackend::visualPartCount() const
 {
-    return VisualLayout::Build(m_pose.frames).size();
+    return VisualLayout::Build(m_pose.frames, m_shape).size();
 }
 
 QVariantList RobotBackend::visualParts() const
 {
     QVariantList out;
-    for (const VisualLayout::Part &p : VisualLayout::Build(m_pose.frames))
+    for (const VisualLayout::Part &p : VisualLayout::Build(m_pose.frames, m_shape))
     {
         const bool sphere = p.shape == VisualLayout::Shape::Sphere;
         // Quick3D's #Cylinder / #Sphere are 100 units across (and tall), Y up
@@ -364,8 +358,10 @@ QVariantList RobotBackend::internalPose() const
     return {0, -45, 90, 45, 90, 0};
 }
 
-void RobotBackend::OnInitialized(const QVector<double> &lo, const QVector<double> &hi, double floor_z, const QVector<double> &max_moments)
+void RobotBackend::OnInitialized(const QVector<double> &lo, const QVector<double> &hi, double floor_z, const QVector<double> &max_moments,
+                                 const std::vector<ArmPart> &shape)
 {
+    m_shape = shape;
     m_max_moments = max_moments;
     m_lo = lo;
     m_hi = hi;

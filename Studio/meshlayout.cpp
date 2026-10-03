@@ -10,42 +10,16 @@
 
 namespace MeshLayout
 {
-const QVector<Part> &Parts()
+QString ObstacleFile()
 {
-    // same order as Solver::m_meshes
-    static const QVector<Part> parts = {
-        {QStringLiteral("base"), QStringLiteral("STLmodels/base.stl"), false},
-        {QStringLiteral("joint2"), QStringLiteral("STLmodels/joint2.stl"), false},
-        {QStringLiteral("link2"), QStringLiteral("STLmodels/link2.stl"), false},
-        {QStringLiteral("joint3"), QStringLiteral("STLmodels/joint3.stl"), false},
-        {QStringLiteral("link3"), QStringLiteral("STLmodels/link3.stl"), false},
-        {QStringLiteral("joint4"), QStringLiteral("STLmodels/joint4.stl"), false},
-        {QStringLiteral("joint5"), QStringLiteral("STLmodels/joint5.stl"), false},
-        {QStringLiteral("joint6"), QStringLiteral("STLmodels/joint6.stl"), false},
-        {QStringLiteral("obstacle"), QStringLiteral("STLmodels/cube0.5m.stl"), true},
-    };
-    return parts;
+    return QStringLiteral("STLmodels/cube0.5m.stl");
 }
 
-QVector<QMatrix4x4> Placements(const QVector<QMatrix4x4> &frames)
+QMatrix4x4 ObstaclePlacement()
 {
-    // rotation of frame r, origin of frame t (-1: world origin), as in Solver::MoveMeshes
-    static const int rotation_frame[] = {0, 0, 1, 2, 2, 3, 4, 5};
-    static const int origin_frame[] = {-1, 0, 1, 2, 2, 3, 3, 4};
-    QVector<QMatrix4x4> out;
-    if (frames.size() < 6)
-        return out;
-    for (int i = 0; i < 8; i++)
-    {
-        QMatrix4x4 m = frames[rotation_frame[i]];
-        const QVector4D origin = origin_frame[i] < 0 ? QVector4D(0, 0, 0, 1) : frames[origin_frame[i]].column(3);
-        m.setColumn(3, origin);
-        out.append(m);
-    }
-    QMatrix4x4 obstacle;
-    obstacle.translate(float(SMESH + 0.05), float(SMESH - 0.05), 0.f);
-    out.append(obstacle);
-    return out;
+    QMatrix4x4 m;
+    m.translate(float(SMESH + 0.05), float(SMESH - 0.05), 0.f);
+    return m;
 }
 }
 

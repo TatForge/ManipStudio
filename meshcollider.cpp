@@ -5,6 +5,10 @@ MeshCollider::MeshCollider()
 
 }
 
+MeshCollider::MeshCollider(const std::vector<Vector3> &points) : m_mesh(points), m_size(ushort(points.size()))
+{
+}
+
 MeshCollider::MeshCollider(const std::string &filename)
 {
     ReadStl(filename);

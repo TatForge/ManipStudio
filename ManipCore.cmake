@@ -14,6 +14,8 @@ function(manip_add_core qt_core_target)
         ${src}/my_math.cpp
         ${src}/meshcollider.h
         ${src}/meshcollider.cpp
+        ${src}/armshape.h
+        ${src}/armshape.cpp
         ${src}/robo.h
         ${src}/robo.cpp
         ${src}/solver.h

@@ -22,6 +22,8 @@ class MeshCollider
 public:
     MeshCollider();
     MeshCollider(const std::string &filename);
+    //convex hull given by its vertices
+    explicit MeshCollider(const std::vector<Vector3> &points);
     MeshCollider MoveMesh(const Quaternion &rotation, const Vector3 &position) const;
     bool MoveMesh(const Quaternion &rotation, const Vector3 &position);
     bool CheckCollision(const MeshCollider &mesh);

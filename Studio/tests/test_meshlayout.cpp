@@ -1,6 +1,6 @@
-// The 3D view must show the same geometry the collision check uses:
-// MeshLayout's placements are compared vertex by vertex with the meshes
-// Solver::MoveMeshes produces, and the STL reader with the project's files.
+// The 3D view must show the same geometry the collision check uses: the
+// display parts (VisualLayout over Solver::GetArmParts) are compared with the
+// hulls Solver::MoveMeshes places; plus the obstacle and the STL reader.
 
 // White-box access to Solver's meshes (as Tests/solver_test_access.h does):
 // dependencies first, with normal access rules.
@@ -28,6 +28,7 @@
 #include "my_math.h"
 #include "robo.h"
 #include "meshcollider.h"
+#include "armshape.h"
 
 #define private public
 #define protected public
@@ -39,6 +40,8 @@
 
 #include "meshlayout.h"
 #include "visuallayout.h"
+
+#include <algorithm>
 
 #include <QDir>
 #include <QTemporaryDir>
@@ -74,6 +77,17 @@ private:
         return frames;
     }
 
+    // the arm shape of the project's robot (body frames)
+    static std::vector<ArmPart> Shape()
+    {
+        Robo robot(JOINTS_COUNT);
+        robot.LoadManip();
+        Solver solver(robot);
+        return solver.GetArmParts();
+    }
+
+    static QVector<VisualLayout::Part> Display(const QVector<double> &deg) { return VisualLayout::Build(Frames(deg), Shape()); }
+
     static QVector3D Origin(const QMatrix4x4 &m) { return m.column(3).toVector3D(); }
 
     static QVector<VisualLayout::Part> Links(const QVector<VisualLayout::Part> &parts, int joint)
@@ -104,7 +118,7 @@ private slots:
     {
         QFETCH(QVector<double>, deg);
         const QVector<QMatrix4x4> frames = Frames(deg);
-        const auto parts = VisualLayout::Build(frames);
+        const auto parts = VisualLayout::Build(frames, Shape());
         for (int i = 0; i < 5; i++)
         {
             const auto links = Links(parts, i);
@@ -120,7 +134,7 @@ private slots:
     void displayLinksHaveTheDhLengths()
     {
         // zero pose: shoulder -> elbow and elbow -> wrist legs along x are a(1), a(2)
-        const auto parts = VisualLayout::Build(Frames({0, 0, 0, 0, 0, 0}));
+        const auto parts = Display({0, 0, 0, 0, 0, 0});
         const auto shoulder = Links(parts, 1);
         const auto elbow = Links(parts, 2);
         QVERIFY(!shoulder.isEmpty() && !elbow.isEmpty());
@@ -137,7 +151,7 @@ private slots:
         QFETCH(QVector<double>, deg);
         const QVector<QMatrix4x4> frames = Frames(deg);
         int drums = 0;
-        for (const auto &p : VisualLayout::Build(frames))
+        for (const auto &p : VisualLayout::Build(frames, Shape()))
         {
             if (p.role != VisualLayout::Role::Joint)
                 continue;
@@ -153,8 +167,8 @@ private slots:
 
     void displayModelStructureDoesNotDependOnThePose()
     {
-        const auto a = VisualLayout::Build(Frames({0, 0, 0, 0, 0, 0}));
-        const auto b = VisualLayout::Build(Frames({-120, -100, -60, 150, 110, -300}));
+        const auto a = Display({0, 0, 0, 0, 0, 0});
+        const auto b = Display({-120, -100, -60, 150, 110, -300});
         QCOMPARE(a.size(), b.size());
         for (int k = 0; k < a.size(); k++)
         {
@@ -168,7 +182,7 @@ private slots:
     {
         const QVector<QMatrix4x4> frames = Frames({30, 0, 0, 0, 0, 0});
         bool found = false;
-        for (const auto &p : VisualLayout::Build(frames))
+        for (const auto &p : VisualLayout::Build(frames, Shape()))
             if (p.role == VisualLayout::Role::Base)
             {
                 found = true;
@@ -176,7 +190,7 @@ private slots:
                 QVERIFY(p.to.z() > 0 && p.to.z() < Origin(frames[0]).z());
             }
         QVERIFY(found);
-        QVERIFY(VisualLayout::Build({}).isEmpty());
+        QVERIFY(VisualLayout::Build({}, Shape()).isEmpty());
     }
 
     void readsProjectStlFiles()
@@ -190,14 +204,11 @@ private slots:
         QVERIFY(qAbs(mesh.max.z() - 0.185f) < 1e-3);
         QVERIFY(qAbs(mesh.max.x() - 0.062f) < 1e-3);
 
-        for (const MeshLayout::Part &p : MeshLayout::Parts())
-        {
-            QVERIFY2(ReadStlMesh(p.file, mesh, &error), qPrintable(error));
-            QVERIFY(mesh.TriangleCount() >= 12);
-            // flat normals are unit length (no degenerate triangles in the models)
-            for (const QVector3D &n : mesh.normals)
-                QVERIFY(qAbs(n.length() - 1.f) < 1e-3);
-        }
+        QVERIFY2(ReadStlMesh(MeshLayout::ObstacleFile(), mesh, &error), qPrintable(error));
+        QCOMPARE(mesh.TriangleCount(), 12);
+        // flat normals are unit length (no degenerate triangles)
+        for (const QVector3D &n : mesh.normals)
+            QVERIFY(qAbs(n.length() - 1.f) < 1e-3);
     }
 
     void readsAsciiStl()
@@ -233,16 +244,9 @@ private slots:
         QCOMPARE(mesh.TriangleCount(), 0);
     }
 
-    void placementsMatchSolverMeshes_data()
-    {
-        QTest::addColumn<QVector<double>>("deg");
-        QTest::newRow("zero") << QVector<double>{0, 0, 0, 0, 0, 0};
-        QTest::newRow("internal") << QVector<double>{0, -45, 90, 45, 90, 0};
-        QTest::newRow("work") << QVector<double>{17, -29, 52, 11, -23, 6};
-        QTest::newRow("wrist") << QVector<double>{-120, -100, -60, 150, 110, -300};
-    }
-
-    void placementsMatchSolverMeshes()
+    // what the 3D view draws is what the collision check tests
+    void displayPartsAreTheSolverHulls_data() { AddPoses(); }
+    void displayPartsAreTheSolverHulls()
     {
         QFETCH(QVector<double>, deg);
         Robo robot(JOINTS_COUNT);
@@ -254,24 +258,23 @@ private slots:
         Matrix4x4 TR[JOINTS_COUNT];
         solver.SolveDirectKinematic(a, TR);
         solver.MoveMeshes(TR);
-
         QVector<QMatrix4x4> frames;
         for (const auto &m : TR)
             frames.append(ToQ(m));
-        const QVector<QMatrix4x4> placements = MeshLayout::Placements(frames);
-        QCOMPARE(placements.size(), MeshLayout::Parts().size());
-
-        for (int part = 0; part < 8; part++)
+        const auto parts = VisualLayout::Build(frames, solver.GetArmParts());
+        QCOMPARE(size_t(parts.size()), solver.GetArmParts().size());
+        QCOMPARE(solver.m_meshes_buff.size(), size_t(parts.size()) + 1);    // + the obstacle
+        for (int i = 0; i < parts.size(); i++)
         {
-            const MeshCollider &raw = solver.m_meshes[part];
-            const MeshCollider &moved = solver.m_meshes_buff[part];
-            QCOMPARE(raw.Size(), moved.Size());
-            for (ushort k = 0; k < raw.Size(); k++)
+            const auto &p = parts[i];
+            const MeshCollider &hull = solver.m_meshes_buff[i];
+            for (ushort k = 0; k < hull.Size(); k++)
             {
-                const Vector3 r = raw.point(k), m = moved.point(k);
-                const QVector3D p = placements[part].map(QVector3D(float(r.x), float(r.y), float(r.z)));
-                QVERIFY2((p - QVector3D(float(m.x), float(m.y), float(m.z))).length() < 1e-4,
-                         qPrintable(QStringLiteral("part %1 vertex %2").arg(part).arg(k)));
+                const QVector3D v(float(hull.point(k).x), float(hull.point(k).y), float(hull.point(k).z));
+                const QVector3D ab = p.to - p.from;
+                const float t = ab.lengthSquared() > 0 ? std::clamp(QVector3D::dotProduct(v - p.from, ab) / ab.lengthSquared(), 0.f, 1.f) : 0.f;
+                const float d = (v - (p.from + ab * t)).length();
+                QVERIFY2(d > p.radius - 1e-4f && d < p.radius * 1.05f, qPrintable(QStringLiteral("part %1 vertex %2: %3").arg(i).arg(k).arg(d)));
             }
         }
     }
@@ -282,7 +285,7 @@ private slots:
         QVERIFY(robot.LoadManip());
         Solver solver(robot);
         // the solver moves its obstacle mesh once, in the constructor
-        const MeshCollider &cube = solver.m_meshes[8];
+        const MeshCollider &cube = solver.m_meshes.back();
         Vector3 lo(1e9, 1e9, 1e9), hi(-1e9, -1e9, -1e9);
         for (ushort k = 0; k < cube.Size(); k++)
         {
@@ -291,14 +294,12 @@ private slots:
             hi = Vector3(std::max(hi.x, p.x), std::max(hi.y, p.y), std::max(hi.z, p.z));
         }
         StlMesh mesh;
-        QVERIFY(ReadStlMesh(MeshLayout::Parts()[8].file, mesh));
-        const QMatrix4x4 place = MeshLayout::Placements(QVector<QMatrix4x4>(6)).at(8);
+        QVERIFY(ReadStlMesh(MeshLayout::ObstacleFile(), mesh));
+        const QMatrix4x4 place = MeshLayout::ObstaclePlacement();
         const QVector3D vlo = place.map(mesh.min), vhi = place.map(mesh.max);
         QVERIFY((vlo - QVector3D(float(lo.x), float(lo.y), float(lo.z))).length() < 1e-4);
         QVERIFY((vhi - QVector3D(float(hi.x), float(hi.y), float(hi.z))).length() < 1e-4);
     }
-
-    void noPlacementsWithoutFrames() { QVERIFY(MeshLayout::Placements({}).isEmpty()); }
 };
 
 QTEST_GUILESS_MAIN(TestMeshLayout)

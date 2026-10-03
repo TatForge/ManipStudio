@@ -81,6 +81,7 @@ if(MANIP_BUILD_TESTS)
         Tests/test_polynom.cpp
         Tests/test_math_utils.cpp
         Tests/test_meshcollider.cpp
+        Tests/test_arm_shape.cpp
         Tests/test_elem.cpp
         Tests/test_robo.cpp
         Tests/test_robo_behavior.cpp)

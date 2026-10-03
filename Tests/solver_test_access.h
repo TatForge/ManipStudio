@@ -39,6 +39,7 @@
 #include "my_math.h"
 #include "robo.h"
 #include "meshcollider.h"
+#include "armshape.h"
 
 #define private public
 #define protected public

@@ -59,7 +59,6 @@
 <context>
     <name>RobotView</name>
     <message><source>Iso</source><translation>Изо</translation></message>
-    <message><source>Collision model</source><translation>Модель коллизий</translation></message>
     <message><source>Front</source><translation>Спереди</translation></message>
     <message><source>Side</source><translation>Сбоку</translation></message>
     <message><source>Top</source><translation>Сверху</translation></message>

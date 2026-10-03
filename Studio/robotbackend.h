@@ -56,9 +56,9 @@ public:
     QVariantList frames() const;
     QVariantList limits() const;
     double floorZ() const { return m_floor_z; }
-    // {name, source (file URL), obstacle} of every STL part, see MeshLayout
+    // {name, source (file URL), obstacle} of the STL parts: the obstacle, see MeshLayout
     QVariantList meshParts() const;
-    // {position (QVector3D, m), rotation (QQuaternion)} of every part for the current pose
+    // {position (QVector3D, m), rotation (QQuaternion)} of every STL part
     QVariantList meshPoses() const;
     // display model built from the joint frames (see VisualLayout); the count
     // depends only on the geometry, so QML can keep one delegate per part
@@ -128,7 +128,8 @@ signals:
     void requestMoveJ(const QVector<double> &from_rad, const QVector<double> &to_rad, double speed, double accel, double dt_ms);
 
 private:
-    void OnInitialized(const QVector<double> &lo, const QVector<double> &hi, double floor_z, const QVector<double> &max_moments);
+    void OnInitialized(const QVector<double> &lo, const QVector<double> &hi, double floor_z, const QVector<double> &max_moments,
+                       const std::vector<ArmPart> &shape);
     void OnPose(const ArmPose &pose);
     void OnTrajectory(const PlannedTrajectory &trajectory);
     void OnFailed(const QString &what, const QString &message);
@@ -152,6 +153,7 @@ private:
     QVector<QVector3D> m_tcp_path;
     QVector<float> m_moments;           // 6 per sample
     QVector<double> m_max_moments;
+    std::vector<ArmPart> m_shape;      // the arm shape of the core, body frames
     QString m_trajectory_error;
     int m_play_from = 0;
     double m_floor_z = 0;

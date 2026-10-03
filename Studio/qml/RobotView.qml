@@ -5,9 +5,8 @@ import QtQuick3D
 import QtQuick3D.Helpers
 import Studio
 
-// 3D view of the arm: a display model built from the joint frames (always
-// true to the kinematics), optionally the coarse STL parts the collision
-// check uses, plus the floor, the obstacle and the TCP path.
+// 3D view of the arm: the parts of the core's arm shape (the same ones the
+// collision check uses), plus the floor, the obstacle and the TCP path.
 // The scene is in millimetres (Quick3D defaults suit that scale); the robot
 // node converts from the robot's metres and Z-up frame.
 Rectangle {
@@ -21,7 +20,6 @@ Rectangle {
     readonly property color jointColor: "#f08a24"
     readonly property color baseColor: "#4a505a"
     readonly property color flangeColor: "#2f343c"
-    property bool showCollision: false
     // orbit centre: middle of the reach, robot (0.3, 0.15, 0.25) m in scene millimetres
     readonly property vector3d homeTarget: Qt.vector3d(300, 250, -150)
     readonly property real homeDistance: 2200
@@ -135,22 +133,21 @@ Rectangle {
                 }
             }
 
-            // the STL parts the collision check works with; the obstacle exists only here
+            // the obstacle (an STL cube)
             Repeater3D {
                 model: robot.meshParts
                 delegate: Model {
                     required property var modelData
                     required property int index
                     readonly property var pose: robot.meshPoses[index]
-                    visible: modelData.obstacle || root.showCollision
                     position: pose ? pose.position : Qt.vector3d(0, 0, 0)
                     rotation: pose ? pose.rotation : Qt.quaternion(1, 0, 0, 0)
                     geometry: StlGeometry { source: modelData.source }
-                    castsShadows: modelData.obstacle
+                    castsShadows: true
                     receivesShadows: true
-                    opacity: modelData.obstacle ? 0.75 : 0.45
+                    opacity: 0.75
                     materials: PrincipledMaterial {
-                        baseColor: modelData.obstacle ? "#9b3b3b" : "#4fd1c5"
+                        baseColor: "#9b3b3b"
                         roughness: 0.5
                     }
                 }
@@ -179,13 +176,6 @@ Rectangle {
     RowLayout {
         anchors { right: parent.right; top: parent.top; margins: Theme.gap }
         spacing: 4
-        Chip {
-            text: qsTr("Collision model")
-            tint: "#4fd1c5"
-            checked: root.showCollision
-            onClicked: root.showCollision = !root.showCollision
-            Layout.rightMargin: 8
-        }
         Repeater {
             model: [
                 { label: qsTr("Iso"), pitch: -25, yaw: 35 },

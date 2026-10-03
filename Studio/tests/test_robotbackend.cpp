@@ -155,23 +155,33 @@ private slots:
 
     void scenePartsFollowThePose()
     {
+        // the obstacle is the only STL part
         const QVariantList parts = m_backend->meshParts();
-        QCOMPARE(parts.size(), 9);
-        for (const QVariant &p : parts)
-            QVERIFY(QFile::exists(p.toMap()[QStringLiteral("source")].toUrl().toLocalFile()));
-        QVERIFY(parts.last().toMap()[QStringLiteral("obstacle")].toBool());
-        QCOMPARE(m_backend->meshPoses().size(), 9);
+        QCOMPARE(parts.size(), 1);
+        QVERIFY(QFile::exists(parts[0].toMap()[QStringLiteral("source")].toUrl().toLocalFile()));
+        QVERIFY(parts[0].toMap()[QStringLiteral("obstacle")].toBool());
+        QCOMPARE(m_backend->meshPoses().size(), 1);
+        // the arm is drawn from the core's shape: one drum per joint and more
+        QVERIFY(m_backend->visualPartCount() >= 14);
+        QCOMPARE(m_backend->visualParts().size(), m_backend->visualPartCount());
 
-        // the last joint part sits at frame 4, the tool frame at the flange (TCP)
+        // the tool frame sits at the flange (TCP)
         const QVariantMap tool = m_backend->toolPose();
         const QVector3D flange = tool[QStringLiteral("position")].value<QVector3D>();
         const QVariantList tcp = m_backend->tcp();
         QVERIFY((flange - QVector3D(At(tcp, 0), At(tcp, 1), At(tcp, 2))).length() < 1e-5);
 
-        const QVector3D before = m_backend->meshPoses()[7].toMap()[QStringLiteral("position")].value<QVector3D>();
+        auto lastDrum = [this] {
+            QVector3D at;
+            for (const QVariant &v : m_backend->visualParts())
+                if (v.toMap()[QStringLiteral("role")] == QLatin1String("joint"))
+                    at = v.toMap()[QStringLiteral("position")].value<QVector3D>();
+            return at;
+        };
+        const QVector3D before = lastDrum();
         m_backend->setJoint(0, 90);
         WaitPose();
-        const QVector3D after = m_backend->meshPoses()[7].toMap()[QStringLiteral("position")].value<QVector3D>();
+        const QVector3D after = lastDrum();
         // base rotation by 90 deg: (x, y) -> (-y, x)
         QVERIFY(qAbs(after.x() + before.y()) < 1e-4);
         QVERIFY(qAbs(after.y() - before.x()) < 1e-4);

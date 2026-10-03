@@ -3,6 +3,7 @@
 #include "robo.h"
 #include "emulator.h"
 #include "meshcollider.h"
+#include "armshape.h"
 
 #include <condition_variable>
 #include <queue>
@@ -73,6 +74,8 @@ public:
     //joint moments of the last planned trajectory, one per evaluated sample; when planning
     //stopped on a motor limit, the last entry is the sample that exceeded it
     vector<Robo::Moments> GetTrajectoryMoments() const;
+    //parts of the arm shape; m_meshes[i] is the convex hull of part i, the obstacle comes last
+    const vector<ArmPart> &GetArmParts() const;
     const vector<pair<scalar, scalar>> &GetJointLimits() const;
     bool WithinJointLimits(const Angles &a) const;
     scalar GetFloorHeight() const;
@@ -83,12 +86,20 @@ public:
 private:
     Solver(Solver &solver) = delete;
     Solver(Solver &&solver) = delete;
-    bool CheckAABB(const BoxAABB &box1, const BoxAABB &box2);
+    bool CheckAABB(const BoxAABB &box1, const BoxAABB &box2) const;
     int FindMeshBelowFloor() const;
+    //first colliding pair of the moved meshes as (a, b), (-1, -1) if none
+    pair<int, int> FindCollision() const;
+    string MeshName(int index) const;
+    //throws for a collision or a part below the floor in the current mesh positions
+    void ThrowOnCollision(uint sample, scalar dt_millisec);
     void CalculateDeltas();
 
+    std::vector<ArmPart> m_parts;
     std::vector<MeshCollider> m_meshes_buff;
     std::vector<MeshCollider> m_meshes;
+    std::vector<BoxAABB> m_bounds;                  //of m_meshes_buff
+    std::vector<pair<int, int>> m_check_pairs;      //mesh pairs that may collide
     Matrix4x4 m_T[JOINTS_COUNT];
     const Matrix *manip_config;
     Emulator *m_emulator;
