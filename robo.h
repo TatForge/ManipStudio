@@ -5,6 +5,8 @@
 #include <qsettings.h>
 #include "my_math.h"
 
+#include <array>
+
 using namespace std;
 namespace rm = RoboMath;
 class Elem
@@ -93,6 +95,28 @@ public:
     //height of the table / floor plane the robot is mounted on ("workspace/floor_z")
     scalar GetFloorHeight() const;
     void SetFloorHeight(scalar z);
+    //rigid-body data of one link in its joint frame, used by the Solver's dynamics:
+    //inertia about the frame origin as xx, yy, zz, xy, xz, yz (products as the integral of x*y dm)
+    struct LinkDynamics
+    {
+        scalar mass;
+        std::array<scalar, 3> com;
+        std::array<scalar, 6> inertia;
+    };
+    //tool load: a point mass in the flange frame (frame 6)
+    struct Payload
+    {
+        scalar mass;
+        std::array<scalar, 3> com;
+    };
+    //settings groups "dynamics", "payload" and "shape"; defaults otherwise
+    const std::array<LinkDynamics, JOINTS_COUNT> &GetLinkDynamics() const;
+    void SetLinkDynamics(int link, const LinkDynamics &d);
+    Payload GetPayload() const;
+    void SetPayload(const Payload &p);
+    //drum radius of every joint for the collision model (ArmShape), metres
+    std::array<scalar, JOINTS_COUNT> GetJointRadii() const;
+    void SetJointRadius(int joint, scalar radius);
     scalar GetTheta(const int &i);
     rm::Angles *GetAngles();
     Moments *GetMoments();
@@ -120,7 +144,11 @@ private:
     vector<scalar> max_joint_moments;
     vector<pair<scalar, scalar>> m_joint_limits;
     scalar m_floor_z;
+    std::array<LinkDynamics, JOINTS_COUNT> m_link_dynamics;
+    Payload m_payload;
+    std::array<scalar, JOINTS_COUNT> m_joint_radii;
     void SetDefaultLimits();
+    void SetDefaultDynamics();
     array<rm::Matrix4x4, JOINTS_COUNT> m_ji;
     array<rm::Vector, JOINTS_COUNT> m_cm;
     array<rm::Tensor, JOINTS_COUNT> m_i;

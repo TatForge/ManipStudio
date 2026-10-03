@@ -486,3 +486,107 @@ TEST_F(SolverDynamics, NoTrajectoryMomentsBeforePlanning)
 {
     EXPECT_TRUE(solver->GetTrajectoryMoments().empty());
 }
+
+// ---------------------------------------------------------------------------
+// Dynamics parameters, payload and shape come from the robot settings
+// ---------------------------------------------------------------------------
+
+TEST_F(SolverDynamics, LinkParametersComeFromTheRobot)
+{
+    Robo::LinkDynamics link = robot->GetLinkDynamics()[2];
+    link.mass = 4.0;
+    link.com = {{0.2, 0.01, -0.03}};
+    robot->SetLinkDynamics(2, link);
+    auto s = NewSolver();
+    EXPECT_DOUBLE_EQ(s->m_mass[2], 4.0);
+    EXPECT_DOUBLE_EQ(s->m_cm[2](0), 0.2);
+    EXPECT_DOUBLE_EQ(s->m_cm[2](1), 0.01);
+    EXPECT_DOUBLE_EQ(s->m_cm[2](2), -0.03);
+    EXPECT_DOUBLE_EQ(s->m_ji[2](3, 3), 4.0);
+    EXPECT_NEAR(s->m_ji[2](0, 3), 4.0 * 0.2, 1e-12);
+}
+
+// The payload is a point mass on the last link: total mass, combined centre
+// of mass and its share of the pseudo-inertia m * [r r^T r; r^T 1].
+TEST_F(SolverDynamics, PayloadIsAPointMassOnTheLastLink)
+{
+    const Robo::LinkDynamics last = robot->GetLinkDynamics()[5];
+    robot->SetPayload({3.0, {{0.01, -0.02, 0.1}}});
+    auto with = NewSolver();
+    robot->SetPayload({0.0, {{0, 0, 0}}});
+    auto without = NewSolver();
+
+    EXPECT_DOUBLE_EQ(without->m_mass[5], last.mass);
+    EXPECT_DOUBLE_EQ(with->m_mass[5], last.mass + 3.0);
+    const double r[3] = {0.01, -0.02, 0.1};
+    for (int k = 0; k < 3; k++)
+        EXPECT_NEAR(with->m_cm[5](k), (last.mass * last.com[k] + 3.0 * r[k]) / (last.mass + 3.0), 1e-12);
+    for (int a = 0; a < 3; a++)
+    {
+        for (int b = 0; b < 3; b++)
+            EXPECT_NEAR(with->m_ji[5](a, b) - without->m_ji[5](a, b), 3.0 * r[a] * r[b], 1e-12) << a << " " << b;
+        EXPECT_NEAR(with->m_ji[5](a, 3) - without->m_ji[5](a, 3), 3.0 * r[a], 1e-12);
+    }
+    EXPECT_NEAR(with->m_ji[5](3, 3) - without->m_ji[5](3, 3), 3.0, 1e-12);
+    // links before the flange are untouched
+    for (int i = 0; i < 5; i++)
+        EXPECT_DOUBLE_EQ(with->m_mass[i], without->m_mass[i]);
+}
+
+// Statics: holding a pose, extra payload mass m at point p (world) adds
+// (m g z) x ... -- the torque of its weight about each joint axis,
+// tau_i = ((p - o_i) x (0, 0, -m g)) . z_i up to the solver's sign.
+// Checked with the independent reference kinematics.
+TEST_F(SolverDynamics, ExtraPayloadAddsItsWeightTorqueAboutEveryJoint)
+{
+    const Angles q = WorkPose();     // at rest: q' = q'' = 0
+    const double r[3] = {0.0, 0.0, 0.08};
+    auto torques = [&](double mass) {
+        robot->SetPayload({mass, {{r[0], r[1], r[2]}}});
+        auto s = NewSolver();
+        Matrix4x4 TR[JOINTS_COUNT];
+        s->SolveDirectKinematic(q, TR);
+        try
+        {
+            s->SolveForwardDynamic(q);
+        }
+        catch (const std::runtime_error &)
+        {
+        }
+        return s->m_moments;
+    };
+    const Robo::Moments t0 = torques(0), t5 = torques(5), t10 = torques(10);
+
+    const Mat4 flange = ReferenceT0(q.q, 5);
+    const Vector3 p(flange[0][0] * r[0] + flange[0][1] * r[1] + flange[0][2] * r[2] + flange[0][3],
+                    flange[1][0] * r[0] + flange[1][1] * r[1] + flange[1][2] * r[2] + flange[1][3],
+                    flange[2][0] * r[0] + flange[2][1] * r[1] + flange[2][2] * r[2] + flange[2][3]);
+    for (int i = 0; i < JOINTS_COUNT; i++)
+    {
+        const Mat4 t = ReferenceT0(q.q, i);
+        const Vector3 o = Position(t), z(t[0][2], t[1][2], t[2][2]);
+        const Vector3 lever(p.x - o.x, p.y - o.y, p.z - o.z);
+        // (lever x F) . z with F = (0, 0, -5 g)
+        const double f = -5.0 * g;
+        const double expected = (lever.y * f) * z.x - (lever.x * f) * z.y;
+        const double d1 = t5.tao[i] - t0.tao[i], d2 = t10.tao[i] - t5.tao[i];
+        EXPECT_NEAR(d2, d1, 1e-6 + 1e-6 * std::abs(d1)) << "joint " << i << ": not linear in the payload";
+        EXPECT_NEAR(std::abs(d1), std::abs(expected), 1e-6 + 1e-6 * std::abs(expected)) << "joint " << i;
+    }
+    // the shoulder carries the payload over a lever of several tens of cm
+    EXPECT_GT(std::abs(t5.tao[1] - t0.tao[1]), 5.0);
+}
+
+TEST_F(SolverDynamics, JointRadiiShapeTheCollisionModel)
+{
+    robot->SetJointRadius(2, 0.1);
+    auto s = NewSolver();
+    bool found = false;
+    for (const auto &part : s->GetArmParts())
+        if (part.name == "joint 3")
+        {
+            found = true;
+            EXPECT_DOUBLE_EQ(part.radius, 0.1);
+        }
+    EXPECT_TRUE(found);
+}

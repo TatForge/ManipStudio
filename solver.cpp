@@ -102,7 +102,7 @@ Solver::Solver(Robo &robot)
     m_mass.resize(6);
     m_main_IKData = new IKData;
     //collision model: convex hulls of the arm shape (body frames), the obstacle last (world)
-    m_parts = ArmShape::Build(*manip_config);
+    m_parts = ArmShape::Build(*manip_config, robot.GetJointRadii());
     for (const ArmPart &part : m_parts)
         m_meshes.emplace_back(ArmShape::HullPoints(part));
     MeshCollider obstacle;
@@ -119,40 +119,37 @@ Solver::Solver(Robo &robot)
     }
     m_meshes_buff = m_meshes;
     m_bounds.assign(m_meshes.size(), BoxAABB(0, 0, 0, 0, 0, 0));
-//    m_inertion[0] = {0.000588, 0.000587, 0.000929, -1.299e-8, 2.44e-8, 1.79e-6};
-//    m_inertion[1] = {0.000928, 0.001512, 0.000937, 1.86e-5,  1.55e-10, 5.34e-12};
-//    m_inertion[2] = {0.001759, 0.000747, 0.001913, 2.32e-8,  6.37e-9,  1.68e-6};
-//    m_inertion[3] = {0.000198, 0.000479, 0.002059, 3.16e-11, 5.59e-10, 1.59e-7};ы
-//    m_inertion[4] = {9.826e-5, 0.000128, 0.000114, -2.74e-9, 4.41e-9,  5.82e-7};
-//    m_inertion[5] = {5.529e-5, 5.359e-5, 8.415e-5, 1.99e-10, 2.53e-9,  1.85e-7};
-
-    m_inertion[0] = {0.0120, 0.0117, 0.0032, 0, 0, 0};
-    m_inertion[1] = {0.0055, 0.4014, 0.3983, 0, 0, -0.0276};
-    m_inertion[2] = {0.0050, 0.2629, 0.2596, 0, 0, 0.0228};
-    m_inertion[3] = {0.0007, 0.0127, 0.0126, 0, 0, 0};
-    m_inertion[4] = {0.0033, 0.0033, 0.006, 0, 0, 0};
-    m_inertion[5] = {0.0002, 0.0002, 0.0001, 0, 0, 0};
-    scalar m_gruz(5);
-    Vector3 l_gruz(0.0, 0.0, 0.0);
-    m_mass[0] = 2.7600;
-    m_mass[1] = 2.9325;
-    m_mass[2] = 2.5773;
-    m_mass[3] = 1.6183;
-    m_mass[4] = 1.3935;
-    m_mass[5] = 0.2498 + m_gruz;
-    m_cm[0] = Vector({0,      -0.0046, -0.0467, 1});
-    m_cm[1] = Vector({0.3251,  0,      -0.0204, 1});
-    m_cm[2] = Vector({0.2869,  0,       0.0235, 1});
-    m_cm[3] = Vector({0.0757,  0,       0.0011, 1});
-    m_cm[4] = Vector({-0.0023, 0,       0.0364, 1});
-    m_cm[5] = Vector({ 0.0001 + l_gruz.x, 0.0 + l_gruz.y, 0.0193 + l_gruz.z, 1});
-
+    //dynamics: links from the robot settings, the payload as a point mass on the last link
+    const auto &links = robot.GetLinkDynamics();
+    for (int i = 0; i < JOINTS_COUNT; i++)
+    {
+        const auto &l = links[i];
+        m_inertion[i] = {l.inertia[0], l.inertia[1], l.inertia[2], l.inertia[3], l.inertia[4], l.inertia[5]};
+        m_mass[i] = l.mass;
+        m_cm[i] = Vector({l.com[0], l.com[1], l.com[2], 1});
+    }
     for (int i = 0; i < JOINTS_COUNT; i++)
     {
         m_ji[i] = {{(-m_inertion[i].xx() + m_inertion[i].yy() + m_inertion[i].zz())/2, m_inertion[i].xy(), m_inertion[i].xz(), m_mass[i] * m_cm[i](0)},
                    {m_inertion[i].xy(), (m_inertion[i].xx() - m_inertion[i].yy() + m_inertion[i].zz())/2,  m_inertion[i].yz(), m_mass[i] * m_cm[i](1)},
                    {m_inertion[i].xz(), m_inertion[i].yz(), (m_inertion[i].xx() + m_inertion[i].yy() - m_inertion[i].zz())/2,  m_mass[i] * m_cm[i](2)},
                    {m_mass[i] * m_cm[i](0),  m_mass[i] * m_cm[i](1), m_mass[i] * m_cm[i](2), m_mass[i]}};
+    }
+    const Robo::Payload payload = robot.GetPayload();
+    if (payload.mass > 0)
+    {
+        const int last = JOINTS_COUNT - 1;
+        const scalar mp = payload.mass;
+        const scalar r[4] = {payload.com[0], payload.com[1], payload.com[2], 1};
+        //pseudo-inertia of a point mass: m * [r r^T, r; r^T, 1]
+        for (int a = 0; a < 4; a++)
+            for (int b = 0; b < 4; b++)
+                m_ji[last](a, b) += mp * r[a] * r[b];
+        const scalar total = m_mass[last] + mp;
+        m_cm[last] = Vector({(m_mass[last] * m_cm[last](0) + mp * r[0]) / total,
+                             (m_mass[last] * m_cm[last](1) + mp * r[1]) / total,
+                             (m_mass[last] * m_cm[last](2) + mp * r[2]) / total, 1});
+        m_mass[last] = total;
     }
     m_moments_counter = 0;
     m_collisions_counter = 0;

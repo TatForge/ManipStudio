@@ -1,4 +1,7 @@
 #include "robo.h"
+#include "armshape.h"
+
+#include <stdexcept>
 #include <fstream>
 
 #define CALC_INVERSE_MATRIX
@@ -570,6 +573,28 @@ void Robo::WriteSettingsToFile()
     }
     manip_settings->endGroup();
     manip_settings->setValue("workspace/floor_z", m_floor_z);
+    static const char *const com_keys[3] = {"com_x", "com_y", "com_z"};
+    static const char *const inertia_keys[6] = {"ixx", "iyy", "izz", "ixy", "ixz", "iyz"};
+    manip_settings->beginGroup("dynamics");
+    for (counter i = 0; i < JOINTS_COUNT; i++)
+    {
+        const QString link = QString::number(i) + "/";
+        manip_settings->setValue(link + "mass", m_link_dynamics[i].mass);
+        for (int k = 0; k < 3; k++)
+            manip_settings->setValue(link + com_keys[k], m_link_dynamics[i].com[k]);
+        for (int k = 0; k < 6; k++)
+            manip_settings->setValue(link + inertia_keys[k], m_link_dynamics[i].inertia[k]);
+    }
+    manip_settings->endGroup();
+    manip_settings->beginGroup("payload");
+    manip_settings->setValue("mass", m_payload.mass);
+    for (int k = 0; k < 3; k++)
+        manip_settings->setValue(com_keys[k], m_payload.com[k]);
+    manip_settings->endGroup();
+    manip_settings->beginGroup("shape");
+    for (counter i = 0; i < JOINTS_COUNT; i++)
+        manip_settings->setValue(QString::number(i) + "/joint_radius", m_joint_radii[i]);
+    manip_settings->endGroup();
     manip_settings->sync();
 }
 
@@ -651,6 +676,32 @@ void Robo::LoadSettingsFromFile()
     manip_settings->endGroup();
     if (manip_settings->contains("workspace/floor_z"))
         m_floor_z = manip_settings->value("workspace/floor_z").toDouble();
+    //optional: dynamics, payload, collision shape; defaults stay for missing keys
+    auto read = [this](const QString &key, scalar &value) {
+        if (manip_settings->contains(key))
+            value = manip_settings->value(key).toDouble();
+    };
+    static const char *const com_keys[3] = {"com_x", "com_y", "com_z"};
+    static const char *const inertia_keys[6] = {"ixx", "iyy", "izz", "ixy", "ixz", "iyz"};
+    for (counter i = 0; i < JOINTS_COUNT; i++)
+    {
+        LinkDynamics d = m_link_dynamics[i];
+        const QString link = "dynamics/" + QString::number(i) + "/";
+        read(link + "mass", d.mass);
+        for (int k = 0; k < 3; k++)
+            read(link + com_keys[k], d.com[k]);
+        for (int k = 0; k < 6; k++)
+            read(link + inertia_keys[k], d.inertia[k]);
+        SetLinkDynamics(int(i), d);
+        scalar radius = m_joint_radii[i];
+        read("shape/" + QString::number(i) + "/joint_radius", radius);
+        SetJointRadius(int(i), radius);
+    }
+    Payload p = m_payload;
+    read("payload/mass", p.mass);
+    for (int k = 0; k < 3; k++)
+        read(QString("payload/") + com_keys[k], p.com[k]);
+    SetPayload(p);
 
 }
 
@@ -941,6 +992,61 @@ void Robo::SetDefaultLimits()
     for (int i = 0; i < JOINTS_COUNT; i++)
         m_joint_limits[i] = {ToRad(limits_deg[i][0]), ToRad(limits_deg[i][1])};
     m_floor_z = 0;
+    SetDefaultDynamics();
+}
+
+void Robo::SetDefaultDynamics()
+{
+    //the model the Solver used to hard-code
+    m_link_dynamics = {{{2.7600, {{0, -0.0046, -0.0467}}, {{0.0120, 0.0117, 0.0032, 0, 0, 0}}},
+                        {2.9325, {{0.3251, 0, -0.0204}}, {{0.0055, 0.4014, 0.3983, 0, 0, -0.0276}}},
+                        {2.5773, {{0.2869, 0, 0.0235}}, {{0.0050, 0.2629, 0.2596, 0, 0, 0.0228}}},
+                        {1.6183, {{0.0757, 0, 0.0011}}, {{0.0007, 0.0127, 0.0126, 0, 0, 0}}},
+                        {1.3935, {{-0.0023, 0, 0.0364}}, {{0.0033, 0.0033, 0.006, 0, 0, 0}}},
+                        {0.2498, {{0.0001, 0, 0.0193}}, {{0.0002, 0.0002, 0.0001, 0, 0, 0}}}}};
+    //5 kg at the centre of mass of the last link
+    m_payload = {5.0, {{0.0001, 0, 0.0193}}};
+    m_joint_radii = ArmShape::DefaultJointRadii();
+}
+
+const std::array<Robo::LinkDynamics, JOINTS_COUNT> &Robo::GetLinkDynamics() const
+{
+    return m_link_dynamics;
+}
+
+void Robo::SetLinkDynamics(int link, const LinkDynamics &d)
+{
+    if (link < 0 || link >= JOINTS_COUNT)
+        throw std::out_of_range("link " + std::to_string(link) + " does not exist");
+    if (d.mass < 0)
+        throw std::invalid_argument("link mass must not be negative");
+    m_link_dynamics[link] = d;
+}
+
+Robo::Payload Robo::GetPayload() const
+{
+    return m_payload;
+}
+
+void Robo::SetPayload(const Payload &p)
+{
+    if (p.mass < 0)
+        throw std::invalid_argument("payload mass must not be negative");
+    m_payload = p;
+}
+
+std::array<scalar, JOINTS_COUNT> Robo::GetJointRadii() const
+{
+    return m_joint_radii;
+}
+
+void Robo::SetJointRadius(int joint, scalar radius)
+{
+    if (joint < 0 || joint >= JOINTS_COUNT)
+        throw std::out_of_range("joint " + std::to_string(joint) + " does not exist");
+    if (!(radius > 0))
+        throw std::invalid_argument("joint radius must be positive");
+    m_joint_radii[joint] = radius;
 }
 
 vector<pair<scalar, scalar>> Robo::GetJointLimits() const

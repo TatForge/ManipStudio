@@ -84,7 +84,8 @@ if(MANIP_BUILD_TESTS)
         Tests/test_arm_shape.cpp
         Tests/test_elem.cpp
         Tests/test_robo.cpp
-        Tests/test_robo_behavior.cpp)
+        Tests/test_robo_behavior.cpp
+        Tests/test_robo_dynamics.cpp)
 
     # Phase 3: Solver (kinematics, trajectories, dynamics, collisions), Emulator, SharedMem
     manip_add_test(ManipSolverTests "solver"
