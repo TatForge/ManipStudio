@@ -43,6 +43,13 @@ ApplicationWindow {
                 width: 10; height: 10; radius: 5
                 color: !robot.ready ? Theme.warn : robot.busy ? Theme.accent : Theme.good
             }
+            Chip {
+                text: qsTr("Settings")
+                enabled: robot.ready
+                checked: settingsPanel.opened
+                onClicked: settingsPanel.open()
+                Layout.rightMargin: Theme.gap
+            }
             Row {
                 spacing: 4
                 Layout.rightMargin: Theme.gap
@@ -107,6 +114,8 @@ ApplicationWindow {
             Item { Layout.fillHeight: true }
         }
     }
+
+    SettingsPanel { id: settingsPanel; objectName: "settingsPanel" }
 
     footer: Rectangle {
         color: Theme.panel

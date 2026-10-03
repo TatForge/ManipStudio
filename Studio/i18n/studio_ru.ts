@@ -9,6 +9,7 @@
     <message><source>loading</source><translation>загрузка</translation></message>
     <message><source>planning</source><translation>расчёт</translation></message>
     <message><source>ready</source><translation>готов</translation></message>
+    <message><source>Settings</source><translation>Настройки</translation></message>
     <message><source> s</source><translation> с</translation></message>
 </context>
 <context>
@@ -74,5 +75,41 @@
     <message><source>MoveJ failed after %1 samples</source><translation>MoveJ прерван после %1 точек</translation></message>
     <message><source>MoveJ: %1 samples, %2 s</source><translation>MoveJ: %1 точек, %2 с</translation></message>
     <message><source>%1 failed</source><translation>%1: ошибка</translation></message>
+    <message><source>Settings: the solver is busy</source><translation>Настройки: решатель занят</translation></message>
+    <message><source>Settings: every field needs a number</source><translation>Настройки: в каждом поле должно быть число</translation></message>
+    <message><source>Saving settings...</source><translation>Сохранение настроек...</translation></message>
+    <message><source>Applying settings...</source><translation>Применение настроек...</translation></message>
+    <message><source>Settings saved to %1</source><translation>Настройки сохранены в %1</translation></message>
+    <message><source>Settings applied (not saved)</source><translation>Настройки применены (не сохранены)</translation></message>
+    <message><source>Settings reloaded from %1</source><translation>Настройки перечитаны из %1</translation></message>
+</context>
+<context>
+    <name>SettingsPanel</name>
+    <message><source>Settings</source><translation>Настройки</translation></message>
+    <message><source>unsaved changes</source><translation>есть несохранённые изменения</translation></message>
+    <message><source>Kinematics</source><translation>Кинематика</translation></message>
+    <message><source>Limits</source><translation>Пределы</translation></message>
+    <message><source>Dynamics</source><translation>Динамика</translation></message>
+    <message><source>Modified Denavit-Hartenberg table: frame i is reached from frame i-1 by α and a of row i-1, then θ and d of row i. The radius sets the joint drum of the 3D and collision model.</source><translation>Модифицированная таблица Денавита–Хартенберга: система i получается из i-1 через α и a строки i-1, затем θ и d строки i. Радиус задаёт барабан сустава в 3D-модели и модели коллизий.</translation></message>
+    <message><source>Joint</source><translation>Сустав</translation></message>
+    <message><source>a, m</source><translation>a, м</translation></message>
+    <message><source>α, °</source><translation>α, °</translation></message>
+    <message><source>d, m</source><translation>d, м</translation></message>
+    <message><source>Radius, m</source><translation>Радиус, м</translation></message>
+    <message><source>min, °</source><translation>мин, °</translation></message>
+    <message><source>max, °</source><translation>макс, °</translation></message>
+    <message><source>Max moment, N·m</source><translation>Предельный момент, Н·м</translation></message>
+    <message><source>Floor height, m</source><translation>Высота пола, м</translation></message>
+    <message><source>Payload (point mass in the flange frame)</source><translation>Груз (точечная масса в системе фланца)</translation></message>
+    <message><source>Mass, kg</source><translation>Масса, кг</translation></message>
+    <message><source>Centre of mass x, y, z, m</source><translation>Центр масс x, y, z, м</translation></message>
+    <message><source>Links: mass, kg and centre of mass in the joint frame, m</source><translation>Звенья: масса, кг, и центр масс в системе сустава, м</translation></message>
+    <message><source>Link</source><translation>Звено</translation></message>
+    <message><source>Inertia about the joint frame origin, kg·m²</source><translation>Инерция относительно начала системы сустава, кг·м²</translation></message>
+    <message><source>Apply rebuilds the planner with these values; Save also writes them to %1.</source><translation>«Применить» пересоздаёт планировщик с этими значениями; «Сохранить» ещё и записывает их в %1.</translation></message>
+    <message><source>Revert</source><translation>Отменить</translation></message>
+    <message><source>Reload file</source><translation>Перечитать файл</translation></message>
+    <message><source>Apply</source><translation>Применить</translation></message>
+    <message><source>Save to file</source><translation>Сохранить в файл</translation></message>
 </context>
 </TS>

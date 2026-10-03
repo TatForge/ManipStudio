@@ -58,6 +58,7 @@ SolverWorker::SolverWorker(QObject *parent) : QObject(parent)
     qRegisterMetaType<ArmPose>();
     qRegisterMetaType<PlannedTrajectory>();
     qRegisterMetaType<std::vector<ArmPart>>();
+    qRegisterMetaType<RobotSettings>();
 }
 
 SolverWorker::~SolverWorker() = default;
@@ -70,16 +71,81 @@ void SolverWorker::Initialize()
             throw std::runtime_error("cannot read ManipulatorSettigns.ini");
         m_solver = std::make_unique<Solver>(*robot);
         m_robot = std::move(robot);
-        QVector<double> lo, hi;
-        for (const auto &l : m_solver->GetJointLimits())
+        EmitState(false);
+    });
+}
+
+void SolverWorker::EmitState(bool saved)
+{
+    QVector<double> lo, hi;
+    for (const auto &l : m_solver->GetJointLimits())
+    {
+        lo.append(l.first);
+        hi.append(l.second);
+    }
+    QVector<double> max_moments;
+    for (scalar m : m_robot->GetMaxJointMoments())
+        max_moments.append(m);
+
+    RobotSettings s;
+    for (int i = 0; i < JOINTS_COUNT; i++)
+    {
+        s.dh[i] = m_robot->GetDH(i);
+        s.limit_min[i] = lo[i];
+        s.limit_max[i] = hi[i];
+        s.max_moments[i] = max_moments[i];
+        s.joint_radii[i] = m_robot->GetJointRadii()[i];
+    }
+    s.floor_z = m_robot->GetFloorHeight();
+    s.links = m_robot->GetLinkDynamics();
+    s.payload = m_robot->GetPayload();
+    emit SettingsReady(s, saved);
+    emit Initialized(lo, hi, m_solver->GetFloorHeight(), max_moments, m_solver->GetArmParts());
+}
+
+void SolverWorker::ApplySettings(const RobotSettings &s, bool save)
+{
+    if (!m_robot)
+    {
+        emit Failed(QStringLiteral("settings"), QStringLiteral("the model is not loaded"));
+        return;
+    }
+    Guarded(this, QStringLiteral("settings"), [&] {
+        // check everything first, so a rejected set leaves the model untouched
+        for (int i = 0; i < JOINTS_COUNT; i++)
         {
-            lo.append(l.first);
-            hi.append(l.second);
+            const std::string joint = "joint " + std::to_string(i + 1);
+            if (!(s.limit_min[i] < s.limit_max[i]))
+                throw std::invalid_argument(joint + ": the lower limit must be below the upper one");
+            if (!(s.max_moments[i] > 0))
+                throw std::invalid_argument(joint + ": the max moment must be positive");
+            if (!(s.joint_radii[i] > 0))
+                throw std::invalid_argument(joint + ": the radius must be positive");
+            if (!(s.links[i].mass >= 0))
+                throw std::invalid_argument("link " + std::to_string(i + 1) + ": the mass must not be negative");
+            if (!std::isfinite(s.dh[i].a) || !std::isfinite(s.dh[i].alpha) || !std::isfinite(s.dh[i].d))
+                throw std::invalid_argument(joint + ": DH parameters must be numbers");
         }
-        QVector<double> max_moments;
-        for (scalar m : m_robot->GetMaxJointMoments())
-            max_moments.append(m);
-        emit Initialized(lo, hi, m_solver->GetFloorHeight(), max_moments, m_solver->GetArmParts());
+        if (!(s.payload.mass >= 0))
+            throw std::invalid_argument("the payload mass must not be negative");
+        if (!std::isfinite(s.floor_z))
+            throw std::invalid_argument("the floor height must be a number");
+
+        for (int i = 0; i < JOINTS_COUNT; i++)
+        {
+            m_robot->SetDH(i, s.dh[i]);
+            m_robot->SetJointLimit(i, s.limit_min[i], s.limit_max[i]);
+            m_robot->SetMaxJointMoment(i, s.max_moments[i]);
+            m_robot->SetLinkDynamics(i, s.links[i]);
+            m_robot->SetJointRadius(i, s.joint_radii[i]);
+        }
+        m_robot->SetFloorHeight(s.floor_z);
+        m_robot->SetPayload(s.payload);
+        if (save)
+            m_robot->WriteSettingsToFile();
+        m_solver.reset();       // its emulator owns the shared memory segments
+        m_solver = std::make_unique<Solver>(*m_robot);
+        EmitState(save);
     });
 }
 

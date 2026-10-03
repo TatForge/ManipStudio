@@ -43,6 +43,7 @@ class RobotBackend : public QObject
     Q_PROPERTY(int sampleCount READ sampleCount NOTIFY trajectoryChanged)
     Q_PROPERTY(QString status READ status NOTIFY statusChanged)
     Q_PROPERTY(QString dataDir READ dataDir CONSTANT)
+    Q_PROPERTY(QVariantMap settings READ settings NOTIFY settingsChanged)
 public:
     explicit RobotBackend(const QString &data_dir, QObject *parent = nullptr);
     ~RobotBackend() override;
@@ -85,6 +86,14 @@ public:
     // translated on every read, so it follows the current UI language
     QString status() const;
     QString dataDir() const { return m_data_dir; }
+    // the editable model in UI units: {dh: [{a, alpha (deg), d}], limits: [{min, max}] (deg),
+    // maxMoments: [N*m], floorZ, links: [{mass, com: [3], inertia: [6]}], payload: {mass, com: [3]},
+    // jointRadii: [m]}
+    QVariantMap settings() const;
+    // applies an edited copy of `settings` (rebuilding the solver); save also writes the settings file
+    Q_INVOKABLE void applySettings(const QVariantMap &settings, bool save);
+    // discards unsaved changes: loads the settings file again
+    Q_INVOKABLE void reloadSettings();
     const ArmPose &pose() const { return m_pose; }
 
     // Curves of the last trajectory for the plots, x in seconds:
@@ -121,16 +130,21 @@ signals:
     void trajectoryChanged();
     void statusChanged();
     void errorOccurred(const QString &message);
+    void settingsChanged();
     void motionFinished();
 
     // to the worker thread
     void requestPose(const QVector<double> &joints_rad);
     void requestMoveJ(const QVector<double> &from_rad, const QVector<double> &to_rad, double speed, double accel, double dt_ms);
+    void requestApplySettings(const RobotSettings &settings, bool save);
+    void requestReload();
 
 private:
     void OnInitialized(const QVector<double> &lo, const QVector<double> &hi, double floor_z, const QVector<double> &max_moments,
                        const std::vector<ArmPart> &shape);
     void OnPose(const ArmPose &pose);
+    void OnSettings(const RobotSettings &settings, bool saved);
+    void ClearTrajectory();
     void OnTrajectory(const PlannedTrajectory &trajectory);
     void OnFailed(const QString &what, const QString &message);
     void OnPlayTick();
@@ -154,6 +168,9 @@ private:
     QVector<float> m_moments;           // 6 per sample
     QVector<double> m_max_moments;
     std::vector<ArmPart> m_shape;      // the arm shape of the core, body frames
+    RobotSettings m_settings;
+    bool m_has_settings = false;
+    bool m_reloading = false;
     QString m_trajectory_error;
     int m_play_from = 0;
     double m_floor_z = 0;

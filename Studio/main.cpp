@@ -49,7 +49,8 @@ int main(int argc, char *argv[])
                                    QStringLiteral("file"));
     QCommandLineOption lang_option(QStringLiteral("lang"), QStringLiteral("UI language: en or ru (default: last used, else system)."),
                                    QStringLiteral("code"));
-    parser.addOptions({data_option, joints_option, movej_option, shot_option, lang_option});
+    QCommandLineOption settings_option(QStringLiteral("settings"), QStringLiteral("Open the settings panel once loaded."));
+    parser.addOptions({data_option, joints_option, movej_option, shot_option, lang_option, settings_option});
     parser.process(app);
 
     const QVariantList joints = ParseAngles(parser.value(joints_option));
@@ -94,7 +95,11 @@ int main(int argc, char *argv[])
             QCoreApplication::exit(ok ? 0 : 1);
         });
     };
-    auto start = [&robot, joints, movej, shot, grab] {
+    const bool open_settings = parser.isSet(settings_option);
+    auto start = [&robot, &engine, joints, movej, shot, grab, open_settings] {
+        if (open_settings && !engine.rootObjects().isEmpty())
+            if (QObject *panel = engine.rootObjects().first()->findChild<QObject *>(QStringLiteral("settingsPanel")))
+                QMetaObject::invokeMethod(panel, "open");
         if (!joints.isEmpty())
             robot.setJoints(joints);
         if (!movej.isEmpty())

@@ -109,6 +109,16 @@ public:
         scalar mass;
         std::array<scalar, 3> com;
     };
+    //one row of the (modified) Denavit-Hartenberg table: a and d in metres, alpha in radians
+    struct DHParams
+    {
+        scalar a;
+        scalar alpha;
+        scalar d;
+    };
+    DHParams GetDH(int joint) const;
+    void SetDH(int joint, const DHParams &p);
+    void SetMaxJointMoment(int joint, scalar value);
     //settings groups "dynamics", "payload" and "shape"; defaults otherwise
     const std::array<LinkDynamics, JOINTS_COUNT> &GetLinkDynamics() const;
     void SetLinkDynamics(int link, const LinkDynamics &d);

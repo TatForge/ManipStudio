@@ -136,3 +136,35 @@ TEST(RoboDynamics, NoPayloadIsAllowed)
     r.SetPayload({0, {{0, 0, 0}}});
     EXPECT_DOUBLE_EQ(r.GetPayload().mass, 0.0);
 }
+
+TEST_F(RoboDynamicsSettings, DhTableAndMaxMomentsAreEditableAndSurviveSaveAndLoad)
+{
+    Robo r(JOINTS_COUNT);
+    ASSERT_TRUE(r.LoadManip());
+    const Robo::DHParams before = r.GetDH(1);
+    EXPECT_DOUBLE_EQ(before.a, 0.375);
+    EXPECT_DOUBLE_EQ(before.alpha, 0);
+    EXPECT_DOUBLE_EQ(before.d, 0.1);
+    r.SetDH(1, {0.4, 0.01, 0.11});
+    r.SetMaxJointMoment(3, 95.5);
+    {
+        ScopedSilence quiet;
+        r.WriteSettingsToFile();
+    }
+    Robo loaded(JOINTS_COUNT);
+    ASSERT_TRUE(loaded.LoadManip());
+    EXPECT_DOUBLE_EQ(loaded.GetDH(1).a, 0.4);
+    EXPECT_DOUBLE_EQ(loaded.GetDH(1).alpha, 0.01);
+    EXPECT_DOUBLE_EQ(loaded.GetDH(1).d, 0.11);
+    EXPECT_DOUBLE_EQ(loaded.GetDH(2).a, 0.295);
+    EXPECT_DOUBLE_EQ(loaded.GetMaxJointMoments()[3], 95.5);
+}
+
+TEST(RoboDynamics, InvalidDhAndMomentsAreRejected)
+{
+    Robo r(JOINTS_COUNT);
+    EXPECT_THROW(r.SetDH(0, {std::nan(""), 0, 0}), std::invalid_argument);
+    EXPECT_THROW(r.SetDH(JOINTS_COUNT, {0, 0, 0}), std::out_of_range);
+    EXPECT_THROW(r.SetMaxJointMoment(0, 0), std::invalid_argument);
+    EXPECT_THROW(r.SetMaxJointMoment(-1, 10), std::out_of_range);
+}

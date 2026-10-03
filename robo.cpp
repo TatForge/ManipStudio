@@ -552,12 +552,6 @@ void Robo::WriteSettingsToFile()
         manip_settings->setValue("5", m_i[i].yz());
     }
     manip_settings->endArray();
-    max_joint_moments[0] = 180;
-    max_joint_moments[1] = 180;
-    max_joint_moments[2] = 120;
-    max_joint_moments[3] = 120;
-    max_joint_moments[4] = 60;
-    max_joint_moments[5] = 60;
     manip_settings->setValue("moments", 1);
     manip_settings->beginGroup("max moments");
     for (counter i = 0; i < 6; i++)
@@ -992,6 +986,8 @@ void Robo::SetDefaultLimits()
     for (int i = 0; i < JOINTS_COUNT; i++)
         m_joint_limits[i] = {ToRad(limits_deg[i][0]), ToRad(limits_deg[i][1])};
     m_floor_z = 0;
+    //motor limits, N*m (WriteSettingsToFile used to force these on every save)
+    max_joint_moments = {180, 180, 120, 120, 60, 60};
     SetDefaultDynamics();
 }
 
@@ -1007,6 +1003,34 @@ void Robo::SetDefaultDynamics()
     //5 kg at the centre of mass of the last link
     m_payload = {5.0, {{0.0001, 0, 0.0193}}};
     m_joint_radii = ArmShape::DefaultJointRadii();
+}
+
+Robo::DHParams Robo::GetDH(int joint) const
+{
+    if (joint < 0 || joint >= JOINTS_COUNT)
+        throw std::out_of_range("joint " + std::to_string(joint) + " does not exist");
+    return {state_matrix->at(joint, 0), state_matrix->at(joint, 1), state_matrix->at(joint, 2)};
+}
+
+void Robo::SetDH(int joint, const DHParams &p)
+{
+    if (joint < 0 || joint >= JOINTS_COUNT)
+        throw std::out_of_range("joint " + std::to_string(joint) + " does not exist");
+    if (!std::isfinite(p.a) || !std::isfinite(p.alpha) || !std::isfinite(p.d))
+        throw std::invalid_argument("DH parameters must be finite numbers");
+    (*state_matrix)(joint, 0) = p.a;
+    (*state_matrix)(joint, 1) = p.alpha;
+    (*state_matrix)(joint, 2) = p.d;
+    UpdateTMatrix();
+}
+
+void Robo::SetMaxJointMoment(int joint, scalar value)
+{
+    if (joint < 0 || joint >= JOINTS_COUNT)
+        throw std::out_of_range("joint " + std::to_string(joint) + " does not exist");
+    if (!(value > 0))
+        throw std::invalid_argument("max joint moment must be positive");
+    max_joint_moments.at(joint) = value;
 }
 
 const std::array<Robo::LinkDynamics, JOINTS_COUNT> &Robo::GetLinkDynamics() const

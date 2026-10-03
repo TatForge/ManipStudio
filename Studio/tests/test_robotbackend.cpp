@@ -39,6 +39,51 @@ private:
         QVERIFY(finished.wait(kTimeoutMs));
     }
 
+    // a copy of the project's settings file and meshes
+    static bool MakeDataDir(QTemporaryDir &dir)
+    {
+        const QDir src(QStringLiteral(MANIP_DATA_DIR));
+        if (!QFile::copy(src.filePath(QStringLiteral("ManipulatorSettigns.ini")), QDir(dir.path()).filePath(QStringLiteral("ManipulatorSettigns.ini"))))
+            return false;
+        QFile::setPermissions(QDir(dir.path()).filePath(QStringLiteral("ManipulatorSettigns.ini")), QFile::ReadOwner | QFile::WriteOwner);
+        QDir(dir.path()).mkdir(QStringLiteral("STLmodels"));
+        for (const QString &f : QDir(src.filePath(QStringLiteral("STLmodels"))).entryList(QDir::Files))
+            if (!QFile::copy(src.filePath(QStringLiteral("STLmodels/") + f), QDir(dir.path()).filePath(QStringLiteral("STLmodels/") + f)))
+                return false;
+        return true;
+    }
+
+    void StartIn(const QString &dir)
+    {
+        m_backend = std::make_unique<RobotBackend>(dir);
+        QTRY_VERIFY_WITH_TIMEOUT(m_backend->ready(), kTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(m_backend->tcp().size(), 6, kTimeoutMs);
+    }
+
+    // applies and waits until the solver has been rebuilt
+    void Apply(const QVariantMap &settings, bool save)
+    {
+        QSignalSpy changed(m_backend.get(), &RobotBackend::settingsChanged);
+        m_backend->applySettings(settings, save);
+        QVERIFY(changed.wait(kTimeoutMs));
+        QTRY_VERIFY_WITH_TIMEOUT(!m_backend->busy(), kTimeoutMs);
+    }
+
+    static QVariantMap SetIn(QVariantMap map, const QString &list, int index, const QString &key, const QVariant &value)
+    {
+        QVariantList l = map[list].toList();
+        QVariantMap row = l[index].toMap();
+        row[key] = value;
+        l[index] = row;
+        map[list] = l;
+        return map;
+    }
+
+    double ShoulderPeak()
+    {
+        return Peak(*m_backend, 1)[QStringLiteral("peak")].toDouble();
+    }
+
     // data directory with the project's model but a lower motor limit for one joint
     static bool MakeDataDirWithMomentLimit(QTemporaryDir &dir, int joint, double limit)
     {
@@ -323,6 +368,120 @@ private slots:
         QVERIFY(p[QStringLiteral("exceeded")].toBool());
         // the last evaluated sample is the one over the limit
         QVERIFY(std::abs(m_backend->Series(QStringLiteral("moment"), 1).last().y()) > limit);
+    }
+
+    void settingsExposeTheModelInUiUnits()
+    {
+        const QVariantMap st = m_backend->settings();
+        const QVariantList dh = st[QStringLiteral("dh")].toList();
+        QCOMPARE(dh.size(), 6);
+        QCOMPARE(dh[1].toMap()[QStringLiteral("a")].toDouble(), 0.375);
+        QCOMPARE(qRound(dh[0].toMap()[QStringLiteral("alpha")].toDouble()), -90);    // degrees
+        const QVariantList limits = st[QStringLiteral("limits")].toList();
+        QCOMPARE(qRound(limits[1].toMap()[QStringLiteral("min")].toDouble()), -150);
+        QCOMPARE(st[QStringLiteral("maxMoments")].toList()[0].toDouble(), 180.0);
+        QCOMPARE(st[QStringLiteral("floorZ")].toDouble(), 0.0);
+        QCOMPARE(st[QStringLiteral("payload")].toMap()[QStringLiteral("mass")].toDouble(), 5.0);
+        QCOMPARE(st[QStringLiteral("links")].toList()[1].toMap()[QStringLiteral("mass")].toDouble(), 2.9325);
+        QCOMPARE(st[QStringLiteral("links")].toList()[1].toMap()[QStringLiteral("inertia")].toList().size(), 6);
+        QCOMPARE(st[QStringLiteral("jointRadii")].toList()[0].toDouble(), 0.075);
+    }
+
+    // a heavier payload, applied without saving: the next plan needs more shoulder torque,
+    // the settings file stays as it was
+    void appliedPayloadChangesTheMomentsButNotTheFile()
+    {
+        QTemporaryDir dir;
+        QVERIFY(MakeDataDir(dir));
+        StartIn(dir.path());
+        QFile ini(QDir(dir.path()).filePath(QStringLiteral("ManipulatorSettigns.ini")));
+        QVERIFY(ini.open(QIODevice::ReadOnly));
+        const QByteArray before = ini.readAll();
+        ini.close();
+
+        RunMove();
+        const double light = ShoulderPeak();
+        QVariantMap st = m_backend->settings();
+        QVariantMap payload = st[QStringLiteral("payload")].toMap();
+        payload[QStringLiteral("mass")] = 15.0;
+        st[QStringLiteral("payload")] = payload;
+        Apply(st, false);
+        QCOMPARE(m_backend->sampleCount(), 0);          // the old plan is gone
+        QCOMPARE(m_backend->settings()[QStringLiteral("payload")].toMap()[QStringLiteral("mass")].toDouble(), 15.0);
+        QVERIFY(m_backend->status().contains(QStringLiteral("not saved")));
+
+        m_backend->setJoints({0, 0, 0, 0, 0, 0});
+        WaitPose();
+        RunMove();
+        QVERIFY2(ShoulderPeak() > light + 20, qPrintable(QStringLiteral("%1 -> %2").arg(light).arg(ShoulderPeak())));
+
+        QVERIFY(ini.open(QIODevice::ReadOnly));
+        QCOMPARE(ini.readAll(), before);
+    }
+
+    void savedSettingsAreLoadedOnTheNextStart()
+    {
+        QTemporaryDir dir;
+        QVERIFY(MakeDataDir(dir));
+        StartIn(dir.path());
+        QVariantMap st = SetIn(m_backend->settings(), QStringLiteral("dh"), 1, QStringLiteral("a"), 0.4);
+        st = SetIn(st, QStringLiteral("limits"), 0, QStringLiteral("max"), 100.0);
+        QVariantList radii = st[QStringLiteral("jointRadii")].toList();
+        radii[2] = 0.07;
+        st[QStringLiteral("jointRadii")] = radii;
+        Apply(st, true);
+        QVERIFY(m_backend->status().contains(QStringLiteral("saved to")));
+
+        m_backend.reset();
+        StartIn(dir.path());
+        const QVariantMap back = m_backend->settings();
+        QCOMPARE(back[QStringLiteral("dh")].toList()[1].toMap()[QStringLiteral("a")].toDouble(), 0.4);
+        QVERIFY(qAbs(back[QStringLiteral("limits")].toList()[0].toMap()[QStringLiteral("max")].toDouble() - 100) < 1e-9);
+        QCOMPARE(back[QStringLiteral("jointRadii")].toList()[2].toDouble(), 0.07);
+        // the longer upper arm reaches further: zero-pose TCP x = 0.4 + 0.295
+        QVERIFY(qAbs(At(m_backend->tcp(), 0) - 0.695) < 1e-6);
+    }
+
+    void invalidSettingsAreRejectedAndChangeNothing()
+    {
+        const QVariantMap before = m_backend->settings();
+        QSignalSpy errors(m_backend.get(), &RobotBackend::errorOccurred);
+        m_backend->applySettings(SetIn(before, QStringLiteral("limits"), 2, QStringLiteral("min"), 200.0), false);
+        QVERIFY(errors.wait(kTimeoutMs));
+        QVERIFY(errors.first().first().toString().contains(QStringLiteral("lower limit")));
+        QTRY_VERIFY_WITH_TIMEOUT(!m_backend->busy(), kTimeoutMs);
+        QCOMPARE(m_backend->settings(), before);
+
+        // a field that is not a number never reaches the solver
+        errors.clear();
+        m_backend->applySettings(SetIn(before, QStringLiteral("dh"), 0, QStringLiteral("d"), QStringLiteral("abc")), false);
+        QCOMPARE(errors.count(), 1);
+        QVERIFY(!m_backend->busy());
+    }
+
+    void reloadDiscardsUnsavedChanges()
+    {
+        QVariantMap st = m_backend->settings();
+        QVariantMap payload = st[QStringLiteral("payload")].toMap();
+        payload[QStringLiteral("mass")] = 9.0;
+        st[QStringLiteral("payload")] = payload;
+        Apply(st, false);
+        QCOMPARE(m_backend->settings()[QStringLiteral("payload")].toMap()[QStringLiteral("mass")].toDouble(), 9.0);
+
+        QSignalSpy changed(m_backend.get(), &RobotBackend::settingsChanged);
+        m_backend->reloadSettings();
+        QVERIFY(changed.wait(kTimeoutMs));
+        QTRY_VERIFY_WITH_TIMEOUT(!m_backend->busy(), kTimeoutMs);
+        QCOMPARE(m_backend->settings()[QStringLiteral("payload")].toMap()[QStringLiteral("mass")].toDouble(), 5.0);
+        QVERIFY(m_backend->status().contains(QStringLiteral("reloaded")));
+    }
+
+    void jointsAreKeptInsideNewLimits()
+    {
+        m_backend->setJoint(0, 100);
+        Apply(SetIn(m_backend->settings(), QStringLiteral("limits"), 0, QStringLiteral("max"), 50.0), false);
+        QVERIFY(qAbs(At(m_backend->joints(), 0) - 50) < 1e-9);
+        QVERIFY(qAbs(m_backend->limits()[0].toMap()[QStringLiteral("max")].toDouble() - 50) < 1e-9);
     }
 
     void moveJOutsideLimitsReportsError()

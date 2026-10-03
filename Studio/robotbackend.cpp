@@ -45,6 +45,9 @@ RobotBackend::RobotBackend(const QString &data_dir, QObject *parent)
     connect(&m_thread, &QThread::finished, m_worker, &QObject::deleteLater);
     connect(this, &RobotBackend::requestPose, m_worker, &SolverWorker::ComputePose);
     connect(this, &RobotBackend::requestMoveJ, m_worker, &SolverWorker::MoveJ);
+    connect(this, &RobotBackend::requestApplySettings, m_worker, &SolverWorker::ApplySettings);
+    connect(this, &RobotBackend::requestReload, m_worker, &SolverWorker::Initialize);
+    connect(m_worker, &SolverWorker::SettingsReady, this, &RobotBackend::OnSettings);
     connect(m_worker, &SolverWorker::Initialized, this, &RobotBackend::OnInitialized);
     connect(m_worker, &SolverWorker::PoseReady, this, &RobotBackend::OnPose);
     connect(m_worker, &SolverWorker::TrajectoryReady, this, &RobotBackend::OnTrajectory);
@@ -363,14 +366,166 @@ void RobotBackend::OnInitialized(const QVector<double> &lo, const QVector<double
 {
     m_shape = shape;
     m_max_moments = max_moments;
+    const bool reinit = m_ready;
     m_lo = lo;
     m_hi = hi;
     m_floor_z = floor_z;
     m_ready = true;
     SetBusy(false);
-    SetStatus(QT_TR_NOOP("Model loaded, floor at z = %1 m"), {QString::number(floor_z)});
+    // keep the arm inside the (possibly new) limits
+    for (int i = 0; i < kJoints && i < m_lo.size(); i++)
+        m_target_rad[i] = std::clamp(m_target_rad[i], m_lo[i], m_hi[i]);
+    if (!reinit)
+        SetStatus(QT_TR_NOOP("Model loaded, floor at z = %1 m"), {QString::number(floor_z)});
     emit readyChanged();
     emit requestPose(m_target_rad);
+}
+
+namespace
+{
+QVariantList ToList(const double *v, int n)
+{
+    QVariantList out;
+    for (int i = 0; i < n; i++)
+        out.append(v[i]);
+    return out;
+}
+
+// reads `n` numbers from a QVariantList, false if it is not exactly that
+bool FromList(const QVariant &value, double *out, int n)
+{
+    const QVariantList l = value.toList();
+    if (l.size() != n)
+        return false;
+    for (int i = 0; i < n; i++)
+    {
+        bool ok = false;
+        out[i] = l[i].toDouble(&ok);
+        if (!ok)
+            return false;
+    }
+    return true;
+}
+
+bool Number(const QVariant &value, double &out)
+{
+    bool ok = false;
+    out = value.toDouble(&ok);
+    return ok;
+}
+}
+
+QVariantMap RobotBackend::settings() const
+{
+    if (!m_has_settings)
+        return {};
+    const RobotSettings &s = m_settings;
+    QVariantList dh, limits, links;
+    for (int i = 0; i < kJoints; i++)
+    {
+        dh.append(QVariantMap{{QStringLiteral("a"), s.dh[i].a},
+                              {QStringLiteral("alpha"), qRadiansToDegrees(s.dh[i].alpha)},
+                              {QStringLiteral("d"), s.dh[i].d}});
+        limits.append(QVariantMap{{QStringLiteral("min"), qRadiansToDegrees(s.limit_min[i])},
+                                  {QStringLiteral("max"), qRadiansToDegrees(s.limit_max[i])}});
+        links.append(QVariantMap{{QStringLiteral("mass"), s.links[i].mass},
+                                 {QStringLiteral("com"), ToList(s.links[i].com.data(), 3)},
+                                 {QStringLiteral("inertia"), ToList(s.links[i].inertia.data(), 6)}});
+    }
+    return {{QStringLiteral("dh"), dh},
+            {QStringLiteral("limits"), limits},
+            {QStringLiteral("maxMoments"), ToList(s.max_moments.data(), kJoints)},
+            {QStringLiteral("floorZ"), s.floor_z},
+            {QStringLiteral("links"), links},
+            {QStringLiteral("payload"), QVariantMap{{QStringLiteral("mass"), s.payload.mass},
+                                                    {QStringLiteral("com"), ToList(s.payload.com.data(), 3)}}},
+            {QStringLiteral("jointRadii"), ToList(s.joint_radii.data(), kJoints)}};
+}
+
+void RobotBackend::applySettings(const QVariantMap &map, bool save)
+{
+    if (!m_ready || m_busy || !m_has_settings)
+    {
+        emit errorOccurred(tr("Settings: the solver is busy"));
+        return;
+    }
+    RobotSettings s = m_settings;
+    const QVariantList dh = map.value(QStringLiteral("dh")).toList();
+    const QVariantList limits = map.value(QStringLiteral("limits")).toList();
+    const QVariantList links = map.value(QStringLiteral("links")).toList();
+    const QVariantMap payload = map.value(QStringLiteral("payload")).toMap();
+    bool ok = dh.size() == kJoints && limits.size() == kJoints && links.size() == kJoints;
+    for (int i = 0; ok && i < kJoints; i++)
+    {
+        const QVariantMap row = dh[i].toMap(), lim = limits[i].toMap(), link = links[i].toMap();
+        double alpha = 0, lo = 0, hi = 0;
+        ok = Number(row.value(QStringLiteral("a")), s.dh[i].a) && Number(row.value(QStringLiteral("alpha")), alpha) &&
+             Number(row.value(QStringLiteral("d")), s.dh[i].d) && Number(lim.value(QStringLiteral("min")), lo) &&
+             Number(lim.value(QStringLiteral("max")), hi) && Number(link.value(QStringLiteral("mass")), s.links[i].mass) &&
+             FromList(link.value(QStringLiteral("com")), s.links[i].com.data(), 3) &&
+             FromList(link.value(QStringLiteral("inertia")), s.links[i].inertia.data(), 6);
+        s.dh[i].alpha = qDegreesToRadians(alpha);
+        s.limit_min[i] = qDegreesToRadians(lo);
+        s.limit_max[i] = qDegreesToRadians(hi);
+    }
+    ok = ok && FromList(map.value(QStringLiteral("maxMoments")), s.max_moments.data(), kJoints) &&
+         Number(map.value(QStringLiteral("floorZ")), s.floor_z) && Number(payload.value(QStringLiteral("mass")), s.payload.mass) &&
+         FromList(payload.value(QStringLiteral("com")), s.payload.com.data(), 3) &&
+         FromList(map.value(QStringLiteral("jointRadii")), s.joint_radii.data(), kJoints);
+    if (!ok)
+    {
+        emit errorOccurred(tr("Settings: every field needs a number"));
+        return;
+    }
+    stop();
+    SetBusy(true);
+    SetStatus(save ? QT_TR_NOOP("Saving settings...") : QT_TR_NOOP("Applying settings..."));
+    emit requestApplySettings(s, save);
+}
+
+void RobotBackend::reloadSettings()
+{
+    if (m_busy)
+    {
+        emit errorOccurred(tr("Settings: the solver is busy"));
+        return;
+    }
+    stop();
+    SetBusy(true);
+    m_reloading = true;
+    SetStatus(QT_TR_NOOP("Loading model from %1"), {m_data_dir});
+    emit requestReload();
+}
+
+void RobotBackend::OnSettings(const RobotSettings &settings, bool saved)
+{
+    const bool reloaded = m_has_settings;
+    m_settings = settings;
+    m_has_settings = true;
+    emit settingsChanged();
+    if (reloaded)
+    {
+        // the old trajectory was planned with the old model
+        ClearTrajectory();
+        const QString file = QDir(m_data_dir).filePath(QStringLiteral("ManipulatorSettigns.ini"));
+        if (m_reloading)
+            SetStatus(QT_TR_NOOP("Settings reloaded from %1"), {file});
+        else
+            SetStatus(saved ? QT_TR_NOOP("Settings saved to %1") : QT_TR_NOOP("Settings applied (not saved)"), {file});
+    }
+    m_reloading = false;
+}
+
+void RobotBackend::ClearTrajectory()
+{
+    stop();
+    m_samples.clear();
+    m_moments.clear();
+    m_tcp_path.clear();
+    m_trajectory_error.clear();
+    m_sample = 0;
+    emit trajectoryChanged();
+    emit progressChanged();
 }
 
 void RobotBackend::OnPose(const ArmPose &pose)
@@ -405,6 +560,7 @@ void RobotBackend::OnTrajectory(const PlannedTrajectory &trajectory)
 
 void RobotBackend::OnFailed(const QString &what, const QString &message)
 {
+    m_reloading = false;
     SetBusy(false);
     SetStatus(QT_TR_NOOP("%1 failed"), {what});
     emit errorOccurred(what + QStringLiteral(": ") + message);
