@@ -37,7 +37,7 @@ target_link_libraries(studio_backend PUBLIC manip_core Qt6::Core Qt6::Gui Qt6::C
 set(MANIP_DATA_DIR ${MANIP_SRC_DIR} CACHE PATH "Directory with ManipulatorSettigns.ini and STLmodels/")
 
 qt_add_executable(ManipStudio main.cpp)
-set(STUDIO_QML Main.qml Theme.qml Card.qml JointPanel.qml MovePanel.qml PosePanel.qml RobotView.qml AxisLines.qml ResultsPanel.qml PeaksPanel.qml Chip.qml NumberField.qml SettingsPanel.qml)
+set(STUDIO_QML Main.qml Theme.qml Card.qml JointPanel.qml MovePanel.qml PosePanel.qml RobotView.qml AxisLines.qml ResultsPanel.qml PeaksPanel.qml Chip.qml NumberField.qml SettingsPanel.qml JogPanel.qml ProgramPanel.qml)
 set(STUDIO_QML_FILES)
 foreach(f ${STUDIO_QML})
     # served at qrc:/Studio/<f>, next to the module's qmldir, so that the

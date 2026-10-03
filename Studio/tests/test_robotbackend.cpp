@@ -79,6 +79,36 @@ private:
         return map;
     }
 
+    static QVector3D Xyz(const QVariantList &tcp) { return QVector3D(tcp[0].toFloat(), tcp[1].toFloat(), tcp[2].toFloat()); }
+
+    // waits for the end of a planned motion (or its error)
+    bool WaitMotion()
+    {
+        QSignalSpy finished(m_backend.get(), &RobotBackend::motionFinished);
+        QSignalSpy errors(m_backend.get(), &RobotBackend::errorOccurred);
+        for (int waited = 0; waited < kTimeoutMs && finished.isEmpty() && errors.isEmpty(); waited += 50)
+            QTest::qWait(50);
+        if (!errors.isEmpty())
+            qWarning("motion failed: %s", qPrintable(errors.first().first().toString()));
+        // the pose of the last sample may still be on its way from the worker
+        QTest::qWait(150);
+        return !finished.isEmpty();
+    }
+
+    // a pose in the middle of the work space, away from singularities
+    void GoToWorkPose()
+    {
+        m_backend->setJoints({17, -29, 52, 11, -23, 6});
+        WaitPose();
+    }
+
+    static double DistanceToSegment(const QVector3D &p, const QVector3D &a, const QVector3D &b)
+    {
+        const QVector3D ab = b - a;
+        const float t = std::clamp(QVector3D::dotProduct(p - a, ab) / ab.lengthSquared(), 0.f, 1.f);
+        return (p - (a + ab * t)).length();
+    }
+
     double ShoulderPeak()
     {
         return Peak(*m_backend, 1)[QStringLiteral("peak")].toDouble();
@@ -482,6 +512,171 @@ private slots:
         Apply(SetIn(m_backend->settings(), QStringLiteral("limits"), 0, QStringLiteral("max"), 50.0), false);
         QVERIFY(qAbs(At(m_backend->joints(), 0) - 50) < 1e-9);
         QVERIFY(qAbs(m_backend->limits()[0].toMap()[QStringLiteral("max")].toDouble() - 50) < 1e-9);
+    }
+
+    // ------------------------------------------------------------ MoveL / MoveC / TCP jog
+
+    void moveLRunsStraightToTheTarget()
+    {
+        GoToWorkPose();
+        const QVariantList start = m_backend->tcp();
+        QVariantList target = start;
+        target[1] = start[1].toDouble() + 0.05;
+        target[2] = start[2].toDouble() - 0.03;
+        m_backend->moveL(target, 0.1, 0.5);
+        QVERIFY(WaitMotion());
+        const QVariantList end = m_backend->tcp();
+        QVERIFY2((Xyz(end) - Xyz(target)).length() < 1e-3, qPrintable(QString::number((Xyz(end) - Xyz(target)).length())));
+        for (int k = 3; k < 6; k++)
+            QVERIFY(qAbs(At(end, k) - At(start, k)) < 0.5);         // orientation kept (deg)
+        for (const QVariant &p : m_backend->tcpPath())
+            QVERIFY(DistanceToSegment(p.value<QVector3D>(), Xyz(start), Xyz(target)) < 1e-3);
+        QVERIFY(m_backend->momentCount() == m_backend->sampleCount());
+    }
+
+    // +360 deg about an axis is the same pose: no full turn of the wrist
+    void moveLTakesTheShortWayRoundTheAngles()
+    {
+        GoToWorkPose();
+        QVariantList target = m_backend->tcp();
+        target[3] = target[3].toDouble() + 360;
+        QSignalSpy errors(m_backend.get(), &RobotBackend::errorOccurred);
+        m_backend->moveL(target, 0.1, 0.5);
+        QVERIFY(errors.wait(kTimeoutMs));
+        QVERIFY2(errors.first().first().toString().contains(QStringLiteral("equal")), qPrintable(errors.first().first().toString()));
+    }
+
+    void moveCPassesThroughTheMiddlePoint()
+    {
+        GoToWorkPose();
+        const QVariantList start = m_backend->tcp();
+        const QVector3D a = Xyz(start);
+        const QVector3D b = a + QVector3D(-0.05f, 0, -0.05f), c = a + QVector3D(-0.1f, 0, 0);
+        QVariantList end = start;
+        end[0] = c.x();
+        end[1] = c.y();
+        end[2] = c.z();
+        m_backend->moveC({b.x(), b.y(), b.z()}, end, 0.1, 0.5);
+        QVERIFY(WaitMotion());
+        QVERIFY((Xyz(m_backend->tcp()) - c).length() < 1e-3);
+        // a half circle of radius 5 cm around a + (-0.05, 0, 0)
+        const QVector3D centre = a + QVector3D(-0.05f, 0, 0);
+        double closest = 1;
+        for (const QVariant &v : m_backend->tcpPath())
+        {
+            const QVector3D p = v.value<QVector3D>();
+            QVERIFY(qAbs((p - centre).length() - 0.05) < 1e-3);
+            closest = std::min(closest, double((p - b).length()));
+        }
+        QVERIFY(closest < 2e-3);
+    }
+
+    void jogMovesTheToolAlongAnAxis()
+    {
+        GoToWorkPose();
+        const QVariantList before = m_backend->tcp();
+        m_backend->jogTcp(0, 0.02);             // +20 mm along X
+        QVERIFY(WaitMotion());
+        const QVariantList after = m_backend->tcp();
+        QVERIFY(qAbs(At(after, 0) - At(before, 0) - 0.02) < 1e-3);
+        QVERIFY(qAbs(At(after, 1) - At(before, 1)) < 1e-3);
+        QVERIFY(qAbs(At(after, 2) - At(before, 2)) < 1e-3);
+
+        m_backend->jogTcp(5, 10);               // +10 deg yaw
+        QVERIFY(WaitMotion());
+        const QVariantList turned = m_backend->tcp();
+        QVERIFY(qAbs(At(turned, 5) - At(after, 5) - 10) < 0.5);
+        QVERIFY((Xyz(turned) - Xyz(after)).length() < 1e-3);
+    }
+
+    // ------------------------------------------------------------ program of points
+
+    void programRunsItsStepsInOrder()
+    {
+        GoToWorkPose();
+        const QVariantList work = m_backend->joints();
+        QVariantList pose = m_backend->tcp();
+        pose[2] = pose[2].toDouble() + 0.05;
+        m_backend->clearProgram();
+        m_backend->addStep({{QStringLiteral("type"), QStringLiteral("J")}, {QStringLiteral("joints"), QVariantList{0, -45, 90, 45, 90, 0}},
+                            {QStringLiteral("speed"), 90}, {QStringLiteral("accel"), 180}});
+        m_backend->addStep({{QStringLiteral("type"), QStringLiteral("J")}, {QStringLiteral("joints"), work},
+                            {QStringLiteral("speed"), 90}, {QStringLiteral("accel"), 180}});
+        m_backend->addStep({{QStringLiteral("type"), QStringLiteral("L")}, {QStringLiteral("pose"), pose},
+                            {QStringLiteral("speed"), 0.1}, {QStringLiteral("accel"), 0.5}});
+        QCOMPARE(m_backend->program().size(), 3);
+        m_backend->runProgram();
+        QVERIFY(WaitMotion());
+        QVERIFY((Xyz(m_backend->tcp()) - Xyz(pose)).length() < 1e-3);
+        // one continuous trajectory: no jumps between consecutive samples
+        for (int j = 0; j < 6; j++)
+        {
+            const QList<QPointF> q = m_backend->Series(QStringLiteral("position"), j);
+            for (int k = 1; k < q.size(); k++)
+                QVERIFY2(qAbs(q[k].y() - q[k - 1].y()) < 2.0, qPrintable(QStringLiteral("joint %1 sample %2").arg(j).arg(k)));
+        }
+        QCOMPARE(m_backend->momentCount(), m_backend->sampleCount());
+    }
+
+    void programStopsAtTheFailingStep()
+    {
+        m_backend->clearProgram();
+        m_backend->addStep({{QStringLiteral("type"), QStringLiteral("J")}, {QStringLiteral("joints"), QVariantList{10, -20, 30, 0, 0, 0}},
+                            {QStringLiteral("speed"), 90}, {QStringLiteral("accel"), 180}});
+        m_backend->addStep({{QStringLiteral("type"), QStringLiteral("J")}, {QStringLiteral("joints"), QVariantList{10, 60, 30, 0, 0, 0}},
+                            {QStringLiteral("speed"), 90}, {QStringLiteral("accel"), 180}});
+        QSignalSpy errors(m_backend.get(), &RobotBackend::errorOccurred);
+        m_backend->runProgram();
+        QVERIFY(errors.wait(kTimeoutMs));
+        const QString msg = errors.first().first().toString();
+        QVERIFY2(msg.contains(QStringLiteral("2")) && msg.contains(QStringLiteral("outside its limit")), qPrintable(msg));
+        QCOMPARE(m_backend->sampleCount(), 0);
+        QVERIFY(!m_backend->busy());
+    }
+
+    void programSkipsStepsThatDoNotMove()
+    {
+        m_backend->clearProgram();
+        for (int i = 0; i < 2; i++)
+            m_backend->addStep({{QStringLiteral("type"), QStringLiteral("J")}, {QStringLiteral("joints"), QVariantList{15, -30, 40, 0, 20, 0}},
+                                {QStringLiteral("speed"), 90}, {QStringLiteral("accel"), 180}});
+        m_backend->runProgram();
+        QVERIFY(WaitMotion());
+        QVERIFY(qAbs(At(m_backend->joints(), 0) - 15) < 1e-3);
+    }
+
+    void programIsEditable()
+    {
+        m_backend->clearProgram();
+        for (int i = 0; i < 3; i++)
+            m_backend->addStep({{QStringLiteral("type"), QStringLiteral("J")}, {QStringLiteral("joints"), QVariantList{double(i), 0, 0, 0, 0, 0}},
+                                {QStringLiteral("speed"), 90}, {QStringLiteral("accel"), 180}});
+        m_backend->moveStep(2, -2);              // last to first
+        QCOMPARE(m_backend->program()[0].toMap()[QStringLiteral("joints")].toList()[0].toDouble(), 2.0);
+        m_backend->removeStep(1);
+        QCOMPARE(m_backend->program().size(), 2);
+        QCOMPARE(m_backend->program()[1].toMap()[QStringLiteral("joints")].toList()[0].toDouble(), 1.0);
+        QSignalSpy errors(m_backend.get(), &RobotBackend::errorOccurred);
+        m_backend->addStep({{QStringLiteral("type"), QStringLiteral("X")}});
+        QCOMPARE(errors.count(), 1);
+        QCOMPARE(m_backend->program().size(), 2);
+    }
+
+    void programSurvivesSaveAndLoad()
+    {
+        m_backend->clearProgram();
+        m_backend->addStep({{QStringLiteral("type"), QStringLiteral("J")}, {QStringLiteral("joints"), QVariantList{1, 2, 3, 4, 5, 6}},
+                            {QStringLiteral("speed"), 45}, {QStringLiteral("accel"), 90}});
+        m_backend->addStep({{QStringLiteral("type"), QStringLiteral("C")}, {QStringLiteral("mid"), QVariantList{0.3, 0.1, 0.4}},
+                            {QStringLiteral("pose"), QVariantList{0.35, 0.1, 0.35, 180, 0, 90}}, {QStringLiteral("speed"), 0.05}, {QStringLiteral("accel"), 0.2}});
+        const QVariantList before = m_backend->program();
+        QTemporaryDir dir;
+        const QUrl file = QUrl::fromLocalFile(QDir(dir.path()).filePath(QStringLiteral("p.json")));
+        QVERIFY(m_backend->saveProgram(file));
+        m_backend->clearProgram();
+        QVERIFY(m_backend->loadProgram(file));
+        QCOMPARE(m_backend->program(), before);
+        QVERIFY(!m_backend->loadProgram(QUrl::fromLocalFile(QDir(dir.path()).filePath(QStringLiteral("none.json")))));
     }
 
     void moveJOutsideLimitsReportsError()

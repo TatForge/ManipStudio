@@ -85,6 +85,7 @@ ApplicationWindow {
                 spacing: Theme.gap
                 JointPanel { Layout.fillWidth: true }
                 MovePanel { Layout.fillWidth: true }
+                JogPanel { Layout.fillWidth: true }
             }
         }
 
@@ -105,13 +106,20 @@ ApplicationWindow {
         }
 
         ColumnLayout {
-            Layout.preferredWidth: 260
-            Layout.maximumWidth: 260
+            Layout.preferredWidth: 300
+            Layout.maximumWidth: 300
             Layout.fillHeight: true
             spacing: Theme.gap
             PosePanel { Layout.fillWidth: true }
             PeaksPanel { Layout.fillWidth: true }
-            Item { Layout.fillHeight: true }
+            ScrollView {
+                id: programScroll
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                contentWidth: availableWidth
+                clip: true
+                ProgramPanel { width: programScroll.availableWidth }
+            }
         }
     }
 

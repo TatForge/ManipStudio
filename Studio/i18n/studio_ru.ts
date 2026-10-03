@@ -20,12 +20,36 @@
 </context>
 <context>
     <name>MovePanel</name>
-    <message><source>MoveJ</source><translation>MoveJ</translation></message>
+    <message><source>Motion</source><translation>Движение</translation></message>
+    <message><source>m</source><translation>м</translation></message>
+    <message><source>Through point</source><translation>Через точку</translation></message>
+    <message><source>End pose</source><translation>Конечная поза</translation></message>
     <message><source>Speed, °/s</source><translation>Скорость, °/с</translation></message>
+    <message><source>Speed, m/s</source><translation>Скорость, м/с</translation></message>
     <message><source>Acceleration, °/s²</source><translation>Ускорение, °/с²</translation></message>
+    <message><source>Acceleration, m/s²</source><translation>Ускорение, м/с²</translation></message>
     <message><source>Current</source><translation>Текущие</translation></message>
+    <message><source>To program</source><translation>В программу</translation></message>
     <message><source>Stop</source><translation>Стоп</translation></message>
     <message><source>Run</source><translation>Выполнить</translation></message>
+</context>
+<context>
+    <name>JogPanel</name>
+    <message><source>Tool jog</source><translation>Перемещение инструмента</translation></message>
+    <message><source>Step</source><translation>Шаг</translation></message>
+    <message><source>mm</source><translation>мм</translation></message>
+</context>
+<context>
+    <name>ProgramPanel</name>
+    <message><source>Program</source><translation>Программа</translation></message>
+    <message><source>Empty. Set a target in the motion panel and press «To program».</source><translation>Пусто. Задайте цель в панели движения и нажмите «В программу».</translation></message>
+    <message><source>Run program</source><translation>Запустить</translation></message>
+    <message><source>Save</source><translation>Сохранить</translation></message>
+    <message><source>Load</source><translation>Загрузить</translation></message>
+    <message><source>Clear</source><translation>Очистить</translation></message>
+    <message><source>Save program</source><translation>Сохранить программу</translation></message>
+    <message><source>Program (*.json)</source><translation>Программа (*.json)</translation></message>
+    <message><source>Load program</source><translation>Загрузить программу</translation></message>
 </context>
 <context>
     <name>PosePanel</name>
@@ -68,13 +92,16 @@
 <context>
     <name>RobotBackend</name>
     <message><source>Loading model from %1</source><translation>Загрузка модели из %1</translation></message>
-    <message><source>MoveJ: the solver is busy</source><translation>MoveJ: решатель занят</translation></message>
-    <message><source>MoveJ: expected %1 joint angles</source><translation>MoveJ: нужно %1 углов суставов</translation></message>
-    <message><source>Planning MoveJ...</source><translation>Расчёт MoveJ...</translation></message>
     <message><source>Model loaded, floor at z = %1 m</source><translation>Модель загружена, пол на высоте z = %1 м</translation></message>
-    <message><source>MoveJ failed after %1 samples</source><translation>MoveJ прерван после %1 точек</translation></message>
-    <message><source>MoveJ: %1 samples, %2 s</source><translation>MoveJ: %1 точек, %2 с</translation></message>
     <message><source>%1 failed</source><translation>%1: ошибка</translation></message>
+    <message><source>%1: the solver is busy</source><translation>%1: решатель занят</translation></message>
+    <message><source>Planning %1...</source><translation>Расчёт %1...</translation></message>
+    <message><source>%1 failed after %2 samples</source><translation>%1 прерван после %2 точек</translation></message>
+    <message><source>%1: %2 samples, %3 s</source><translation>%1: %2 точек, %3 с</translation></message>
+    <message><source>Program: %1</source><translation>Программа: %1</translation></message>
+    <message><source>Program</source><translation>Программа</translation></message>
+    <message><source>Program: no steps</source><translation>Программа: нет шагов</translation></message>
+    <message><source>Program: cannot open %1</source><translation>Программа: не удаётся открыть %1</translation></message>
     <message><source>Settings: the solver is busy</source><translation>Настройки: решатель занят</translation></message>
     <message><source>Settings: every field needs a number</source><translation>Настройки: в каждом поле должно быть число</translation></message>
     <message><source>Saving settings...</source><translation>Сохранение настроек...</translation></message>

@@ -44,6 +44,7 @@ class RobotBackend : public QObject
     Q_PROPERTY(QString status READ status NOTIFY statusChanged)
     Q_PROPERTY(QString dataDir READ dataDir CONSTANT)
     Q_PROPERTY(QVariantMap settings READ settings NOTIFY settingsChanged)
+    Q_PROPERTY(QVariantList program READ program NOTIFY programChanged)
 public:
     explicit RobotBackend(const QString &data_dir, QObject *parent = nullptr);
     ~RobotBackend() override;
@@ -111,6 +112,23 @@ public:
     Q_INVOKABLE void setJoints(const QVariantList &deg);
     // Plans a synchronized joint move from the current angles and plays it back.
     Q_INVOKABLE void moveJ(const QVariantList &target_deg, double speed_deg_s, double accel_deg_s2);
+    // straight TCP line to pose [x, y, z (m), roll, pitch, yaw (deg)]
+    Q_INVOKABLE void moveL(const QVariantList &pose, double speed_m_s, double accel_m_s2);
+    // circular arc through mid [x, y, z] to pose; the orientation turns from the start to pose
+    Q_INVOKABLE void moveC(const QVariantList &mid, const QVariantList &pose, double speed_m_s, double accel_m_s2);
+    // short MoveL of the tool: axis 0..2 = x, y, z by `step` metres, 3..5 = roll, pitch, yaw by `step` degrees
+    Q_INVOKABLE void jogTcp(int axis, double step);
+
+    // Program of steps, in UI units: {type: "J", joints: [deg]} / {type: "L", pose: [6]} /
+    // {type: "C", mid: [3], pose: [6]}, each with speed and accel (deg/s, deg/s^2 for J; m/s, m/s^2 otherwise)
+    QVariantList program() const { return m_program; }
+    Q_INVOKABLE bool addStep(const QVariantMap &step);
+    Q_INVOKABLE void removeStep(int index);
+    Q_INVOKABLE void moveStep(int index, int delta);
+    Q_INVOKABLE void clearProgram();
+    Q_INVOKABLE void runProgram();
+    Q_INVOKABLE bool saveProgram(const QUrl &file) const;
+    Q_INVOKABLE bool loadProgram(const QUrl &file);
     Q_INVOKABLE void stop();
     // replays the last trajectory from the current position (from the start at the end)
     Q_INVOKABLE void play();
@@ -131,11 +149,12 @@ signals:
     void statusChanged();
     void errorOccurred(const QString &message);
     void settingsChanged();
+    void programChanged();
     void motionFinished();
 
     // to the worker thread
     void requestPose(const QVector<double> &joints_rad);
-    void requestMoveJ(const QVector<double> &from_rad, const QVector<double> &to_rad, double speed, double accel, double dt_ms);
+    void requestPlan(const QVector<double> &start_rad, const QVector<MotionStep> &steps, double dt_ms);
     void requestApplySettings(const RobotSettings &settings, bool save);
     void requestReload();
 
@@ -145,6 +164,8 @@ private:
     void OnPose(const ArmPose &pose);
     void OnSettings(const RobotSettings &settings, bool saved);
     void ClearTrajectory();
+    // sends the steps to the planner; `name` labels status and errors
+    void Plan(const QString &name, const QVector<MotionStep> &steps);
     void OnTrajectory(const PlannedTrajectory &trajectory);
     void OnFailed(const QString &what, const QString &message);
     void OnPlayTick();
@@ -171,6 +192,8 @@ private:
     RobotSettings m_settings;
     bool m_has_settings = false;
     bool m_reloading = false;
+    QVariantList m_program;
+    QString m_plan_name = QStringLiteral("MoveJ");
     QString m_trajectory_error;
     int m_play_from = 0;
     double m_floor_z = 0;

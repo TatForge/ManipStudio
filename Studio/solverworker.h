@@ -51,6 +51,21 @@ struct RobotSettings
 };
 Q_DECLARE_METATYPE(RobotSettings)
 
+// One step of a motion: a synchronized joint move (J), a straight TCP line (L)
+// or a circular arc through `mid` (C). SI units, radians.
+struct MotionStep
+{
+    enum Kind { Joint, Linear, Circular };
+    Kind kind = Joint;
+    std::array<double, JOINTS_COUNT> joints{};      // J: target angles
+    std::array<double, 6> pose{};                   // L, C: end pose x, y, z, roll, pitch, yaw (ZYX)
+    std::array<double, 3> mid{};                    // C: point on the arc
+    double speed = 0;                               // J: rad/s; L, C: m/s (rad/s for a pure turn)
+    double accel = 0;                               // J: rad/s^2; L, C: m/s^2
+};
+Q_DECLARE_METATYPE(MotionStep)
+Q_DECLARE_METATYPE(QVector<MotionStep>)
+
 // Owns the robot model and the solver. Lives in its own thread: every call
 // into the core goes through the queued slots below, so the solver is never
 // touched from two threads.
@@ -68,7 +83,9 @@ public slots:
     // Loads ManipulatorSettigns.ini and STLmodels/ from the current directory.
     void Initialize();
     void ComputePose(const QVector<double> &joints_rad);
-    void MoveJ(const QVector<double> &from_rad, const QVector<double> &to_rad, double speed_rad_s, double accel_rad_s2, double dt_ms);
+    // Plans the steps one after another from `start` into one trajectory. A step that
+    // fails ends the plan; with several steps, steps that would not move are skipped.
+    void Plan(const QVector<double> &start_rad, const QVector<MotionStep> &steps, double dt_ms);
     // validates, applies to the model, optionally writes the settings file, rebuilds the solver
     void ApplySettings(const RobotSettings &settings, bool save);
 
@@ -82,6 +99,8 @@ signals:
 
 private:
     void EmitState(bool saved);
+    // TCP pose x, y, z, roll, pitch, yaw (ZYX, rad) for joint angles
+    std::array<double, 6> TcpPose(const RoboMath::Angles &a);
 
     std::unique_ptr<Robo> m_robot;
     std::unique_ptr<Solver> m_solver;

@@ -5,6 +5,9 @@
 
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTextStream>
 #include <QXYSeries>
 #include <QQuaternion>
@@ -44,7 +47,7 @@ RobotBackend::RobotBackend(const QString &data_dir, QObject *parent)
     m_worker->moveToThread(&m_thread);
     connect(&m_thread, &QThread::finished, m_worker, &QObject::deleteLater);
     connect(this, &RobotBackend::requestPose, m_worker, &SolverWorker::ComputePose);
-    connect(this, &RobotBackend::requestMoveJ, m_worker, &SolverWorker::MoveJ);
+    connect(this, &RobotBackend::requestPlan, m_worker, &SolverWorker::Plan);
     connect(this, &RobotBackend::requestApplySettings, m_worker, &SolverWorker::ApplySettings);
     connect(this, &RobotBackend::requestReload, m_worker, &SolverWorker::Initialize);
     connect(m_worker, &SolverWorker::SettingsReady, this, &RobotBackend::OnSettings);
@@ -299,25 +302,268 @@ void RobotBackend::setJoints(const QVariantList &deg)
     emit requestPose(m_target_rad);
 }
 
-void RobotBackend::moveJ(const QVariantList &target_deg, double speed_deg_s, double accel_deg_s2)
+namespace
+{
+// `n` numbers of a list into out, false if the list does not hold exactly that
+bool Numbers(const QVariant &value, double *out, int n)
+{
+    const QVariantList l = value.toList();
+    if (l.size() != n)
+        return false;
+    for (int i = 0; i < n; i++)
+    {
+        bool ok = false;
+        out[i] = l[i].toDouble(&ok);
+        if (!ok || !std::isfinite(out[i]))
+            return false;
+    }
+    return true;
+}
+
+QVariantList NumberList(const double *v, int n)
+{
+    QVariantList out;
+    for (int i = 0; i < n; i++)
+        out.append(v[i]);
+    return out;
+}
+
+// a program step in UI units -> planner step; normalized: the same step with
+// only the known keys and numbers as doubles
+bool ParseStep(const QVariantMap &in, MotionStep &step, QVariantMap &normalized, QString &error)
+{
+    const QString type = in.value(QStringLiteral("type")).toString();
+    bool ok_speed = false, ok_accel = false;
+    const double speed = in.value(QStringLiteral("speed")).toDouble(&ok_speed);
+    const double accel = in.value(QStringLiteral("accel")).toDouble(&ok_accel);
+    if (!ok_speed || !ok_accel || !(speed > 0) || !(accel > 0))
+    {
+        error = QStringLiteral("speed and acceleration must be positive numbers");
+        return false;
+    }
+    normalized = {{QStringLiteral("type"), type}, {QStringLiteral("speed"), speed}, {QStringLiteral("accel"), accel}};
+    step = MotionStep();
+    if (type == QLatin1String("J"))
+    {
+        double deg[6];
+        if (!Numbers(in.value(QStringLiteral("joints")), deg, 6))
+        {
+            error = QStringLiteral("a J step needs 6 joint angles");
+            return false;
+        }
+        step.kind = MotionStep::Joint;
+        for (int i = 0; i < 6; i++)
+            step.joints[i] = qDegreesToRadians(deg[i]);
+        step.speed = qDegreesToRadians(speed);
+        step.accel = qDegreesToRadians(accel);
+        normalized[QStringLiteral("joints")] = NumberList(deg, 6);
+        return true;
+    }
+    if (type != QLatin1String("L") && type != QLatin1String("C"))
+    {
+        error = QStringLiteral("unknown step type '%1' (J, L or C)").arg(type);
+        return false;
+    }
+    double pose[6];
+    if (!Numbers(in.value(QStringLiteral("pose")), pose, 6))
+    {
+        error = QStringLiteral("an %1 step needs a pose x, y, z, roll, pitch, yaw").arg(type);
+        return false;
+    }
+    step.kind = type == QLatin1String("L") ? MotionStep::Linear : MotionStep::Circular;
+    for (int i = 0; i < 6; i++)
+        step.pose[i] = i < 3 ? pose[i] : qDegreesToRadians(pose[i]);
+    step.speed = speed;
+    step.accel = accel;
+    normalized[QStringLiteral("pose")] = NumberList(pose, 6);
+    if (step.kind == MotionStep::Circular)
+    {
+        double mid[3];
+        if (!Numbers(in.value(QStringLiteral("mid")), mid, 3))
+        {
+            error = QStringLiteral("a C step needs a middle point x, y, z");
+            return false;
+        }
+        for (int i = 0; i < 3; i++)
+            step.mid[i] = mid[i];
+        normalized[QStringLiteral("mid")] = NumberList(mid, 3);
+    }
+    return true;
+}
+}
+
+void RobotBackend::Plan(const QString &name, const QVector<MotionStep> &steps)
 {
     if (!m_ready || m_busy)
     {
-        emit errorOccurred(tr("MoveJ: the solver is busy"));
-        return;
-    }
-    if (target_deg.size() != kJoints)
-    {
-        emit errorOccurred(tr("MoveJ: expected %1 joint angles").arg(kJoints));
+        emit errorOccurred(tr("%1: the solver is busy").arg(name));
         return;
     }
     stop();
-    QVector<double> target;
-    for (const QVariant &v : target_deg)
-        target.append(qDegreesToRadians(v.toDouble()));
+    m_plan_name = name;
     SetBusy(true);
-    SetStatus(QT_TR_NOOP("Planning MoveJ..."));
-    emit requestMoveJ(m_target_rad, target, qDegreesToRadians(speed_deg_s), qDegreesToRadians(accel_deg_s2), kTrajectoryDtMs);
+    SetStatus(QT_TR_NOOP("Planning %1..."), {name});
+    emit requestPlan(m_target_rad, steps, kTrajectoryDtMs);
+}
+
+void RobotBackend::moveJ(const QVariantList &target_deg, double speed_deg_s, double accel_deg_s2)
+{
+    MotionStep step;
+    QVariantMap normalized;
+    QString error;
+    if (!ParseStep({{QStringLiteral("type"), QStringLiteral("J")}, {QStringLiteral("joints"), target_deg},
+                    {QStringLiteral("speed"), speed_deg_s}, {QStringLiteral("accel"), accel_deg_s2}},
+                   step, normalized, error))
+    {
+        emit errorOccurred(QStringLiteral("MoveJ: ") + error);
+        return;
+    }
+    Plan(QStringLiteral("MoveJ"), {step});
+}
+
+void RobotBackend::moveL(const QVariantList &pose, double speed_m_s, double accel_m_s2)
+{
+    MotionStep step;
+    QVariantMap normalized;
+    QString error;
+    if (!ParseStep({{QStringLiteral("type"), QStringLiteral("L")}, {QStringLiteral("pose"), pose},
+                    {QStringLiteral("speed"), speed_m_s}, {QStringLiteral("accel"), accel_m_s2}},
+                   step, normalized, error))
+    {
+        emit errorOccurred(QStringLiteral("MoveL: ") + error);
+        return;
+    }
+    Plan(QStringLiteral("MoveL"), {step});
+}
+
+void RobotBackend::moveC(const QVariantList &mid, const QVariantList &pose, double speed_m_s, double accel_m_s2)
+{
+    MotionStep step;
+    QVariantMap normalized;
+    QString error;
+    if (!ParseStep({{QStringLiteral("type"), QStringLiteral("C")}, {QStringLiteral("mid"), mid}, {QStringLiteral("pose"), pose},
+                    {QStringLiteral("speed"), speed_m_s}, {QStringLiteral("accel"), accel_m_s2}},
+                   step, normalized, error))
+    {
+        emit errorOccurred(QStringLiteral("MoveC: ") + error);
+        return;
+    }
+    Plan(QStringLiteral("MoveC"), {step});
+}
+
+void RobotBackend::jogTcp(int axis, double step)
+{
+    if (axis < 0 || axis >= 6 || m_pose.tcp.size() != 6)
+        return;
+    QVariantList pose;
+    for (double v : m_pose.tcp)
+        pose.append(v);
+    pose[axis] = pose[axis].toDouble() + step;
+    // translations at 5 cm/s, pure turns at 0.5 rad/s (MoveL then times the angle)
+    if (axis < 3)
+        moveL(pose, 0.05, 0.25);
+    else
+        moveL(pose, 0.5, 1.0);
+}
+
+bool RobotBackend::addStep(const QVariantMap &step)
+{
+    MotionStep parsed;
+    QVariantMap normalized;
+    QString error;
+    if (!ParseStep(step, parsed, normalized, error))
+    {
+        emit errorOccurred(tr("Program: %1").arg(error));
+        return false;
+    }
+    m_program.append(normalized);
+    emit programChanged();
+    return true;
+}
+
+void RobotBackend::removeStep(int index)
+{
+    if (index < 0 || index >= m_program.size())
+        return;
+    m_program.removeAt(index);
+    emit programChanged();
+}
+
+void RobotBackend::moveStep(int index, int delta)
+{
+    const int to = index + delta;
+    if (index < 0 || index >= m_program.size() || to < 0 || to >= m_program.size() || delta == 0)
+        return;
+    m_program.move(index, to);
+    emit programChanged();
+}
+
+void RobotBackend::clearProgram()
+{
+    if (m_program.isEmpty())
+        return;
+    m_program.clear();
+    emit programChanged();
+}
+
+void RobotBackend::runProgram()
+{
+    if (m_program.isEmpty())
+    {
+        emit errorOccurred(tr("Program: no steps"));
+        return;
+    }
+    QVector<MotionStep> steps;
+    for (const QVariant &v : m_program)
+    {
+        MotionStep step;
+        QVariantMap normalized;
+        QString error;
+        if (!ParseStep(v.toMap(), step, normalized, error))
+        {
+            emit errorOccurred(tr("Program: %1").arg(error));
+            return;
+        }
+        steps.append(step);
+    }
+    Plan(tr("Program"), steps);
+}
+
+bool RobotBackend::saveProgram(const QUrl &url) const
+{
+    QFile file(url.isLocalFile() ? url.toLocalFile() : url.toString());
+    if (!file.open(QIODevice::WriteOnly))
+        return false;
+    QJsonObject root{{QStringLiteral("format"), QStringLiteral("ManipStudio program")}, {QStringLiteral("version"), 1},
+                     {QStringLiteral("steps"), QJsonArray::fromVariantList(m_program)}};
+    return file.write(QJsonDocument(root).toJson()) > 0;
+}
+
+bool RobotBackend::loadProgram(const QUrl &url)
+{
+    QFile file(url.isLocalFile() ? url.toLocalFile() : url.toString());
+    if (!file.open(QIODevice::ReadOnly))
+    {
+        emit errorOccurred(tr("Program: cannot open %1").arg(file.fileName()));
+        return false;
+    }
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    QVariantList loaded;
+    for (const QVariant &v : doc.object().value(QStringLiteral("steps")).toArray().toVariantList())
+    {
+        MotionStep step;
+        QVariantMap normalized;
+        QString error;
+        if (!ParseStep(v.toMap(), step, normalized, error))
+        {
+            emit errorOccurred(tr("Program: %1").arg(error));
+            return false;
+        }
+        loaded.append(normalized);
+    }
+    m_program = loaded;
+    emit programChanged();
+    return true;
 }
 
 void RobotBackend::play()
@@ -510,8 +756,10 @@ void RobotBackend::OnSettings(const RobotSettings &settings, bool saved)
         const QString file = QDir(m_data_dir).filePath(QStringLiteral("ManipulatorSettigns.ini"));
         if (m_reloading)
             SetStatus(QT_TR_NOOP("Settings reloaded from %1"), {file});
+        else if (saved)
+            SetStatus(QT_TR_NOOP("Settings saved to %1"), {file});
         else
-            SetStatus(saved ? QT_TR_NOOP("Settings saved to %1") : QT_TR_NOOP("Settings applied (not saved)"), {file});
+            SetStatus(QT_TR_NOOP("Settings applied (not saved)"));
     }
     m_reloading = false;
 }
@@ -547,11 +795,11 @@ void RobotBackend::OnTrajectory(const PlannedTrajectory &trajectory)
     emit progressChanged();
     if (!m_trajectory_error.isEmpty())
     {
-        SetStatus(QT_TR_NOOP("MoveJ failed after %1 samples"), {QString::number(momentCount())});
-        emit errorOccurred(QStringLiteral("MoveJ: ") + m_trajectory_error);
+        SetStatus(QT_TR_NOOP("%1 failed after %2 samples"), {m_plan_name, QString::number(momentCount())});
+        emit errorOccurred(m_plan_name + QStringLiteral(": ") + m_trajectory_error);
         return;
     }
-    SetStatus(QT_TR_NOOP("MoveJ: %1 samples, %2 s"), {QString::number(sampleCount()), QString::number(duration(), 'f', 2)});
+    SetStatus(QT_TR_NOOP("%1: %2 samples, %3 s"), {m_plan_name, QString::number(sampleCount()), QString::number(duration(), 'f', 2)});
     if (sampleCount() == 0)
         return;
     ShowSample(0);

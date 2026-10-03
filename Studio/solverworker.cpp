@@ -59,6 +59,8 @@ SolverWorker::SolverWorker(QObject *parent) : QObject(parent)
     qRegisterMetaType<PlannedTrajectory>();
     qRegisterMetaType<std::vector<ArmPart>>();
     qRegisterMetaType<RobotSettings>();
+    qRegisterMetaType<MotionStep>();
+    qRegisterMetaType<QVector<MotionStep>>();
 }
 
 SolverWorker::~SolverWorker() = default;
@@ -167,48 +169,142 @@ void SolverWorker::ComputePose(const QVector<double> &joints_rad)
     emit PoseReady(pose);
 }
 
-void SolverWorker::MoveJ(const QVector<double> &from_rad, const QVector<double> &to_rad, double speed_rad_s, double accel_rad_s2,
-                         double dt_ms)
+std::array<double, 6> SolverWorker::TcpPose(const Angles &a)
 {
-    if (!m_solver)
+    Matrix4x4 TR[JOINTS_COUNT];
+    m_solver->SolveDirectKinematic(a, TR);
+    const Matrix4x4 &t = TR[JOINTS_COUNT - 1];
+    return {t.at(0, 3), t.at(1, 3), t.at(2, 3), std::atan2(t.at(2, 1), t.at(2, 2)),
+            std::atan2(-t.at(2, 0), std::hypot(t.at(2, 1), t.at(2, 2))), std::atan2(t.at(1, 0), t.at(0, 0))};
+}
+
+namespace
+{
+StateVector ToState(const std::array<double, 6> &p)
+{
+    return StateVector(double(p[0]), double(p[1]), double(p[2]), double(p[3]), double(p[4]), double(p[5]));
+}
+
+const char *KindName(MotionStep::Kind kind)
+{
+    switch (kind)
     {
-        emit Failed(QStringLiteral("MoveJ"), QStringLiteral("solver is not initialized"));
-        return;
+    case MotionStep::Joint: return "MoveJ";
+    case MotionStep::Linear: return "MoveL";
+    case MotionStep::Circular: return "MoveC";
     }
+    return "";
+}
+}
+
+void SolverWorker::Plan(const QVector<double> &start_rad, const QVector<MotionStep> &steps, double dt_ms)
+{
     PlannedTrajectory out;
     out.dt_ms = dt_ms;
-    std::vector<float> results;
-    try
+    if (!m_solver)
     {
-        m_solver->MoveJ(ToAngles(from_rad), ToAngles(to_rad), float(speed_rad_s), float(accel_rad_s2), float(dt_ms), results);
-    }
-    catch (const std::exception &e)
-    {
-        out.error = QString::fromStdString(e.what());
-    }
-    catch (const std::string &s)
-    {
-        out.error = QString::fromStdString(s);
-    }
-    catch (...)
-    {
-        out.error = QStringLiteral("unknown error");
-    }
-    for (const Robo::Moments &m : m_solver->GetTrajectoryMoments())
-        for (int i = 0; i < JOINTS_COUNT; i++)
-            out.moments.append(float(m.tao[i]));
-    if (!out.error.isEmpty())
-    {
+        out.error = QStringLiteral("solver is not initialized");
         emit TrajectoryReady(out);
         return;
     }
-    out.samples = QVector<float>(results.begin(), results.end());
+    const bool program = steps.size() > 1;
+    Angles current = ToAngles(start_rad);
+    QVector<float> samples, moments;
+    for (int i = 0; i < steps.size(); i++)
+    {
+        const MotionStep &step = steps[i];
+        std::vector<float> results;
+        QString error;
+        try
+        {
+            switch (step.kind)
+            {
+            case MotionStep::Joint:
+            {
+                Angles target;
+                bool still = true;
+                for (int j = 0; j < JOINTS_COUNT; j++)
+                {
+                    target.q[j] = step.joints[j];
+                    still = still && std::abs(target.q[j] - current.q[j]) < 1e-9;
+                }
+                if (program && still)
+                    continue;
+                m_solver->MoveJ(current, target, float(step.speed), float(step.accel), float(dt_ms), results);
+                break;
+            }
+            case MotionStep::Linear:
+            case MotionStep::Circular:
+            {
+                const std::array<double, 6> from = TcpPose(current);
+                std::array<double, 6> to = step.pose;
+                // the same orientation can be written with angles 360 deg apart: take the short way
+                for (int k = 3; k < 6; k++)
+                    to[k] = from[k] + std::remainder(to[k] - from[k], 2 * M_PI);
+                bool still = true;
+                for (int k = 0; k < 6; k++)
+                    still = still && std::abs(to[k] - from[k]) < 1e-9;
+                if (program && still && step.kind == MotionStep::Linear)
+                    continue;
+                if (step.kind == MotionStep::Linear)
+                    m_solver->MoveL(ToState(from), ToState(to), step.speed, step.accel, current, ushort(dt_ms), results);
+                else
+                    m_solver->MoveC(current, ToState(from), ToState({step.mid[0], step.mid[1], step.mid[2], to[3], to[4], to[5]}),
+                                    ToState(to), step.speed, step.accel, dt_ms, results);
+                break;
+            }
+            }
+        }
+        catch (const std::exception &e)
+        {
+            error = QString::fromStdString(e.what());
+        }
+        catch (const std::string &e)
+        {
+            error = QString::fromStdString(e);
+        }
+        catch (const QString &e)
+        {
+            error = e;
+        }
+        catch (...)
+        {
+            error = QStringLiteral("unknown error");
+        }
+
+        // a step after the first starts where the previous one ended: drop the repeated sample
+        const int skip = samples.isEmpty() ? 0 : 1;
+        const std::vector<Robo::Moments> step_moments = m_solver->GetTrajectoryMoments();
+        for (size_t k = skip; k < step_moments.size(); k++)
+            for (int j = 0; j < JOINTS_COUNT; j++)
+                moments.append(float(step_moments[k].tao[j]));
+        if (!error.isEmpty())
+        {
+            out.error = program ? QStringLiteral("step %1 (%2): %3").arg(i + 1).arg(QLatin1String(KindName(step.kind)), error) : error;
+            out.moments = moments;
+            emit TrajectoryReady(out);
+            return;
+        }
+        for (size_t k = size_t(skip) * SampleStride; k < results.size(); k++)
+            samples.append(results[k]);
+        if (results.size() >= size_t(SampleStride))
+            for (int j = 0; j < JOINTS_COUNT; j++)
+                current.q[j] = results[results.size() - SampleStride + j];
+    }
+    if (samples.isEmpty())
+    {
+        out.error = QStringLiteral("the program does not move the arm");
+        emit TrajectoryReady(out);
+        return;
+    }
+    out.samples = samples;
+    out.moments = moments;
     Matrix4x4 TR[JOINTS_COUNT];
-    for (size_t k = 0; k + SampleStride <= results.size(); k += SampleStride)
+    for (int k = 0; k + SampleStride <= samples.size(); k += SampleStride)
     {
         Angles a;
-        for (int i = 0; i < JOINTS_COUNT; i++)
-            a.q[i] = results[k + i];
+        for (int j = 0; j < JOINTS_COUNT; j++)
+            a.q[j] = samples[k + j];
         m_solver->SolveDirectKinematic(a, TR);
         const Matrix4x4 &t = TR[JOINTS_COUNT - 1];
         out.tcp_path.append(QVector3D(float(t.at(0, 3)), float(t.at(1, 3)), float(t.at(2, 3))));

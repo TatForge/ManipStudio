@@ -50,7 +50,9 @@ int main(int argc, char *argv[])
     QCommandLineOption lang_option(QStringLiteral("lang"), QStringLiteral("UI language: en or ru (default: last used, else system)."),
                                    QStringLiteral("code"));
     QCommandLineOption settings_option(QStringLiteral("settings"), QStringLiteral("Open the settings panel once loaded."));
-    parser.addOptions({data_option, joints_option, movej_option, shot_option, lang_option, settings_option});
+    QCommandLineOption program_option(QStringLiteral("program"), QStringLiteral("Load a program (JSON) and run it once loaded."),
+                                      QStringLiteral("file"));
+    parser.addOptions({data_option, joints_option, movej_option, shot_option, lang_option, settings_option, program_option});
     parser.process(app);
 
     const QVariantList joints = ParseAngles(parser.value(joints_option));
@@ -96,16 +98,22 @@ int main(int argc, char *argv[])
         });
     };
     const bool open_settings = parser.isSet(settings_option);
-    auto start = [&robot, &engine, joints, movej, shot, grab, open_settings] {
+    const QString program = parser.isSet(program_option) ? QFileInfo(parser.value(program_option)).absoluteFilePath() : QString();
+    auto start = [&robot, &engine, joints, movej, shot, grab, open_settings, program] {
         if (open_settings && !engine.rootObjects().isEmpty())
             if (QObject *panel = engine.rootObjects().first()->findChild<QObject *>(QStringLiteral("settingsPanel")))
                 QMetaObject::invokeMethod(panel, "open");
         if (!joints.isEmpty())
             robot.setJoints(joints);
-        if (!movej.isEmpty())
+        if (!movej.isEmpty() || !program.isEmpty())
         {
-            // the pose request above is queued before the plan, so MoveJ starts from `joints`
-            QTimer::singleShot(100, &robot, [&robot, movej] { robot.moveJ(movej, 60, 120); });
+            // the pose request above is queued before the plan, so the motion starts from `joints`
+            QTimer::singleShot(100, &robot, [&robot, movej, program] {
+                if (!program.isEmpty() && robot.loadProgram(QUrl::fromLocalFile(program)))
+                    robot.runProgram();
+                else if (!movej.isEmpty())
+                    robot.moveJ(movej, 60, 120);
+            });
             if (!shot.isEmpty())
             {
                 QObject::connect(&robot, &RobotBackend::motionFinished, &robot, grab);

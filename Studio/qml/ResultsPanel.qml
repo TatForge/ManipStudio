@@ -84,7 +84,8 @@ Rectangle {
         anchors.margins: Theme.gap
         spacing: 4
 
-        RowLayout {
+        // wraps onto a second line when the panel is narrow
+        Flow {
             Layout.fillWidth: true
             spacing: 6
             Repeater {
@@ -97,7 +98,7 @@ Rectangle {
                     onClicked: panel.kindIndex = index
                 }
             }
-            Item { Layout.fillWidth: true; Layout.minimumWidth: 8 }
+            Item { width: 8; height: 1 }
             Repeater {
                 model: 6
                 delegate: Chip {

@@ -1,0 +1,6 @@
+{"format":"ManipStudio program","version":1,"steps":[
+ {"type":"J","joints":[17,-29,52,11,-23,6],"speed":60,"accel":120},
+ {"type":"L","pose":[0.45,0.30,0.30,180,0,90],"speed":0.15,"accel":0.6},
+ {"type":"C","mid":[0.35,0.42,0.30],"pose":[0.25,0.30,0.30,180,0,90],"speed":0.15,"accel":0.6},
+ {"type":"L","pose":[0.25,0.30,0.45,180,0,90],"speed":0.15,"accel":0.6}
+]}
