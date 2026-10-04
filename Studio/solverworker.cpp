@@ -96,6 +96,8 @@ void SolverWorker::EmitState(bool saved)
         s.limit_min[i] = lo[i];
         s.limit_max[i] = hi[i];
         s.max_moments[i] = max_moments[i];
+        s.max_speeds[i] = m_robot->GetMaxJointSpeeds()[i];
+        s.max_accels[i] = m_robot->GetMaxJointAccelerations()[i];
         s.joint_radii[i] = m_robot->GetJointRadii()[i];
     }
     s.floor_z = m_robot->GetFloorHeight();
@@ -121,6 +123,10 @@ void SolverWorker::ApplySettings(const RobotSettings &s, bool save)
                 throw std::invalid_argument(joint + ": the lower limit must be below the upper one");
             if (!(s.max_moments[i] > 0))
                 throw std::invalid_argument(joint + ": the max moment must be positive");
+            if (!(s.max_speeds[i] > 0) || !std::isfinite(s.max_speeds[i]))
+                throw std::invalid_argument(joint + ": the max speed must be positive");
+            if (!(s.max_accels[i] > 0) || !std::isfinite(s.max_accels[i]))
+                throw std::invalid_argument(joint + ": the max acceleration must be positive");
             if (!(s.joint_radii[i] > 0))
                 throw std::invalid_argument(joint + ": the radius must be positive");
             if (!(s.links[i].mass >= 0))
@@ -138,6 +144,8 @@ void SolverWorker::ApplySettings(const RobotSettings &s, bool save)
             m_robot->SetDH(i, s.dh[i]);
             m_robot->SetJointLimit(i, s.limit_min[i], s.limit_max[i]);
             m_robot->SetMaxJointMoment(i, s.max_moments[i]);
+            m_robot->SetMaxJointSpeed(i, s.max_speeds[i]);
+            m_robot->SetMaxJointAcceleration(i, s.max_accels[i]);
             m_robot->SetLinkDynamics(i, s.links[i]);
             m_robot->SetJointRadius(i, s.joint_radii[i]);
         }
@@ -284,6 +292,14 @@ void SolverWorker::Plan(const QVector<double> &start_rad, const QVector<MotionSt
             out.moments = moments;
             emit TrajectoryReady(out);
             return;
+        }
+        const Solver::SpeedLimit limit = m_solver->GetLastSpeedLimit();
+        if (limit.joint >= 0 && limit.scale < out.speed_scale)
+        {
+            out.speed_scale = limit.scale;
+            out.limit_joint = limit.joint;
+            out.limit_by_accel = limit.acceleration;
+            out.limit_step = i;
         }
         for (size_t k = size_t(skip) * SampleStride; k < results.size(); k++)
             samples.append(results[k]);

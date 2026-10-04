@@ -37,6 +37,7 @@ class RobotBackend : public QObject
     Q_PROPERTY(int momentCount READ momentCount NOTIFY trajectoryChanged)
     Q_PROPERTY(QVariantList peaks READ peaks NOTIFY trajectoryChanged)
     Q_PROPERTY(QString trajectoryError READ trajectoryError NOTIFY trajectoryChanged)
+    Q_PROPERTY(QVariantMap speedLimit READ speedLimit NOTIFY trajectoryChanged)
     Q_PROPERTY(double time READ time NOTIFY progressChanged)
     Q_PROPERTY(double progress READ progress NOTIFY progressChanged)
     Q_PROPERTY(double duration READ duration NOTIFY trajectoryChanged)
@@ -79,6 +80,9 @@ public:
     // per joint: {peak |tau|, time (s), limit, ratio = peak / limit, exceeded}
     QVariantList peaks() const;
     QString trajectoryError() const { return m_trajectory_error; }
+    // empty, or how a joint limit slowed the last plan: {scale: planned / requested speed,
+    // joint (0-based), acceleration (bool), step (0-based)}
+    QVariantMap speedLimit() const { return m_speed_limit; }
     // playback position, seconds
     double time() const { return m_sample * m_dt_ms / 1000.0; }
     double progress() const;
@@ -87,7 +91,8 @@ public:
     // translated on every read, so it follows the current UI language
     QString status() const;
     QString dataDir() const { return m_data_dir; }
-    // the editable model in UI units: {dh: [{a, alpha (deg), d}], limits: [{min, max}] (deg),
+    // the editable model in UI units: {dh: [{a, alpha (deg), d}], limits: [{min, max (deg),
+    // speed (deg/s), accel (deg/s^2)}],
     // maxMoments: [N*m], floorZ, links: [{mass, com: [3], inertia: [6]}], payload: {mass, com: [3]},
     // jointRadii: [m]}
     QVariantMap settings() const;
@@ -195,6 +200,7 @@ private:
     QVariantList m_program;
     QString m_plan_name = QStringLiteral("MoveJ");
     QString m_trajectory_error;
+    QVariantMap m_speed_limit;
     int m_play_from = 0;
     double m_floor_z = 0;
     double m_dt_ms = 0;

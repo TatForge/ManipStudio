@@ -146,12 +146,19 @@ Drawer {
                 // ---------------------------------------------------- limits
                 ColumnLayout {
                     spacing: 6
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        color: Theme.textDim
+                        font.pixelSize: 12
+                        text: qsTr("MoveJ keeps every joint within its speed and acceleration; MoveL and MoveC slow the whole move down instead of leaving the path.")
+                    }
                     GridLayout {
-                        columns: 4
+                        columns: 6
                         columnSpacing: 8
                         rowSpacing: 2
                         Repeater {
-                            model: [qsTr("Joint"), qsTr("min, °"), qsTr("max, °"), qsTr("Max moment, N·m")]
+                            model: [qsTr("Joint"), qsTr("min, °"), qsTr("max, °"), qsTr("Speed, °/s"), qsTr("Accel., °/s²"), qsTr("Moment, N·m")]
                             delegate: Text { required property var modelData; text: modelData; color: Theme.textDim; font.pixelSize: 12 }
                         }
                         Repeater {
@@ -185,6 +192,24 @@ Drawer {
                             delegate: NumberField {
                                 required property int index
                                 Layout.row: index + 1; Layout.column: 3
+                                value: drawer.value("limits", index, "speed")
+                                onEdited: v => drawer.edit(d => d.limits[index].speed = v)
+                            }
+                        }
+                        Repeater {
+                            model: 6
+                            delegate: NumberField {
+                                required property int index
+                                Layout.row: index + 1; Layout.column: 4
+                                value: drawer.value("limits", index, "accel")
+                                onEdited: v => drawer.edit(d => d.limits[index].accel = v)
+                            }
+                        }
+                        Repeater {
+                            model: 6
+                            delegate: NumberField {
+                                required property int index
+                                Layout.row: index + 1; Layout.column: 5
                                 value: drawer.draft.maxMoments ? drawer.draft.maxMoments[index] : 0
                                 onEdited: v => drawer.edit(d => d.maxMoments[index] = v)
                             }

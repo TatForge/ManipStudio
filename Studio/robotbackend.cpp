@@ -673,7 +673,9 @@ QVariantMap RobotBackend::settings() const
                               {QStringLiteral("alpha"), qRadiansToDegrees(s.dh[i].alpha)},
                               {QStringLiteral("d"), s.dh[i].d}});
         limits.append(QVariantMap{{QStringLiteral("min"), qRadiansToDegrees(s.limit_min[i])},
-                                  {QStringLiteral("max"), qRadiansToDegrees(s.limit_max[i])}});
+                                  {QStringLiteral("max"), qRadiansToDegrees(s.limit_max[i])},
+                                  {QStringLiteral("speed"), qRadiansToDegrees(s.max_speeds[i])},
+                                  {QStringLiteral("accel"), qRadiansToDegrees(s.max_accels[i])}});
         links.append(QVariantMap{{QStringLiteral("mass"), s.links[i].mass},
                                  {QStringLiteral("com"), ToList(s.links[i].com.data(), 3)},
                                  {QStringLiteral("inertia"), ToList(s.links[i].inertia.data(), 6)}});
@@ -704,15 +706,18 @@ void RobotBackend::applySettings(const QVariantMap &map, bool save)
     for (int i = 0; ok && i < kJoints; i++)
     {
         const QVariantMap row = dh[i].toMap(), lim = limits[i].toMap(), link = links[i].toMap();
-        double alpha = 0, lo = 0, hi = 0;
+        double alpha = 0, lo = 0, hi = 0, speed = 0, accel = 0;
         ok = Number(row.value(QStringLiteral("a")), s.dh[i].a) && Number(row.value(QStringLiteral("alpha")), alpha) &&
              Number(row.value(QStringLiteral("d")), s.dh[i].d) && Number(lim.value(QStringLiteral("min")), lo) &&
-             Number(lim.value(QStringLiteral("max")), hi) && Number(link.value(QStringLiteral("mass")), s.links[i].mass) &&
+             Number(lim.value(QStringLiteral("max")), hi) && Number(lim.value(QStringLiteral("speed")), speed) &&
+             Number(lim.value(QStringLiteral("accel")), accel) && Number(link.value(QStringLiteral("mass")), s.links[i].mass) &&
              FromList(link.value(QStringLiteral("com")), s.links[i].com.data(), 3) &&
              FromList(link.value(QStringLiteral("inertia")), s.links[i].inertia.data(), 6);
         s.dh[i].alpha = qDegreesToRadians(alpha);
         s.limit_min[i] = qDegreesToRadians(lo);
         s.limit_max[i] = qDegreesToRadians(hi);
+        s.max_speeds[i] = qDegreesToRadians(speed);
+        s.max_accels[i] = qDegreesToRadians(accel);
     }
     ok = ok && FromList(map.value(QStringLiteral("maxMoments")), s.max_moments.data(), kJoints) &&
          Number(map.value(QStringLiteral("floorZ")), s.floor_z) && Number(payload.value(QStringLiteral("mass")), s.payload.mass) &&
@@ -771,6 +776,7 @@ void RobotBackend::ClearTrajectory()
     m_moments.clear();
     m_tcp_path.clear();
     m_trajectory_error.clear();
+    m_speed_limit.clear();
     m_sample = 0;
     emit trajectoryChanged();
     emit progressChanged();
@@ -790,6 +796,12 @@ void RobotBackend::OnTrajectory(const PlannedTrajectory &trajectory)
     m_tcp_path = trajectory.tcp_path;
     m_dt_ms = trajectory.dt_ms;
     m_trajectory_error = trajectory.error;
+    m_speed_limit.clear();
+    if (trajectory.error.isEmpty() && trajectory.limit_joint >= 0)
+        m_speed_limit = {{QStringLiteral("scale"), trajectory.speed_scale},
+                         {QStringLiteral("joint"), trajectory.limit_joint},
+                         {QStringLiteral("acceleration"), trajectory.limit_by_accel},
+                         {QStringLiteral("step"), trajectory.limit_step}};
     m_sample = 0;
     emit trajectoryChanged();
     emit progressChanged();
@@ -799,7 +811,13 @@ void RobotBackend::OnTrajectory(const PlannedTrajectory &trajectory)
         emit errorOccurred(m_plan_name + QStringLiteral(": ") + m_trajectory_error);
         return;
     }
-    SetStatus(QT_TR_NOOP("%1: %2 samples, %3 s"), {m_plan_name, QString::number(sampleCount()), QString::number(duration(), 'f', 2)});
+    const QStringList done = {m_plan_name, QString::number(sampleCount()), QString::number(duration(), 'f', 2)};
+    if (m_speed_limit.isEmpty())
+        SetStatus(QT_TR_NOOP("%1: %2 samples, %3 s"), done);
+    else
+        SetStatus(trajectory.limit_by_accel ? QT_TR_NOOP("%1: %2 samples, %3 s, slowed to %4% by the q%5 acceleration limit")
+                                            : QT_TR_NOOP("%1: %2 samples, %3 s, slowed to %4% by the q%5 speed limit"),
+                  done + QStringList{QString::number(qRound(trajectory.speed_scale * 100)), QString::number(trajectory.limit_joint + 1)});
     if (sampleCount() == 0)
         return;
     ShowSample(0);

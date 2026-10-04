@@ -514,6 +514,50 @@ private slots:
         QVERIFY(qAbs(m_backend->limits()[0].toMap()[QStringLiteral("max")].toDouble() - 50) < 1e-9);
     }
 
+    // ------------------------------------------------------------ joint speed limits
+
+    void settingsExposeJointSpeedLimits()
+    {
+        const QVariantList limits = m_backend->settings()[QStringLiteral("limits")].toList();
+        QCOMPARE(qRound(limits[0].toMap()[QStringLiteral("speed")].toDouble()), 180);     // deg/s
+        QCOMPARE(qRound(limits[3].toMap()[QStringLiteral("accel")].toDouble()), 720);     // deg/s^2
+    }
+
+    // q1 limited to 10 deg/s: the default move (q3 travels 60 deg at 90 deg/s, q1 travels
+    // 20 deg) runs at a third of the requested speed, and the user is told why
+    void jointSpeedLimitSlowsTheMoveAndIsReported()
+    {
+        Apply(SetIn(m_backend->settings(), QStringLiteral("limits"), 0, QStringLiteral("speed"), 10.0), false);
+        RunMove();
+        double peak = 0;
+        for (const QPointF &p : m_backend->Series(QStringLiteral("velocity"), 0))
+            peak = std::max(peak, std::abs(p.y()));
+        QVERIFY2(peak <= 10 + 1e-3 && peak > 9.9, qPrintable(QString::number(peak)));
+        const QVariantMap info = m_backend->speedLimit();
+        QCOMPARE(info[QStringLiteral("joint")].toInt(), 0);
+        QVERIFY(qAbs(info[QStringLiteral("scale")].toDouble() - 1.0 / 3) < 1e-6);
+        QVERIFY(!info[QStringLiteral("acceleration")].toBool());
+        QVERIFY2(m_backend->status().contains(QStringLiteral("q1")) && m_backend->status().contains(QStringLiteral("33%")),
+                 qPrintable(m_backend->status()));
+
+        // a move that keeps to the limit is not reported
+        QSignalSpy finished(m_backend.get(), &RobotBackend::motionFinished);
+        m_backend->moveJ({0, 0, 0, 0, 0, 0}, 25, 180);
+        QVERIFY(finished.wait(kTimeoutMs));
+        QVERIFY(m_backend->speedLimit().isEmpty());
+    }
+
+    void invalidSpeedLimitIsRejected()
+    {
+        const QVariantMap before = m_backend->settings();
+        QSignalSpy errors(m_backend.get(), &RobotBackend::errorOccurred);
+        m_backend->applySettings(SetIn(before, QStringLiteral("limits"), 1, QStringLiteral("accel"), 0.0), false);
+        QVERIFY(errors.wait(kTimeoutMs));
+        QVERIFY(errors.first().first().toString().contains(QStringLiteral("acceleration")));
+        QTRY_VERIFY_WITH_TIMEOUT(!m_backend->busy(), kTimeoutMs);
+        QCOMPARE(m_backend->settings(), before);
+    }
+
     // ------------------------------------------------------------ MoveL / MoveC / TCP jog
 
     void moveLRunsStraightToTheTarget()

@@ -34,6 +34,12 @@ struct PlannedTrajectory
     QVector<QVector3D> tcp_path;        // flange origin (m) of every sample
     double dt_ms = 0;
     QString error;
+    // slowed down by a joint speed / acceleration limit: the slowest step's planned / requested
+    // speed, its joint (-1: not slowed) and step index
+    double speed_scale = 1;
+    int limit_joint = -1;
+    bool limit_by_accel = false;
+    int limit_step = -1;
 };
 Q_DECLARE_METATYPE(PlannedTrajectory)
 Q_DECLARE_METATYPE(std::vector<ArmPart>)
@@ -44,6 +50,7 @@ struct RobotSettings
     std::array<Robo::DHParams, JOINTS_COUNT> dh;
     std::array<double, JOINTS_COUNT> limit_min, limit_max;
     std::array<double, JOINTS_COUNT> max_moments;
+    std::array<double, JOINTS_COUNT> max_speeds, max_accels;      // rad/s, rad/s^2
     double floor_z = 0;
     std::array<Robo::LinkDynamics, JOINTS_COUNT> links;
     Robo::Payload payload;

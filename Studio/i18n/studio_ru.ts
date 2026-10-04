@@ -98,6 +98,8 @@
     <message><source>Planning %1...</source><translation>Расчёт %1...</translation></message>
     <message><source>%1 failed after %2 samples</source><translation>%1 прерван после %2 точек</translation></message>
     <message><source>%1: %2 samples, %3 s</source><translation>%1: %2 точек, %3 с</translation></message>
+    <message><source>%1: %2 samples, %3 s, slowed to %4% by the q%5 speed limit</source><translation>%1: %2 точек, %3 с, замедлено до %4% из-за предела скорости q%5</translation></message>
+    <message><source>%1: %2 samples, %3 s, slowed to %4% by the q%5 acceleration limit</source><translation>%1: %2 точек, %3 с, замедлено до %4% из-за предела ускорения q%5</translation></message>
     <message><source>Program: %1</source><translation>Программа: %1</translation></message>
     <message><source>Program</source><translation>Программа</translation></message>
     <message><source>Program: no steps</source><translation>Программа: нет шагов</translation></message>
@@ -125,7 +127,10 @@
     <message><source>Radius, m</source><translation>Радиус, м</translation></message>
     <message><source>min, °</source><translation>мин, °</translation></message>
     <message><source>max, °</source><translation>макс, °</translation></message>
-    <message><source>Max moment, N·m</source><translation>Предельный момент, Н·м</translation></message>
+    <message><source>Moment, N·m</source><translation>Момент, Н·м</translation></message>
+    <message><source>Speed, °/s</source><translation>Скорость, °/с</translation></message>
+    <message><source>Accel., °/s²</source><translation>Ускор., °/с²</translation></message>
+    <message><source>MoveJ keeps every joint within its speed and acceleration; MoveL and MoveC slow the whole move down instead of leaving the path.</source><translation>MoveJ держит каждый сустав в пределах его скорости и ускорения; MoveL и MoveC вместо ухода с пути равномерно замедляют всё движение.</translation></message>
     <message><source>Floor height, m</source><translation>Высота пола, м</translation></message>
     <message><source>Payload (point mass in the flange frame)</source><translation>Груз (точечная масса в системе фланца)</translation></message>
     <message><source>Mass, kg</source><translation>Масса, кг</translation></message>
