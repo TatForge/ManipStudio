@@ -96,7 +96,8 @@ if(MANIP_BUILD_TESTS)
         Tests/test_solver_kinematics.cpp
         Tests/test_solver_trajectories.cpp
         Tests/test_solver_dynamics.cpp
-        Tests/test_solver_collisions.cpp)
+        Tests/test_solver_collisions.cpp
+        Tests/test_solver_speed_limits.cpp)
 
     # Phase 4: PhysicsLib public API
     manip_add_test(PhysicsLibTests "lib"

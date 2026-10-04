@@ -119,6 +119,12 @@ public:
     DHParams GetDH(int joint) const;
     void SetDH(int joint, const DHParams &p);
     void SetMaxJointMoment(int joint, scalar value);
+    //joint speed (rad/s) and acceleration (rad/s^2) limits; "joint limits" group
+    //of the settings file (max_speed_deg_s, max_accel_deg_s2), defaults otherwise
+    std::array<scalar, JOINTS_COUNT> GetMaxJointSpeeds() const;
+    std::array<scalar, JOINTS_COUNT> GetMaxJointAccelerations() const;
+    void SetMaxJointSpeed(int joint, scalar rad_s);
+    void SetMaxJointAcceleration(int joint, scalar rad_s2);
     //settings groups "dynamics", "payload" and "shape"; defaults otherwise
     const std::array<LinkDynamics, JOINTS_COUNT> &GetLinkDynamics() const;
     void SetLinkDynamics(int link, const LinkDynamics &d);
@@ -153,6 +159,8 @@ private:
     Elem *robot;
     vector<scalar> max_joint_moments;
     vector<pair<scalar, scalar>> m_joint_limits;
+    std::array<scalar, JOINTS_COUNT> m_max_speeds;
+    std::array<scalar, JOINTS_COUNT> m_max_accels;
     scalar m_floor_z;
     std::array<LinkDynamics, JOINTS_COUNT> m_link_dynamics;
     Payload m_payload;

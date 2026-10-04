@@ -98,6 +98,8 @@ Solver::Solver(Robo &robot)
     manip_config = new Matrix(*robot.state_matrix);
     max_joint_moments = robot.GetMaxJointMoments();
     m_joint_limits = robot.GetJointLimits();
+    m_max_speeds = robot.GetMaxJointSpeeds();
+    m_max_accels = robot.GetMaxJointAccelerations();
     m_floor_z = robot.GetFloorHeight();
     m_mass.resize(6);
     m_main_IKData = new IKData;
@@ -310,6 +312,65 @@ void Solver::SolveInverseKinematic(const StateVector &target, const Angles &curr
     SolveDirectKinematic(res_angle, TRR);
 }
 
+Solver::SpeedLimit Solver::FindJointExcess(int last, scalar &factor) const
+{
+    SpeedLimit worst;
+    factor = 1;
+    for (int k = 0; k <= last; k++)
+    {
+        for (int j = 0; j < JOINTS_COUNT; j++)
+        {
+            const scalar by_speed = abs(m_angles_v[k].q_p[j]) / m_max_speeds[j];
+            //halving the speed quarters the acceleration
+            const scalar by_accel = sqrt(abs(m_angles_v[k].q_pp[j]) / m_max_accels[j]);
+            if (by_speed > factor)
+            {
+                factor = by_speed;
+                worst = {1, j, false};
+            }
+            if (by_accel > factor)
+            {
+                factor = by_accel;
+                worst = {1, j, true};
+            }
+        }
+    }
+    return worst;
+}
+
+template <typename Plan>
+int Solver::PlanWithinJointLimits(const char *move, scalar v, scalar a, Plan plan)
+{
+    //below this share of the requested speed the move is refused: a joint this far
+    //over its limit means the path runs (nearly) through a singularity
+    const scalar min_scale = 0.01;
+    m_speed_limit = SpeedLimit();
+    scalar scale = 1;
+    for (int attempt = 0;; attempt++)
+    {
+        const int last = plan(v * scale, a * scale * scale);
+        scalar factor;
+        const SpeedLimit excess = FindJointExcess(last, factor);
+        if (factor <= 1 + 1e-9)
+            return last;
+        //the first, largest excess names the joint that sets the pace
+        if (m_speed_limit.joint < 0)
+            m_speed_limit = excess;
+        //a little margin: the sampled path is not exactly a scaled copy
+        scale /= factor * 1.005;
+        m_speed_limit.scale = scale;
+        if (scale < min_scale || attempt >= 10)
+        {
+            const int j = excess.joint;
+            const bool acc = excess.acceleration;
+            throw std::runtime_error(string(move) + ": joint " + to_string(j) + (acc ? " acceleration" : " speed") + " limit (" +
+                                     to_string(ToDeg(acc ? m_max_accels[j] : m_max_speeds[j])) + (acc ? " deg/s^2" : " deg/s") +
+                                     ") cannot be kept even at 1% of the requested speed;"
+                                     " the path passes too close to a singularity");
+        }
+    }
+}
+
 void Solver::MoveL(const StateVector &start_point, const StateVector &end_point, const scalar &v_tcp, const scalar &a_tcp, const Angles &curr_angles,
                    const ushort &dt_millisec, vector<float> &results)
 {
@@ -327,26 +388,28 @@ void Solver::MoveL(const StateVector &start_point, const StateVector &end_point,
     const scalar path = distance > 0 ? distance : std::max({abs(d_ang.x), abs(d_ang.y), abs(d_ang.z)});
     if (path <= 0)
         throw std::runtime_error("MoveL: start and end poses are equal");
-    MotionProfile profile(path, v_tcp, a_tcp, dt_s);
-    const int last = profile.n;
+    const int last = PlanWithinJointLimits("MoveL", v_tcp, a_tcp, [&](scalar v, scalar a) {
+        MotionProfile profile(path, v, a, dt_s);
+        const int n = profile.n;
+        m_angles_v.assign(n + 2, Angles());
+        m_moments_v.assign(n + 2, Robo::Moments());
+        m_speed_v.assign(n + 2, Vector3());
+        m_accel_v.assign(n + 2, Vector3());
 
-    m_angles_v.assign(last + 2, Angles());
-    m_moments_v.assign(last + 2, Robo::Moments());
-    m_speed_v.assign(last + 2, Vector3());
-    m_accel_v.assign(last + 2, Vector3());
-
-    SolveInverseKinematic(start_point, curr_angles, m_angles_v[0]);
-    for (int k = 1; k <= last; k++)
-    {
-        const scalar t = k * dt_s;
-        const scalar u = profile.Pos(t) / path; //0..1
-        StateVector target(p0 + dir * (u * distance), ang0 + d_ang * u);
-        SolveInverseKinematic(target, m_angles_v[k - 1], m_angles_v[k]);
-        m_speed_v[k] = dir * profile.Vel(t);
-        m_accel_v[k] = dir * profile.Acc(t);
-    }
-    DifferentiateJointPath(m_angles_v, last, dt_s);
-    m_angles_v[last + 1] = m_angles_v[last];
+        SolveInverseKinematic(start_point, curr_angles, m_angles_v[0]);
+        for (int k = 1; k <= n; k++)
+        {
+            const scalar t = k * dt_s;
+            const scalar u = profile.Pos(t) / path; //0..1
+            StateVector target(p0 + dir * (u * distance), ang0 + d_ang * u);
+            SolveInverseKinematic(target, m_angles_v[k - 1], m_angles_v[k]);
+            m_speed_v[k] = dir * profile.Vel(t);
+            m_accel_v[k] = dir * profile.Acc(t);
+        }
+        DifferentiateJointPath(m_angles_v, n, dt_s);
+        m_angles_v[n + 1] = m_angles_v[n];
+        return n;
+    });
 
     CalcCollisionsDynamics(last + 1, dt_millisec);
     if (distance > 0)
@@ -623,11 +686,35 @@ void Solver::MoveJ(const Angles &start_angle, const Angles &end_angle, const flo
     //time-optimal profile, all other joints follow the same normalised profile
     //scaled to their own travel, so every joint starts and stops together and
     //the path is a straight line in joint space. All joints share the same
-    //limits, so the scaled joints stay below them.
+    //limits, so the scaled joints stay below them. A joint whose own speed or
+    //acceleration limit is lower than its share of the requested one slows the
+    //common profile down.
     scalar max_delta = 0;
     for (int i = 0; i < JOINTS_COUNT; i++)
         max_delta = std::max(max_delta, scalar(abs(end_angle.q[i] - start_angle.q[i])));
-    MotionProfile profile(max_delta, speed, acceleration, dt_s);
+    scalar v_path = speed, a_path = acceleration;
+    int v_joint = -1, a_joint = -1;
+    for (int i = 0; i < JOINTS_COUNT; i++)
+    {
+        const scalar travel = abs(end_angle.q[i] - start_angle.q[i]);
+        if (travel <= 0)
+            continue;
+        if (m_max_speeds[i] * max_delta / travel < v_path)
+        {
+            v_path = m_max_speeds[i] * max_delta / travel;
+            v_joint = i;
+        }
+        if (m_max_accels[i] * max_delta / travel < a_path)
+        {
+            a_path = m_max_accels[i] * max_delta / travel;
+            a_joint = i;
+        }
+    }
+    m_speed_limit = SpeedLimit();
+    const scalar v_scale = v_path / speed, a_scale = sqrt(a_path / acceleration);
+    if (v_joint >= 0 || a_joint >= 0)
+        m_speed_limit = v_scale <= a_scale ? SpeedLimit{v_scale, v_joint, false} : SpeedLimit{a_scale, a_joint, true};
+    MotionProfile profile(max_delta, v_path, a_path, dt_s);
     const int last = profile.n;
     m_angles_v.assign(last + 2, Angles());
     m_moments_v.assign(last + 2, Robo::Moments());
@@ -777,29 +864,31 @@ bool Solver::MoveC(const Angles &start_angle, const StateVector &start_point, co
     const scalar arc_length = R * sweep;
     Vector3 ang0 = start_point.GetAngles();
     Vector3 d_ang = end_point.GetAngles() - ang0;
-    MotionProfile profile(arc_length, v_tcp, a_tcp, dt_s);
-    const int last = profile.n;
+    const int last = PlanWithinJointLimits("MoveC", v_tcp, a_tcp, [&](scalar v, scalar a) {
+        MotionProfile profile(arc_length, v, a, dt_s);
+        const int n = profile.n;
+        m_angles_v.assign(n + 2, Angles());
+        m_moments_v.assign(n + 2, Robo::Moments());
+        m_speed_v.assign(n + 2, Vector3());
+        m_accel_v.assign(n + 2, Vector3());
 
-    m_angles_v.assign(last + 2, Angles());
-    m_moments_v.assign(last + 2, Robo::Moments());
-    m_speed_v.assign(last + 2, Vector3());
-    m_accel_v.assign(last + 2, Vector3());
-
-    SolveInverseKinematic(start_point, start_angle, m_angles_v[0]);
-    for (int k = 1; k <= last; k++)
-    {
-        const scalar t = k * dt_s;
-        const scalar s = profile.Pos(t);
-        const scalar phi = s / R;
-        Vector3 point = O + (u * cos(phi) + w * sin(phi)) * R;
-        StateVector target(point, ang0 + d_ang * (s / arc_length));
-        SolveInverseKinematic(target, m_angles_v[k - 1], m_angles_v[k]);
-        Vector3 tangent = w * cos(phi) - u * sin(phi);
-        m_speed_v[k] = tangent * profile.Vel(t);
-        m_accel_v[k] = tangent * profile.Acc(t);
-    }
-    DifferentiateJointPath(m_angles_v, last, dt_s);
-    m_angles_v[last + 1] = m_angles_v[last];
+        SolveInverseKinematic(start_point, start_angle, m_angles_v[0]);
+        for (int k = 1; k <= n; k++)
+        {
+            const scalar t = k * dt_s;
+            const scalar s = profile.Pos(t);
+            const scalar phi = s / R;
+            Vector3 point = O + (u * cos(phi) + w * sin(phi)) * R;
+            StateVector target(point, ang0 + d_ang * (s / arc_length));
+            SolveInverseKinematic(target, m_angles_v[k - 1], m_angles_v[k]);
+            Vector3 tangent = w * cos(phi) - u * sin(phi);
+            m_speed_v[k] = tangent * profile.Vel(t);
+            m_accel_v[k] = tangent * profile.Acc(t);
+        }
+        DifferentiateJointPath(m_angles_v, n, dt_s);
+        m_angles_v[n + 1] = m_angles_v[n];
+        return n;
+    });
 
     CalcCollisionsDynamics(last + 1, dt_millisec);
     AnglesVectorToVector(last + 1, results);
@@ -894,6 +983,11 @@ vector<Robo::Moments> Solver::GetTrajectoryMoments() const
     if (n > 0)
         out.back() = m_moments;
     return out;
+}
+
+Solver::SpeedLimit Solver::GetLastSpeedLimit() const
+{
+    return m_speed_limit;
 }
 
 const vector<pair<scalar, scalar>> &Solver::GetJointLimits() const

@@ -168,3 +168,67 @@ TEST(RoboDynamics, InvalidDhAndMomentsAreRejected)
     EXPECT_THROW(r.SetMaxJointMoment(0, 0), std::invalid_argument);
     EXPECT_THROW(r.SetMaxJointMoment(-1, 10), std::out_of_range);
 }
+
+TEST(RoboSpeedLimits, DefaultsAreSet)
+{
+    Robo r(JOINTS_COUNT);
+    const auto v = r.GetMaxJointSpeeds();
+    const auto a = r.GetMaxJointAccelerations();
+    const scalar v_deg[JOINTS_COUNT] = {180, 180, 180, 360, 360, 360};
+    const scalar a_deg[JOINTS_COUNT] = {360, 360, 360, 720, 720, 720};
+    for (int i = 0; i < JOINTS_COUNT; i++)
+    {
+        EXPECT_NEAR(v[i], ToRad(v_deg[i]), 1e-12) << "joint " << i;
+        EXPECT_NEAR(a[i], ToRad(a_deg[i]), 1e-12) << "joint " << i;
+    }
+}
+
+TEST_F(RoboDynamicsSettings, SpeedLimitsSurviveSaveAndLoad)
+{
+    Robo r(JOINTS_COUNT);
+    ASSERT_TRUE(r.LoadManip());
+    r.SetMaxJointSpeed(2, 1.25);
+    r.SetMaxJointAcceleration(5, 7.5);
+    {
+        ScopedSilence quiet;
+        r.WriteSettingsToFile();
+    }
+    {
+        // stored in degrees next to the angle limits
+        QSettings ini("ManipulatorSettigns.ini", QSettings::IniFormat);
+        EXPECT_NEAR(ini.value("joint limits/2/max_speed_deg_s").toDouble(), ToDeg(1.25), 1e-9);
+        EXPECT_NEAR(ini.value("joint limits/5/max_accel_deg_s2").toDouble(), ToDeg(7.5), 1e-9);
+    }
+    Robo loaded(JOINTS_COUNT);
+    ASSERT_TRUE(loaded.LoadManip());
+    EXPECT_NEAR(loaded.GetMaxJointSpeeds()[2], 1.25, 1e-12);
+    EXPECT_NEAR(loaded.GetMaxJointAccelerations()[5], 7.5, 1e-12);
+    EXPECT_NEAR(loaded.GetMaxJointSpeeds()[0], Robo(JOINTS_COUNT).GetMaxJointSpeeds()[0], 1e-12);
+}
+
+TEST_F(RoboDynamicsSettings, MissingSpeedLimitsKeepTheDefaults)
+{
+    {
+        QSettings ini("ManipulatorSettigns.ini", QSettings::IniFormat);
+        for (int i = 0; i < JOINTS_COUNT; i++)
+        {
+            ini.remove("joint limits/" + QString::number(i) + "/max_speed_deg_s");
+            ini.remove("joint limits/" + QString::number(i) + "/max_accel_deg_s2");
+        }
+    }
+    Robo r(JOINTS_COUNT);
+    ASSERT_TRUE(r.LoadManip());
+    EXPECT_EQ(r.GetMaxJointSpeeds(), Robo(JOINTS_COUNT).GetMaxJointSpeeds());
+    EXPECT_EQ(r.GetMaxJointAccelerations(), Robo(JOINTS_COUNT).GetMaxJointAccelerations());
+}
+
+TEST(RoboSpeedLimits, InvalidValuesAreRejected)
+{
+    Robo r(JOINTS_COUNT);
+    EXPECT_THROW(r.SetMaxJointSpeed(0, 0), std::invalid_argument);
+    EXPECT_THROW(r.SetMaxJointSpeed(0, std::nan("")), std::invalid_argument);
+    EXPECT_THROW(r.SetMaxJointAcceleration(1, -2), std::invalid_argument);
+    EXPECT_THROW(r.SetMaxJointSpeed(JOINTS_COUNT, 1), std::out_of_range);
+    EXPECT_THROW(r.SetMaxJointAcceleration(-1, 1), std::out_of_range);
+    EXPECT_NEAR(r.GetMaxJointSpeeds()[0], ToRad(180.0), 1e-12);
+}

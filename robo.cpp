@@ -564,6 +564,8 @@ void Robo::WriteSettingsToFile()
     {
         manip_settings->setValue(QString::number(i) + "/min_deg", ToDeg(m_joint_limits.at(i).first));
         manip_settings->setValue(QString::number(i) + "/max_deg", ToDeg(m_joint_limits.at(i).second));
+        manip_settings->setValue(QString::number(i) + "/max_speed_deg_s", ToDeg(m_max_speeds[i]));
+        manip_settings->setValue(QString::number(i) + "/max_accel_deg_s2", ToDeg(m_max_accels[i]));
     }
     manip_settings->endGroup();
     manip_settings->setValue("workspace/floor_z", m_floor_z);
@@ -666,6 +668,12 @@ void Robo::LoadSettingsFromFile()
             m_joint_limits.at(i).first = ToRad(manip_settings->value(min_key).toDouble());
         if (manip_settings->contains(max_key))
             m_joint_limits.at(i).second = ToRad(manip_settings->value(max_key).toDouble());
+        const QString speed_key = QString::number(i) + "/max_speed_deg_s";
+        const QString accel_key = QString::number(i) + "/max_accel_deg_s2";
+        if (manip_settings->contains(speed_key))
+            m_max_speeds[i] = ToRad(manip_settings->value(speed_key).toDouble());
+        if (manip_settings->contains(accel_key))
+            m_max_accels[i] = ToRad(manip_settings->value(accel_key).toDouble());
     }
     manip_settings->endGroup();
     if (manip_settings->contains("workspace/floor_z"))
@@ -985,6 +993,13 @@ void Robo::SetDefaultLimits()
     m_joint_limits.resize(JOINTS_COUNT);
     for (int i = 0; i < JOINTS_COUNT; i++)
         m_joint_limits[i] = {ToRad(limits_deg[i][0]), ToRad(limits_deg[i][1])};
+    //deg/s and deg/s^2: the three main axes, then the lighter wrist
+    const scalar speeds_deg[JOINTS_COUNT] = {180, 180, 180, 360, 360, 360};
+    for (int i = 0; i < JOINTS_COUNT; i++)
+    {
+        m_max_speeds[i] = ToRad(speeds_deg[i]);
+        m_max_accels[i] = ToRad(2 * speeds_deg[i]);
+    }
     m_floor_z = 0;
     //motor limits, N*m (WriteSettingsToFile used to force these on every save)
     max_joint_moments = {180, 180, 120, 120, 60, 60};
@@ -1031,6 +1046,34 @@ void Robo::SetMaxJointMoment(int joint, scalar value)
     if (!(value > 0))
         throw std::invalid_argument("max joint moment must be positive");
     max_joint_moments.at(joint) = value;
+}
+
+std::array<scalar, JOINTS_COUNT> Robo::GetMaxJointSpeeds() const
+{
+    return m_max_speeds;
+}
+
+std::array<scalar, JOINTS_COUNT> Robo::GetMaxJointAccelerations() const
+{
+    return m_max_accels;
+}
+
+void Robo::SetMaxJointSpeed(int joint, scalar rad_s)
+{
+    if (joint < 0 || joint >= JOINTS_COUNT)
+        throw std::out_of_range("joint " + std::to_string(joint) + " does not exist");
+    if (!(rad_s > 0) || !std::isfinite(rad_s))
+        throw std::invalid_argument("max joint speed must be positive");
+    m_max_speeds[joint] = rad_s;
+}
+
+void Robo::SetMaxJointAcceleration(int joint, scalar rad_s2)
+{
+    if (joint < 0 || joint >= JOINTS_COUNT)
+        throw std::out_of_range("joint " + std::to_string(joint) + " does not exist");
+    if (!(rad_s2 > 0) || !std::isfinite(rad_s2))
+        throw std::invalid_argument("max joint acceleration must be positive");
+    m_max_accels[joint] = rad_s2;
 }
 
 const std::array<Robo::LinkDynamics, JOINTS_COUNT> &Robo::GetLinkDynamics() const

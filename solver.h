@@ -77,6 +77,16 @@ public:
     //parts of the arm shape; m_meshes[i] is the convex hull of part i, the obstacle comes last
     const vector<ArmPart> &GetArmParts() const;
     const vector<pair<scalar, scalar>> &GetJointLimits() const;
+    //how the last MoveJ / MoveL / MoveC was slowed down by the joint speed and acceleration
+    //limits: scale = planned / requested speed (accelerations scale with its square,
+    //1 = as requested), joint = the joint that set the pace (-1 if none)
+    struct SpeedLimit
+    {
+        scalar scale = 1;
+        int joint = -1;
+        bool acceleration = false;
+    };
+    SpeedLimit GetLastSpeedLimit() const;
     bool WithinJointLimits(const Angles &a) const;
     scalar GetFloorHeight() const;
     void SetFloorHeight(scalar z);
@@ -94,6 +104,13 @@ private:
     //throws for a collision or a part below the floor in the current mesh positions
     void ThrowOnCollision(uint sample, scalar dt_millisec);
     void CalculateDeltas();
+    //the uniform slow-down factor (>= 1) samples 0..last of m_angles_v need to keep every
+    //joint within its speed and acceleration limits, with the joint that needs the most
+    SpeedLimit FindJointExcess(int last, scalar &factor) const;
+    //slows MoveL / MoveC (plan(v, a) samples the move and returns its last index) until
+    //no joint exceeds its limits; returns the last index of the final plan
+    template <typename Plan>
+    int PlanWithinJointLimits(const char *move, scalar v, scalar a, Plan plan);
 
     std::vector<ArmPart> m_parts;
     std::vector<MeshCollider> m_meshes_buff;
@@ -116,6 +133,9 @@ private:
     array<rm::Tensor, JOINTS_COUNT> m_i;
     vector<scalar> max_joint_moments;
     vector<pair<scalar, scalar>> m_joint_limits;
+    std::array<scalar, JOINTS_COUNT> m_max_speeds;
+    std::array<scalar, JOINTS_COUNT> m_max_accels;
+    SpeedLimit m_speed_limit;
     scalar m_floor_z;
     vector<Angles>  m_angles_v;
     vector<Vector3> m_speed_v;
