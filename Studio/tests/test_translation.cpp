@@ -91,6 +91,17 @@ private slots:
         QVERIFY2(missing.isEmpty(), qPrintable(missing.join(QLatin1Char('\n'))));
     }
 
+    void everyMotorHubStringIsTranslated()
+    {
+        const QStringList sources = Literals(QStringLiteral(STUDIO_SOURCE_DIR "/motors/motorhub.cpp"), QStringLiteral("tr|QT_TR_NOOP"));
+        QVERIFY(sources.size() >= 10);
+        QStringList missing;
+        for (const QString &source : sources)
+            if (Ru("MotorHub", source.toUtf8().constData()).isEmpty())
+                missing << source;
+        QVERIFY2(missing.isEmpty(), qPrintable(missing.join(QLatin1Char('\n'))));
+    }
+
     void unfinishedTranslationsAreIgnored()
     {
         QTemporaryDir dir;

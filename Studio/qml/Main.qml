@@ -44,6 +44,11 @@ ApplicationWindow {
                 color: !robot.ready ? Theme.warn : robot.busy ? Theme.accent : Theme.good
             }
             Chip {
+                text: qsTr("Motors")
+                checked: motorWindow.visible
+                onClicked: { motorWindow.show(); motorWindow.raise(); motorWindow.requestActivate() }
+            }
+            Chip {
                 text: qsTr("Settings")
                 enabled: robot.ready
                 checked: settingsPanel.opened
@@ -124,6 +129,7 @@ ApplicationWindow {
     }
 
     SettingsPanel { id: settingsPanel; objectName: "settingsPanel" }
+    MotorWindow { id: motorWindow; objectName: "motorWindow" }
 
     footer: Rectangle {
         color: Theme.panel

@@ -1,8 +1,10 @@
+#include "motorhub.h"
 #include "robotbackend.h"
 #include "translation.h"
 
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QDir>
 #include <QFileInfo>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -52,7 +54,11 @@ int main(int argc, char *argv[])
     QCommandLineOption settings_option(QStringLiteral("settings"), QStringLiteral("Open the settings panel once loaded."));
     QCommandLineOption program_option(QStringLiteral("program"), QStringLiteral("Load a program (JSON) and run it once loaded."),
                                       QStringLiteral("file"));
-    parser.addOptions({data_option, joints_option, movej_option, shot_option, lang_option, settings_option, program_option});
+    QCommandLineOption motors_option(QStringLiteral("motors"), QStringLiteral("Open the motor window once loaded."));
+    QCommandLineOption motor_sim_option(QStringLiteral("motor-sim"),
+                                        QStringLiteral("Connect the motor window to the simulated ODrive bus (implies --motors)."));
+    parser.addOptions({data_option, joints_option, movej_option, shot_option, lang_option, settings_option, program_option, motors_option,
+                       motor_sim_option});
     parser.process(app);
 
     const QVariantList joints = ParseAngles(parser.value(joints_option));
@@ -70,6 +76,10 @@ int main(int argc, char *argv[])
     QObject::connect(&robot, &RobotBackend::statusChanged, &robot, [&robot] { qInfo("%s", qPrintable(robot.status())); });
     QObject::connect(&robot, &RobotBackend::errorOccurred, &robot, [](const QString &m) { qWarning("%s", qPrintable(m)); });
 
+    // motor settings live next to the robot settings
+    MotorHub motors(QDir(parser.value(data_option)).absoluteFilePath(QStringLiteral("Motors.ini")));
+    QObject::connect(&motors, &MotorHub::errorOccurred, &motors, [](const QString &m) { qWarning("motors: %s", qPrintable(m)); });
+
     LanguageManager languages;
     languages.setLanguage(parser.isSet(lang_option) ? parser.value(lang_option) : LanguageManager::InitialLanguage());
 
@@ -78,19 +88,29 @@ int main(int argc, char *argv[])
     engine.addImportPath(QStringLiteral("qrc:/"));
     engine.rootContext()->setContextProperty(QStringLiteral("robot"), &robot);
     engine.rootContext()->setContextProperty(QStringLiteral("languages"), &languages);
-    QObject::connect(&languages, &LanguageManager::languageChanged, &engine, [&engine, &robot] {
+    engine.rootContext()->setContextProperty(QStringLiteral("motors"), &motors);
+    QObject::connect(&languages, &LanguageManager::languageChanged, &engine, [&engine, &robot, &motors] {
         engine.retranslate();
         robot.retranslate();
+        motors.retranslate();
     });
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); },
                      Qt::QueuedConnection);
     // Qt 6.4 has no loadFromModule(); the module's files live under qrc:/<URI>/
     engine.load(QUrl(QStringLiteral("qrc:/Studio/Main.qml")));
 
-    // give the scene a moment to render, then save the window
-    auto grab = [&engine, shot] {
-        QTimer::singleShot(1500, [&engine, shot] {
+    const bool motor_sim = parser.isSet(motor_sim_option);
+    const bool open_motors = parser.isSet(motors_option) || motor_sim;
+    auto motor_window = [&engine]() -> QQuickWindow * {
+        return engine.rootObjects().isEmpty() ? nullptr
+                                              : engine.rootObjects().first()->findChild<QQuickWindow *>(QStringLiteral("motorWindow"));
+    };
+    // give the scene a moment to render, then save the window (the motor window if it was asked for)
+    auto grab = [&engine, shot, open_motors, motor_window] {
+        QTimer::singleShot(open_motors ? 2500 : 1500, [&engine, shot, open_motors, motor_window] {
             auto *window = engine.rootObjects().isEmpty() ? nullptr : qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+            if (open_motors && motor_window())
+                window = motor_window();
             const bool ok = window && window->grabWindow().save(shot);
             if (!ok)
                 qWarning("screenshot: cannot save %s", qPrintable(shot));
@@ -99,10 +119,19 @@ int main(int argc, char *argv[])
     };
     const bool open_settings = parser.isSet(settings_option);
     const QString program = parser.isSet(program_option) ? QFileInfo(parser.value(program_option)).absoluteFilePath() : QString();
-    auto start = [&robot, &engine, joints, movej, shot, grab, open_settings, program] {
+    auto start = [&robot, &engine, &motors, joints, movej, shot, grab, open_settings, program, open_motors, motor_sim, motor_window] {
         if (open_settings && !engine.rootObjects().isEmpty())
             if (QObject *panel = engine.rootObjects().first()->findChild<QObject *>(QStringLiteral("settingsPanel")))
                 QMetaObject::invokeMethod(panel, "open");
+        // Qt 6.4 applies the child window's own `visible: false` once the main window is up,
+        // which would hide a window shown right now
+        if (open_motors)
+            QTimer::singleShot(300, &motors, [motor_window] {
+                if (QQuickWindow *w = motor_window())
+                    w->show();
+            });
+        if (motor_sim)
+            motors.connectBus(QStringLiteral("simulator"), QString(), 250000);
         if (!joints.isEmpty())
             robot.setJoints(joints);
         if (!movej.isEmpty() || !program.isEmpty())

@@ -9,6 +9,7 @@
     <message><source>loading</source><translation>загрузка</translation></message>
     <message><source>planning</source><translation>расчёт</translation></message>
     <message><source>ready</source><translation>готов</translation></message>
+    <message><source>Motors</source><translation>Моторы</translation></message>
     <message><source>Settings</source><translation>Настройки</translation></message>
     <message><source> s</source><translation> с</translation></message>
 </context>
@@ -143,5 +144,69 @@
     <message><source>Reload file</source><translation>Перечитать файл</translation></message>
     <message><source>Apply</source><translation>Применить</translation></message>
     <message><source>Save to file</source><translation>Сохранить в файл</translation></message>
+</context>
+<context>
+    <name>MotorHub</name>
+    <message><source>%1: at the end of its range</source><translation>%1: конец диапазона</translation></message>
+    <message><source>%1: calibrate from IDLE only</source><translation>%1: калибровка только из IDLE</translation></message>
+    <message><source>%1: calibrating, the motor will beep and turn</source><translation>%1: калибровка, мотор пищит и вращается</translation></message>
+    <message><source>%1: closed loop requested</source><translation>%1: включение замкнутого контура</translation></message>
+    <message><source>%1: enable the motor first</source><translation>%1: сначала включите мотор</translation></message>
+    <message><source>%1: errors cleared</source><translation>%1: ошибки сброшены</translation></message>
+    <message><source>%1: idle, the motor is free</source><translation>%1: IDLE, мотор свободен</translation></message>
+    <message><source>%1: invalid motor settings</source><translation>%1: неверные настройки мотора</translation></message>
+    <message><source>%1: motor error %2</source><translation>%1: ошибка мотора %2</translation></message>
+    <message><source>%1: motor online (node %2)</source><translation>%1: мотор на связи (узел %2)</translation></message>
+    <message><source>%1: no answer from node %2</source><translation>%1: нет ответа от узла %2</translation></message>
+    <message><source>%1: no position from the motor yet</source><translation>%1: позиция от мотора ещё не пришла</translation></message>
+    <message><source>%1: target limited to %2°</source><translation>%1: цель ограничена до %2°</translation></message>
+    <message><source>%1: the motor is offline</source><translation>%1: мотор не на связи</translation></message>
+    <message><source>%1: zero set at %2 motor turns</source><translation>%1: ноль установлен на %2 об. мотора</translation></message>
+    <message><source>All motors idle</source><translation>Все моторы в IDLE</translation></message>
+    <message><source>CAN error: %1</source><translation>Ошибка CAN: %1</translation></message>
+    <message><source>Cannot connect: %1</source><translation>Не удалось подключиться: %1</translation></message>
+    <message><source>Cannot write %1</source><translation>Не удалось записать %1</translation></message>
+    <message><source>Connected to %1, waiting for the axes</source><translation>Подключено к %1, ждём оси</translation></message>
+    <message><source>Motor settings saved to %1</source><translation>Настройки моторов сохранены в %1</translation></message>
+    <message><source>Not connected</source><translation>Не подключено</translation></message>
+    <message><source>Stop: holding position</source><translation>Стоп: удержание позиции</translation></message>
+</context>
+<context>
+    <name>MotorWindow</name>
+    <message><source>Accel., °/s²</source><translation>Ускор., °/с²</translation></message>
+    <message><source>Axes</source><translation>Оси</translation></message>
+    <message><source>CAN node</source><translation>Узел CAN</translation></message>
+    <message><source>Calibrate %1?</source><translation>Калибровать %1?</translation></message>
+    <message><source>Calibrate</source><translation>Калибровка</translation></message>
+    <message><source>Clear errors</source><translation>Сбросить ошибки</translation></message>
+    <message><source>Connect</source><translation>Подключить</translation></message>
+    <message><source>Current</source><translation>Ток</translation></message>
+    <message><source>Current, A</source><translation>Ток, А</translation></message>
+    <message><source>Direction</source><translation>Направление</translation></message>
+    <message><source>Disable all</source><translation>Отключить все</translation></message>
+    <message><source>Disable</source><translation>Отключить</translation></message>
+    <message><source>Disconnect</source><translation>Отключиться</translation></message>
+    <message><source>Enable</source><translation>Включить</translation></message>
+    <message><source>Esc = stop</source><translation>Esc = стоп</translation></message>
+    <message><source>Gear ratio</source><translation>Передаточное число</translation></message>
+    <message><source>Go to, °</source><translation>В угол, °</translation></message>
+    <message><source>Go</source><translation>Пуск</translation></message>
+    <message><source>Here</source><translation>Здесь</translation></message>
+    <message><source>Jog</source><translation>Толчок</translation></message>
+    <message><source>Joint angle = direction × (motor turns − zero) / gear × 360°. Set the ODrive watchdog: the motors keep the last command if this program stops talking.</source><translation>Угол сустава = направление × (обороты мотора − ноль) / передаточное × 360°. Включите watchdog в ODrive: без него моторы продолжают последнюю команду, если программа замолчит.</translation></message>
+    <message><source>Live</source><translation>Онлайн</translation></message>
+    <message><source>Motors</source><translation>Моторы</translation></message>
+    <message><source>Position</source><translation>Позиция</translation></message>
+    <message><source>Range, °</source><translation>Диапазон, °</translation></message>
+    <message><source>STOP</source><translation>СТОП</translation></message>
+    <message><source>Save settings</source><translation>Сохранить настройки</translation></message>
+    <message><source>Settings</source><translation>Настройки</translation></message>
+    <message><source>Speed</source><translation>Скорость</translation></message>
+    <message><source>Speed, °/s</source><translation>Скорость, °/с</translation></message>
+    <message><source>Test</source><translation>Тест</translation></message>
+    <message><source>The motor will beep and turn by itself for several seconds. The joint must be free to move and nothing may be in its way.</source><translation>Мотор будет пищать и сам вращаться несколько секунд. Сустав должен свободно двигаться, на пути ничего не должно быть.</translation></message>
+    <message><source>Zero, turns</source><translation>Ноль, об.</translation></message>
+    <message><source>not connected</source><translation>не подключено</translation></message>
+    <message><source>offline</source><translation>нет связи</translation></message>
 </context>
 </TS>
