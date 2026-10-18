@@ -14,8 +14,19 @@
 
 ![ManipStudio: robot simulation, motion program, and joint-moment plots](docs/images/manipstudio.png)
 
-A desktop workbench for modeling and simulating six-axis robot arms.
-Configure the robot, plan a trajectory, and inspect its motion and joint loads in one window.
+A C++ project for calculating the kinematics, planning the motion, and estimating
+the joint loads of six-axis robot arms. ManipStudio provides a desktop interface
+for configuring the model and exploring the results.
+
+Use it to turn a robot's geometry, link masses, inertias, and payload into a
+simulation: calculate the tool pose from joint angles, solve for the joints needed
+to reach a target pose, and build joint-space, straight-line, or circular moves.
+Then inspect the motion for collisions, joint limits, and required motor moments.
+
+The code is useful for experimenting with robot designs, comparing payloads and
+motion profiles, and studying robotics algorithms before testing them on hardware.
+The calculation core can also be used from C++ without the desktop interface.
+Results depend on the accuracy of the configured model.
 
 ## Features
 
