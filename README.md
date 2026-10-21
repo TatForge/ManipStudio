@@ -8,7 +8,7 @@
 ![Qt](https://img.shields.io/badge/Qt-6.4%2B-41CD52?style=flat-square)
 ![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux-667085?style=flat-square)
 
-[Русский](README.ru.md)
+**English** | [Русский](README.ru.md)
 
 </div>
 
@@ -36,6 +36,15 @@ Results depend on the accuracy of the configured model.
 - Collision checks and joint speed, acceleration, and moment limits.
 - Motion and joint-moment plots with CSV export.
 - English and Russian interface.
+
+## Project structure
+
+- `include/` — core and physics library headers.
+- `src/` — core, physics library, console, and optional CUDA sources.
+- `Studio/` — desktop interface, QML, and motor control.
+- `Tests/` — core and physics library tests.
+- `PhysicsLibrary/` — standalone shared-library build.
+- `STLmodels/` — mesh assets.
 
 ## Build and run
 

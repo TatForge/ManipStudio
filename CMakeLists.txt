@@ -23,12 +23,12 @@ include(ManipCore.cmake)
 manip_add_core(Qt${QT_VERSION_MAJOR}::Core)
 
 # Console check: loads the model, plans one MoveJ, prints a summary
-add_executable(MainKinematic main.cpp)
+add_executable(MainKinematic src/main.cpp)
 target_link_libraries(MainKinematic PRIVATE manip_core)
 if(MANIP_WITH_CUDA)
     enable_language(CUDA)
     set(CMAKE_CUDA_ARCHITECTURES 50)
-    target_sources(MainKinematic PRIVATE cuda_math.h cuda_math.cu)
+    target_sources(MainKinematic PRIVATE include/cuda_math.h src/cuda_math.cu)
 endif()
 # the core reads its settings and meshes from the working directory
 add_custom_command(TARGET MainKinematic POST_BUILD
@@ -101,8 +101,8 @@ if(MANIP_BUILD_TESTS)
 
     # Phase 4: PhysicsLib public API
     manip_add_test(PhysicsLibTests "lib"
-        physicslib.h
-        physicslib.cpp
+        include/physicslib.h
+        src/physicslib.cpp
         Tests/test_physicslib.cpp)
 endif()
 
